@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -69,9 +70,13 @@ class AuthService {
     const webClientId = '566607202117-rocpiig2v082i0fctl6ih9lkjt6vi6gg.apps.googleusercontent.com';
     const iosClientId = '566607202117-4s2hl6tg58li95mb4j90csldh2cc86do.apps.googleusercontent.com';
 
+    final isIOS = Platform.isIOS;
+
     final googleSignIn = GoogleSignIn(
-      clientId: iosClientId.isNotEmpty ? iosClientId : null,
-      serverClientId: webClientId.isNotEmpty ? webClientId : null,
+      // On iOS: set serverClientId to webClientId so id_token has web audience
+      // On Android: serverClientId for id_token audience
+      clientId: isIOS ? iosClientId : null,
+      serverClientId: webClientId,
     );
 
     final googleUser = await googleSignIn.signIn();

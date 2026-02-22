@@ -9,6 +9,7 @@ import '../widgets/payment_history_list.dart';
 import '../services/auth_service.dart';
 import '../services/trip_service.dart';
 import '../services/billing_service.dart';
+import '../services/rate_limit_service.dart';
 import '../services/saved_search_service.dart';
 import '../config/supabase_config.dart';
 
@@ -210,6 +211,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const PlanCard(),
                 const SizedBox(height: 8),
 
+                // AI Quota display
+                _buildAiQuotaCard(),
+                const SizedBox(height: 8),
+
                 // Payment History
                 _menuItem(Icons.receipt_long_outlined, 'Payment History', onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PaymentHistoryScreen()));
@@ -307,6 +312,64 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAiQuotaCard() {
+    final quotaAsync = ref.watch(aiQuotaProvider);
+    return quotaAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (quota) {
+        final currentUsage = quota['current_usage'] as int? ?? 0;
+        final monthlyLimit = quota['monthly_limit'] as int? ?? 10;
+        final remaining = quota['remaining'] as int? ?? 0;
+        final tier = quota['tier'] as String? ?? 'free';
+        final pct = monthlyLimit > 0 ? (currentUsage / monthlyLimit).clamp(0.0, 1.0) : 0.0;
+        final barColor = pct < 0.6 ? AppColors.success : (pct < 0.85 ? AppColors.warning : AppColors.error);
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE6E6E6)),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.auto_awesome, size: 18, color: AppColors.brandBlue),
+                  const SizedBox(width: 8),
+                  Text('AI Usage', style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                    child: Text(tier.toUpperCase(), style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text('Used $currentUsage of $monthlyLimit requests', style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textSecondary)),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: pct,
+                  minHeight: 8,
+                  backgroundColor: Colors.grey.shade200,
+                  valueColor: AlwaysStoppedAnimation(barColor),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text('$remaining remaining this month', style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
+            ],
+          ),
+        );
+      },
     );
   }
 

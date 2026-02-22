@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/app_colors.dart';
 import '../widgets/brand_deco_circles.dart';
+import '../widgets/upgrade_dialog.dart';
 import '../services/chat_service.dart';
 import '../services/itinerary_service.dart';
+import '../services/rate_limit_service.dart';
 import '../config/supabase_config.dart';
 
 // ── Shimmer ──
@@ -37,14 +39,14 @@ class _ShimmerBoxState extends State<_ShimmerBox> with SingleTickerProviderState
   }
 }
 
-class AIChatScreen extends StatefulWidget {
+class AIChatScreen extends ConsumerStatefulWidget {
   final String? initialMessage;
   const AIChatScreen({super.key, this.initialMessage});
   @override
-  State<AIChatScreen> createState() => _AIChatScreenState();
+  ConsumerState<AIChatScreen> createState() => _AIChatScreenState();
 }
 
-class _AIChatScreenState extends State<AIChatScreen> with TickerProviderStateMixin {
+class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProviderStateMixin {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   final _focusNode = FocusNode();
@@ -82,8 +84,23 @@ class _AIChatScreenState extends State<AIChatScreen> with TickerProviderStateMix
   @override
   void dispose() { _controller.dispose(); _scrollController.dispose(); _focusNode.dispose(); super.dispose(); }
 
-  void _send(String text) {
+  void _send(String text) async {
     if (text.trim().isEmpty || text.length > _maxChars) return;
+
+    // Check AI quota before sending
+    final quotaResult = await RateLimitService.instance.canUseAi();
+    if (quotaResult['can_use'] != true) {
+      if (mounted) {
+        showUpgradeDialog(
+          context, ref,
+          currentUsage: quotaResult['current_usage'] as int? ?? 0,
+          monthlyLimit: quotaResult['monthly_limit'] as int? ?? 10,
+          planName: 'Free',
+        );
+      }
+      return;
+    }
+
     final now = DateTime.now();
     setState(() {
       _messages.add(_ChatMsg(isUser: true, text: text.trim(), time: now));
@@ -96,6 +113,9 @@ class _AIChatScreenState extends State<AIChatScreen> with TickerProviderStateMix
     // Call the real AI chat service
     ChatService.instance.sendMessage(message: text.trim()).then((reply) {
       if (!mounted) return;
+
+      // Increment AI usage on successful response
+      RateLimitService.instance.incrementAiUsage();
       
       // Parse special markers from AI response
       var content = reply.content;

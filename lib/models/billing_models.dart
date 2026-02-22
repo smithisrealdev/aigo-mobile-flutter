@@ -33,6 +33,54 @@ class PlanLimit {
   bool get isTeam => name.toLowerCase() == 'team';
 }
 
+/// User subscription record.
+class UserSubscription {
+  final String id;
+  final String userId;
+  final String planId;
+  final String status; // active | canceled | past_due | trialing
+  final String? stripeCustomerId;
+  final String? stripeSubscriptionId;
+  final String? currentPeriodStart;
+  final String? currentPeriodEnd;
+  final String? cancelAt;
+  final String? createdAt;
+
+  UserSubscription({
+    required this.id,
+    required this.userId,
+    required this.planId,
+    required this.status,
+    this.stripeCustomerId,
+    this.stripeSubscriptionId,
+    this.currentPeriodStart,
+    this.currentPeriodEnd,
+    this.cancelAt,
+    this.createdAt,
+  });
+
+  factory UserSubscription.fromJson(Map<String, dynamic> json) =>
+      UserSubscription(
+        id: json['id'] as String,
+        userId: json['user_id'] as String,
+        planId: json['plan_id'] as String? ?? 'free',
+        status: json['status'] as String? ?? 'active',
+        stripeCustomerId: json['stripe_customer_id'] as String?,
+        stripeSubscriptionId: json['stripe_subscription_id'] as String?,
+        currentPeriodStart: json['current_period_start'] as String?,
+        currentPeriodEnd: json['current_period_end'] as String?,
+        cancelAt: json['cancel_at'] as String?,
+        createdAt: json['created_at'] as String?,
+      );
+
+  bool get isActive => status == 'active' || status == 'trialing';
+  bool get isCanceled => status == 'canceled';
+  bool get isPastDue => status == 'past_due';
+
+  DateTime? get periodEnd =>
+      currentPeriodEnd != null ? DateTime.tryParse(currentPeriodEnd!) : null;
+}
+
 /// Payment history record.
 class PaymentRecord {
   final String id;

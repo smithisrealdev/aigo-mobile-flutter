@@ -15,7 +15,6 @@ class BillingService {
   /// Get current user's plan from `plan_limits`.
   Future<PlanLimit?> getCurrentPlan() async {
     try {
-      // First get user's plan name from profiles or subscriptions
       final sub = await SupabaseConfig.client
           .from('user_subscriptions')
           .select('plan_id')
@@ -30,30 +29,48 @@ class BillingService {
           .eq('id', planId)
           .maybeSingle();
 
-      if (data == null) {
-        // Return default free plan
-        return PlanLimit(
-          id: 'free',
-          name: 'Free',
-          maxTrips: 3,
-          maxAiRequests: 10,
-          maxCollaborators: 1,
-          price: 0,
-          features: ['3 trips', '10 AI requests/month', 'Basic features'],
-        );
-      }
+      if (data == null) return _defaultFreePlan;
       return PlanLimit.fromJson(data);
     } catch (e) {
       debugPrint('BillingService.getCurrentPlan failed: $e');
-      return PlanLimit(
-        id: 'free',
-        name: 'Free',
-        maxTrips: 3,
-        maxAiRequests: 10,
-        maxCollaborators: 1,
-        price: 0,
-        features: ['3 trips', '10 AI requests/month', 'Basic features'],
-      );
+      return _defaultFreePlan;
+    }
+  }
+
+  /// Get current user's subscription details.
+  Future<UserSubscription?> getCurrentSubscription() async {
+    final uid = _uid;
+    if (uid == null) return null;
+
+    try {
+      final data = await SupabaseConfig.client
+          .from('user_subscriptions')
+          .select()
+          .eq('user_id', uid)
+          .maybeSingle();
+
+      if (data == null) return null;
+      return UserSubscription.fromJson(data);
+    } catch (e) {
+      debugPrint('BillingService.getCurrentSubscription failed: $e');
+      return null;
+    }
+  }
+
+  /// Get plan limits by plan ID.
+  Future<PlanLimit?> getPlanLimits(String planId) async {
+    try {
+      final data = await SupabaseConfig.client
+          .from('plan_limits')
+          .select()
+          .eq('id', planId)
+          .maybeSingle();
+
+      if (data == null) return null;
+      return PlanLimit.fromJson(data);
+    } catch (e) {
+      debugPrint('BillingService.getPlanLimits failed: $e');
+      return null;
     }
   }
 
@@ -116,6 +133,16 @@ class BillingService {
       return false;
     }
   }
+
+  static final _defaultFreePlan = PlanLimit(
+    id: 'free',
+    name: 'Free',
+    maxTrips: 3,
+    maxAiRequests: 10,
+    maxCollaborators: 1,
+    price: 0,
+    features: ['3 trips', '10 AI requests/month', 'Basic features'],
+  );
 }
 
 // ── Riverpod providers ──
@@ -124,6 +151,10 @@ final billingServiceProvider = Provider((_) => BillingService.instance);
 
 final currentPlanProvider = FutureProvider<PlanLimit?>((ref) async {
   return BillingService.instance.getCurrentPlan();
+});
+
+final userSubscriptionProvider = FutureProvider<UserSubscription?>((ref) async {
+  return BillingService.instance.getCurrentSubscription();
 });
 
 final paymentHistoryProvider = FutureProvider<List<PaymentRecord>>((ref) async {

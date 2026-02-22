@@ -5,11 +5,14 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 import '../widgets/trip_map_view.dart';
 import '../widgets/booking_options_widget.dart';
+import '../widgets/upgrade_dialog.dart';
 import '../models/models.dart';
 import '../services/itinerary_service.dart';
 import '../services/expense_service.dart';
 import '../services/trip_service.dart';
 import '../services/replan_service.dart';
+import '../services/permission_service.dart';
+import '../services/rate_limit_service.dart' as quota;
 import '../widgets/trip_checklist_widget.dart';
 import '../widgets/trip_reservations_widget.dart';
 import '../widgets/trip_members_widget.dart';
@@ -31,11 +34,10 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   bool _showMap = false;
   bool _regenerating = false;
   bool _replanning = false;
-  String _activeSection = 'itinerary'; // itinerary | checklist | reservations | alerts
+  String _activeSection = 'itinerary';
 
   Trip? get _trip => widget.trip;
 
-  // Extract days from itinerary data
   List<Map<String, dynamic>> get _days {
     final data = _trip?.itineraryData;
     if (data == null) return _fallbackDays;
@@ -82,8 +84,27 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     return '$s, ${start.year}';
   }
 
+  /// Permission-aware check before AI actions.
+  Future<bool> _checkAiQuota() async {
+    final result = await quota.RateLimitService.instance.canUseAi();
+    if (result['can_use'] != true) {
+      if (mounted) {
+        showUpgradeDialog(
+          context, ref,
+          currentUsage: result['current_usage'] as int? ?? 0,
+          monthlyLimit: result['monthly_limit'] as int? ?? 10,
+          planName: 'Free',
+        );
+      }
+      return false;
+    }
+    return true;
+  }
+
   Future<void> _handleRegenerate() async {
     if (_trip == null || _regenerating) return;
+    if (!await _checkAiQuota()) return;
+
     setState(() => _regenerating = true);
     try {
       await ItineraryService.instance.generateItinerary(
@@ -93,6 +114,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           endDate: _trip!.endDate ?? '',
         ),
       );
+      await quota.RateLimitService.instance.incrementAiUsage();
+      ref.invalidate(quota.aiQuotaProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Itinerary regenerated!')));
         ref.invalidate(tripProvider(_trip!.id));
@@ -106,6 +129,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
   Future<void> _handleSmartReplan() async {
     if (_trip == null || _replanning) return;
+    if (!await _checkAiQuota()) return;
+
     setState(() => _replanning = true);
     try {
       final result = await ReplanService.instance.replanDay(
@@ -113,6 +138,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         tripData: _trip!.itineraryData ?? {},
         dayIndex: _selectedDay,
       );
+      await quota.RateLimitService.instance.incrementAiUsage();
+      ref.invalidate(quota.aiQuotaProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result.success ? '✨ ${result.summary}' : result.summary)),
@@ -140,7 +167,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No alternatives found')));
       return;
     }
-    // Show alternatives bottom sheet
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
@@ -171,16 +197,26 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     final days = _days;
     final activities = _currentActivities;
 
+    // Watch role for permission guards
+    final roleAsync = _trip != null
+        ? ref.watch(tripRoleProvider(_trip!.id))
+        : const AsyncData<String>('owner');
+
+    final role = roleAsync.value ?? 'viewer';
+    final perm = PermissionService.instance;
+    final canEdit = perm.canEditActivities(role);
+    final isOwner = perm.canManageMembers(role);
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      floatingActionButton: _buildExpandableFab(),
+      floatingActionButton: canEdit ? _buildExpandableFab() : null,
       body: GestureDetector(
         onTap: () {
           if (_fabExpanded) setState(() => _fabExpanded = false);
         },
         child: Column(
           children: [
-            _buildHeroHeader(days),
+            _buildHeroHeader(days, role),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: Row(children: [
@@ -199,27 +235,47 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                       children: [
                         _buildAiChipsRow(),
                         const SizedBox(height: 16),
-                        _buildAiInsightCard(),
-                        const SizedBox(height: 12),
 
-                        // Smart Replan button
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: _replanning ? null : _handleSmartReplan,
-                            icon: _replanning
-                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                                : const Icon(Icons.auto_fix_high, size: 16),
-                            label: Text(_replanning ? 'Replanning...' : '✨ Smart Replan Day ${_selectedDay + 1}'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF8B5CF6),
-                              side: const BorderSide(color: Color(0xFF8B5CF6)),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(vertical: 10),
+                        // Role badge for viewer
+                        if (role == 'viewer')
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(children: [
+                              const Icon(Icons.visibility, size: 16, color: Colors.orange),
+                              const SizedBox(width: 8),
+                              Text('You are viewing this trip as a viewer',
+                                style: GoogleFonts.dmSans(fontSize: 13, color: Colors.orange.shade800)),
+                            ]),
+                          ),
+
+                        if (canEdit) ...[
+                          _buildAiInsightCard(canEdit),
+                          const SizedBox(height: 12),
+                          // Smart Replan button
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _replanning ? null : _handleSmartReplan,
+                              icon: _replanning
+                                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                  : const Icon(Icons.auto_fix_high, size: 16),
+                              label: Text(_replanning ? 'Replanning...' : '✨ Smart Replan Day ${_selectedDay + 1}'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF8B5CF6),
+                                side: const BorderSide(color: Color(0xFF8B5CF6)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
+                          const SizedBox(height: 16),
+                        ],
 
                         // Section tabs
                         SizedBox(
@@ -271,7 +327,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                               child: Center(child: Text('No activities for this day', style: TextStyle(color: AppColors.textSecondary))),
                             )
                           else
-                            ..._buildActivityList(activities),
+                            ..._buildActivityList(activities, canEdit: canEdit),
                         ],
                         if (_activeSection == 'checklist' && _trip != null)
                           TripChecklistWidget(tripId: _trip!.id),
@@ -280,11 +336,11 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         if (_activeSection == 'alerts' && _trip != null)
                           TripAlertsWidget(tripId: _trip!.id),
 
-                        // Share + Members sections
+                        // Share + Members sections (owner only for share, all for members)
                         if (_trip != null) ...[
                           const SizedBox(height: 20),
-                          ShareTripWidget(tripId: _trip!.id),
-                          const SizedBox(height: 16),
+                          if (isOwner) ShareTripWidget(tripId: _trip!.id),
+                          if (isOwner) const SizedBox(height: 16),
                           TripMembersWidget(tripId: _trip!.id),
                         ],
 
@@ -298,7 +354,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     );
   }
 
-  Widget _buildHeroHeader(List<Map<String, dynamic>> days) {
+  Widget _buildHeroHeader(List<Map<String, dynamic>> days, String role) {
+    final perm = PermissionService.instance;
     return Container(
       decoration: const BoxDecoration(gradient: AppColors.blueGradient),
       child: SafeArea(
@@ -311,25 +368,42 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 children: [
                   GestureDetector(onTap: () => Navigator.maybePop(context), child: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20)),
                   const SizedBox(width: 12),
-                  Expanded(child: Text(_tripTitle, style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white))),
+                  Expanded(child: Row(children: [
+                    Flexible(child: Text(_tripTitle, style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white))),
+                    const SizedBox(width: 8),
+                    // Role badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        role.toUpperCase(),
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5),
+                      ),
+                    ),
+                  ])),
                   IconButton(
                     icon: Icon(_isBookmarked ? Icons.bookmark : Icons.bookmark_border, color: Colors.white),
                     onPressed: () => setState(() => _isBookmarked = !_isBookmarked),
                   ),
                   if (_trip != null) TripMemberAvatars(tripId: _trip!.id),
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: () {},
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(24)),
-                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.share, color: Colors.white, size: 15),
-                        SizedBox(width: 6),
-                        Text('Share', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                      ]),
+                  if (perm.canShareTrip(role)) ...[
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: () {},
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(24)),
+                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.share, color: Colors.white, size: 15),
+                          SizedBox(width: 6),
+                          Text('Share', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                        ]),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -427,7 +501,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     );
   }
 
-  Widget _buildAiInsightCard() {
+  Widget _buildAiInsightCard(bool canEdit) {
     final prefs = _trip?.itineraryData?['preferences'] as List? ?? ['Nature', 'Slow Travel', 'Local Food'];
     return Container(
       padding: const EdgeInsets.all(16),
@@ -447,37 +521,39 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         ),
         const SizedBox(height: 10),
         const Text('Based on your preferences', style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.textSecondary)),
-        const SizedBox(height: 12),
-        Row(children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: _regenerating ? null : _handleRegenerate,
-              icon: _regenerating
-                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('🔄', style: TextStyle(fontSize: 14)),
-              label: Text(_regenerating ? 'Generating...' : 'Regenerate'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.brandBlue,
-                side: const BorderSide(color: AppColors.brandBlue),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(vertical: 10),
+        if (canEdit) ...[
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _regenerating ? null : _handleRegenerate,
+                icon: _regenerating
+                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('🔄', style: TextStyle(fontSize: 14)),
+                label: Text(_regenerating ? 'Generating...' : 'Regenerate'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.brandBlue,
+                  side: const BorderSide(color: AppColors.brandBlue),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Text('✨', style: TextStyle(fontSize: 14)),
-              label: const Text('Optimize'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.brandBlue, foregroundColor: Colors.white, elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(vertical: 10),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {},
+                icon: const Text('✨', style: TextStyle(fontSize: 14)),
+                label: const Text('Optimize'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.brandBlue, foregroundColor: Colors.white, elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
               ),
             ),
-          ),
-        ]),
+          ]),
+        ],
       ]),
     );
   }
@@ -488,7 +564,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     final title = day['title'] ?? day['name'] ?? 'Day ${_selectedDay + 1}';
     final date = day['date'] ?? '';
 
-    // Budget from trip data
     final spent = (_trip?.budgetSpent ?? 0) / (days.length > 0 ? days.length : 1);
     final total = (_trip?.budgetTotal ?? 0) / (days.length > 0 ? days.length : 1);
     final pct = total > 0 ? (spent / total).clamp(0.0, 1.0) : 0.0;
@@ -519,7 +594,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     ]);
   }
 
-  List<Widget> _buildActivityList(List<Map<String, dynamic>> activities) {
+  List<Widget> _buildActivityList(List<Map<String, dynamic>> activities, {required bool canEdit}) {
     final iconMap = {'restaurant': Icons.restaurant, 'temple': Icons.temple_buddhist, 'walk': Icons.directions_walk, 'park': Icons.park, 'nature': Icons.nature, 'hotel': Icons.hotel, 'shopping': Icons.shopping_bag, 'museum': Icons.museum, 'beach': Icons.beach_access};
     final colorMap = {'restaurant': AppColors.warning, 'temple': AppColors.error, 'walk': AppColors.brandBlue, 'park': AppColors.success, 'nature': AppColors.success, 'hotel': AppColors.brandBlue, 'shopping': Colors.purple, 'museum': AppColors.warning, 'beach': AppColors.brandBlue};
 
@@ -537,7 +612,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         subtitle: desc.toString(),
         icon: iconMap[type] ?? Icons.place,
         iconColor: colorMap[type] ?? AppColors.brandBlue,
-        showSwapBadge: i == 0,
+        showSwapBadge: canEdit && i == 0,
+        showDragHandle: canEdit,
       ));
       if (i < activities.length - 1) widgets.add(_timelineDivider());
     }
@@ -546,7 +622,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
   Widget _buildEnhancedActivityCard({
     required String time, required String title, required String subtitle,
-    required IconData icon, required Color iconColor, bool showSwapBadge = false,
+    required IconData icon, required Color iconColor,
+    bool showSwapBadge = false, bool showDragHandle = true,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
@@ -556,8 +633,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 2))],
       ),
       child: Row(children: [
-        const Icon(Icons.drag_indicator, color: AppColors.textSecondary, size: 18),
-        const SizedBox(width: 8),
+        if (showDragHandle) const Icon(Icons.drag_indicator, color: AppColors.textSecondary, size: 18),
+        if (showDragHandle) const SizedBox(width: 8),
         Container(width: 48, height: 48, decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
           child: Icon(icon, color: iconColor, size: 22)),
         const SizedBox(width: 12),

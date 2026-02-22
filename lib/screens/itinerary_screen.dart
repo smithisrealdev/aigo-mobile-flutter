@@ -260,8 +260,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                                   : const Icon(Icons.auto_fix_high, size: 16),
                               label: Text(_replanning ? 'Replanning...' : 'Smart Replan Day ${_selectedDay + 1}'),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFF8B5CF6),
-                                side: const BorderSide(color: Color(0xFF8B5CF6)),
+                                foregroundColor: AppColors.brandBlue,
+                                side: BorderSide(color: AppColors.brandBlue),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                 padding: const EdgeInsets.symmetric(vertical: 10),
                               ),
@@ -347,51 +347,85 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     );
   }
 
+  /// Fallback hero image based on destination
+  String get _heroImageUrl {
+    final dest = _tripDestination.toLowerCase();
+    if (dest.contains('japan') || dest.contains('tokyo')) return 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&q=80';
+    if (dest.contains('thai') || dest.contains('bangkok')) return 'https://images.unsplash.com/photo-1563492065599-3520f775eeed?w=800&q=80';
+    if (dest.contains('paris') || dest.contains('france')) return 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80';
+    if (dest.contains('london') || dest.contains('uk')) return 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&q=80';
+    if (dest.contains('bali') || dest.contains('indonesia')) return 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800&q=80';
+    if (dest.contains('korea') || dest.contains('seoul')) return 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800&q=80';
+    return 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&q=80'; // generic travel
+  }
+
   Widget _buildHeroHeader(List<Map<String, dynamic>> days, String role) {
     final perm = PermissionService.instance;
-    final coverImage = _trip?.coverImage;
+    final coverImage = _trip?.coverImage ?? _heroImageUrl;
     return Container(
       decoration: BoxDecoration(
-        gradient: coverImage == null ? AppColors.blueGradient : null,
-        image: coverImage != null
-            ? DecorationImage(image: NetworkImage(coverImage), fit: BoxFit.cover, colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.35), BlendMode.darken))
-            : null,
+        image: DecorationImage(
+          image: NetworkImage(coverImage),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.45), BlendMode.darken),
+        ),
       ),
       child: SafeArea(
         bottom: false,
         child: Column(
           children: [
+            // Top row: back + title (max 2 lines)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 12, 8),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: GestureDetector(onTap: () => Navigator.maybePop(context), child: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20)),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(
+                    _tripTitle,
+                    style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white, height: 1.2),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  )),
+                ],
+              ),
+            ),
+            // Second row: role badge + date + location + bookmark + share
+            Padding(
+              padding: const EdgeInsets.fromLTRB(44, 6, 16, 0),
               child: Row(
                 children: [
-                  GestureDetector(onTap: () => Navigator.maybePop(context), child: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20)),
-                  const SizedBox(width: 12),
-                  Expanded(child: Row(children: [
-                    Flexible(child: Text(_tripTitle, style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white))),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
-                      child: Text(role.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5)),
-                    ),
-                  ])),
-                  IconButton(
-                    icon: Icon(_isBookmarked ? Icons.bookmark : Icons.bookmark_border, color: Colors.white),
-                    onPressed: () => setState(() => _isBookmarked = !_isBookmarked),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(12)),
+                    child: Text(role.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5)),
                   ),
-                  if (_trip != null) TripMemberAvatars(tripId: _trip!.id),
-                  if (perm.canShareTrip(role)) ...[
+                  const SizedBox(width: 10),
+                  if (_tripDateRange.isNotEmpty) ...[
+                    const Icon(Icons.calendar_today, color: Colors.white70, size: 12),
                     const SizedBox(width: 4),
+                    Flexible(child: Text(_tripDateRange, style: const TextStyle(color: Colors.white70, fontSize: 12), overflow: TextOverflow.ellipsis)),
+                  ],
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => setState(() => _isBookmarked = !_isBookmarked),
+                    child: Icon(_isBookmarked ? Icons.bookmark : Icons.bookmark_border, color: Colors.white, size: 22),
+                  ),
+                  if (perm.canShareTrip(role)) ...[
+                    const SizedBox(width: 12),
                     GestureDetector(
                       onTap: () {},
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(24)),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(20)),
                         child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.share, color: Colors.white, size: 15),
-                          SizedBox(width: 6),
-                          Text('Share', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                          Icon(Icons.share, color: Colors.white, size: 14),
+                          SizedBox(width: 4),
+                          Text('Share', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
                         ]),
                       ),
                     ),
@@ -399,24 +433,19 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 ],
               ),
             ),
-            if (_tripDateRange.isNotEmpty || _tripDestination.isNotEmpty)
+            // Third row: destination
+            if (_tripDestination.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    if (_tripDateRange.isNotEmpty) ...[
-                      const Icon(Icons.calendar_today, color: Colors.white70, size: 14),
-                      const SizedBox(width: 6),
-                      Text(_tripDateRange, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                      const SizedBox(width: 16),
-                    ],
-                    if (_tripDestination.isNotEmpty) ...[
-                      const Icon(Icons.location_on, color: Colors.white70, size: 14),
-                      const SizedBox(width: 4),
-                      Text(_tripDestination, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                    ],
+                padding: const EdgeInsets.fromLTRB(44, 4, 16, 0),
+                child: Row(children: [
+                  const Icon(Icons.location_on, color: Colors.white70, size: 13),
+                  const SizedBox(width: 4),
+                  Text(_tripDestination, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  if (_trip != null) ...[
+                    const SizedBox(width: 8),
+                    TripMemberAvatars(tripId: _trip!.id),
                   ],
-                ),
+                ]),
               ),
             const SizedBox(height: 16),
             // PM fix #3: Day tabs + List/Map toggle on same row
@@ -585,6 +614,16 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     );
   }
 
+  static String _formatNum(int n) {
+    final s = n.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+      buf.write(s[i]);
+    }
+    return buf.toString();
+  }
+
   Widget _buildDayHeader(List<Map<String, dynamic>> days) {
     if (_selectedDay >= days.length) return const SizedBox.shrink();
     final day = days[_selectedDay];
@@ -597,23 +636,25 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     // PM fix #4: blue gradient for under budget, red for over
     final barColor = pct < 0.8 ? AppColors.brandBlue : AppColors.error;
 
-    return Row(children: [
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(color: AppColors.brandBlue, borderRadius: BorderRadius.circular(12)),
-        child: Text('Day ${_selectedDay + 1}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
-      ),
-      const SizedBox(width: 10),
-      Flexible(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        if (date.toString().isNotEmpty) Text(date.toString(), style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-        Text(title.toString(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary), overflow: TextOverflow.ellipsis, maxLines: 1),
-      ])),
-      if (total > 0) ...[
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(color: AppColors.brandBlue, borderRadius: BorderRadius.circular(12)),
+          child: Text('Day ${_selectedDay + 1}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+        ),
         const SizedBox(width: 10),
-        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text('฿${spent.toInt()}/฿${total.toInt()}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-          const SizedBox(height: 3),
-          SizedBox(width: 60, height: 3, child: ClipRRect(
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (date.toString().isNotEmpty) Text(date.toString(), style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+          Text(title.toString(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary), maxLines: 2, overflow: TextOverflow.ellipsis),
+        ])),
+      ]),
+      if (total > 0) ...[
+        const SizedBox(height: 8),
+        Row(children: [
+          Text('฿${_formatNum(spent.toInt())} / ฿${_formatNum(total.toInt())}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          const SizedBox(width: 10),
+          Expanded(child: ClipRRect(
             borderRadius: BorderRadius.circular(2),
             child: LinearProgressIndicator(value: pct, backgroundColor: AppColors.border, valueColor: AlwaysStoppedAnimation(barColor), minHeight: 3),
           )),
@@ -667,16 +708,20 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           child: Icon(icon, color: iconColor, size: 22)),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
+          if (time.isNotEmpty) Row(children: [
+            Icon(Icons.access_time, size: 12, color: AppColors.textSecondary),
+            const SizedBox(width: 4),
             Text(time, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
             const Spacer(),
             if (showSwapBadge)
               // PM fix #5: small icon instead of text
               Icon(Icons.swap_horiz, size: 16, color: AppColors.brandBlue.withValues(alpha: 0.6)),
           ]),
+          if (time.isEmpty && showSwapBadge)
+            Align(alignment: Alignment.centerRight, child: Icon(Icons.swap_horiz, size: 16, color: AppColors.brandBlue.withValues(alpha: 0.6))),
           const SizedBox(height: 2),
           Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-          if (subtitle.isNotEmpty) Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+          if (subtitle.isNotEmpty) Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary), maxLines: 3, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 4),
           BookingChip(placeName: title),
         ])),

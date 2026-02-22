@@ -689,40 +689,32 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                       if (role == 'viewer') _viewerBanner(),
 
                       if (_activeSection == 'itinerary') ...[
-                        // Progress tracker
-                        _progressTracker(),
+                        // 1. Compact summary bar (merged Progress + Today's Plan)
+                        _compactSummaryBar(),
                         const SizedBox(height: 12),
 
-                        // Today's plan card
-                        _todaysPlanCard(),
-                        const SizedBox(height: 12),
-
-                        // Budget tracker
-                        _budgetTracker(),
-                        const SizedBox(height: 12),
-
-                        // AI tools row
-                        if (canEdit) _aiToolsRow(),
-                        if (canEdit) const SizedBox(height: 14),
-
-                        // General Tips (travel intel)
-                        if (_travelIntel != null) _generalTipsSection(),
-                        if (_travelIntel != null) const SizedBox(height: 14),
-
-                        // Reservations section (tabs)
-                        _reservationsPreview(),
-                        const SizedBox(height: 14),
-
-                        // Day header + activities
+                        // 2. Day header + activities FIRST
                         _dayHeaderCard(),
                         const SizedBox(height: 8),
 
-                        // Activity cards
                         if (_currentActivities.isEmpty)
                           _emptyState()
                         else
                           ..._buildActivityCards(
                               _currentActivities, canEdit: canEdit),
+
+                        const SizedBox(height: 14),
+
+                        // 3. Budget tracker
+                        _budgetTracker(),
+                        const SizedBox(height: 14),
+
+                        // 4. General Tips (travel intel)
+                        if (_travelIntel != null) _generalTipsSection(),
+                        if (_travelIntel != null) const SizedBox(height: 14),
+
+                        // 5. Reservations section
+                        _reservationsPreview(),
                       ],
 
                       if (_activeSection == 'checklist' && _trip != null) ...[
@@ -825,6 +817,90 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                   fontSize: 13, color: Colors.orange.shade800)),
         ]),
       );
+
+  // ─── Format Cost Helper ───
+  String _formatCost(dynamic cost) {
+    if (cost == null) return '';
+    if (cost is Map) {
+      final amount = cost['amount'];
+      final currency = cost['currency'] ?? 'THB';
+      if (amount == null || amount == 0) return 'Free';
+      final symbol = currency == 'THB' ? '฿' : currency == 'EUR' ? '€' : currency == 'USD' ? '\$' : '$currency ';
+      return '$symbol${amount is num ? amount.toStringAsFixed(0) : amount}';
+    }
+    if (cost is num) {
+      if (cost == 0) return 'Free';
+      return '฿${cost.toStringAsFixed(0)}';
+    }
+    return cost.toString();
+  }
+
+  // ─── Compact Summary Bar (merged Progress + Today's Plan) ───
+  Widget _compactSummaryBar() {
+    final total = _totalPlaces;
+    const visited = 0;
+    final pct = total > 0 ? visited / total : 0.0;
+    final activities = _currentActivities;
+    final nextUp = activities.isNotEmpty ? activities.first : null;
+    final nextName = (nextUp?['name'] ?? nextUp?['title'] ?? '').toString();
+    final nextTime = (nextUp?['startTime'] ?? nextUp?['time'] ?? nextUp?['start_time'] ?? '').toString();
+
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2))
+          ]),
+      child: Row(children: [
+        // Mini circular progress
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: Stack(alignment: Alignment.center, children: [
+            CircularProgressIndicator(
+              value: pct,
+              strokeWidth: 2.5,
+              backgroundColor: const Color(0xFFE5E7EB),
+              valueColor: const AlwaysStoppedAnimation(AppColors.brandBlue),
+            ),
+            Text('${(pct * 100).toInt()}',
+                style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          ]),
+        ),
+        const SizedBox(width: 8),
+        Text('$visited/$total places · $_dayCount days',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+        const Spacer(),
+        if (nextUp != null) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+                color: AppColors.brandBlue,
+                borderRadius: BorderRadius.circular(6)),
+            child: const Text('NEXT UP',
+                style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.3)),
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(nextName,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          if (nextTime.isNotEmpty) ...[
+            const SizedBox(width: 4),
+            Text(nextTime,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
+          ],
+        ],
+      ]),
+    );
+  }
 
   // ─── Progress Tracker ───
   Widget _progressTracker() {
@@ -1285,8 +1361,12 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     double dayCost = 0;
     for (final a in activities) {
       final c = a['cost'] ?? a['estimated_cost'];
-      if (c is num) dayCost += c.toDouble();
-      if (c is String) {
+      if (c is num) {
+        dayCost += c.toDouble();
+      } else if (c is Map) {
+        final amount = c['amount'];
+        if (amount is num) dayCost += amount.toDouble();
+      } else if (c is String) {
         final parsed = double.tryParse(c.replaceAll(RegExp(r'[^\d.]'), ''));
         if (parsed != null) dayCost += parsed;
       }
@@ -1661,12 +1741,12 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                       style: const TextStyle(
                           fontSize: 12, color: AppColors.textSecondary)),
                 ]),
-              if (cost != null)
+              if (cost != null && _formatCost(cost).isNotEmpty)
                 Row(mainAxisSize: MainAxisSize.min, children: [
                   const Icon(Icons.payments,
                       size: 13, color: AppColors.textSecondary),
                   const SizedBox(width: 3),
-                  Text(cost.toString(),
+                  Text(_formatCost(cost),
                       style: const TextStyle(
                           fontSize: 12, color: AppColors.textSecondary)),
                 ]),
@@ -1826,7 +1906,9 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 ('Edit', Icons.edit),
                 ('Map', Icons.map_outlined),
                 ('AI Chat', Icons.chat_bubble_outline),
+                ('Regenerate', Icons.refresh),
                 ('Optimize', Icons.auto_awesome),
+                ('Smart Replan', Icons.route),
                 ('Travel Tips', Icons.lightbulb_outline),
                 ('Summary', Icons.summarize_outlined),
                 ('Packing List', Icons.backpack_outlined),
@@ -1866,8 +1948,12 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                                       context.push('/ai-chat');
                                     if (item.$1 == 'Map')
                                       setState(() => _showMap = true);
+                                    if (item.$1 == 'Regenerate')
+                                      _handleRegenerate();
                                     if (item.$1 == 'Optimize')
                                       _handleRegenerate();
+                                    if (item.$1 == 'Smart Replan')
+                                      _handleSmartReplan();
                                     if (item.$1 == 'Travel Tips')
                                       context.push('/travel-tips',
                                           extra: _tripDestination);

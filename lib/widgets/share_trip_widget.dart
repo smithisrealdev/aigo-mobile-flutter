@@ -40,48 +40,36 @@ class _ShareTripWidgetState extends ConsumerState<ShareTripWidget> {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
+              // Row 1: icon + label + toggle
               Row(
                 children: [
                   const Icon(Icons.share, size: 18, color: AppColors.brandBlue),
                   const SizedBox(width: 8),
-                  const Text('Share Trip',
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
-                  const Spacer(),
+                  const Expanded(
+                    child: Text('Public Sharing',
+                        style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary)),
+                  ),
                   if (_loading)
                     const SizedBox(
                         width: 20,
                         height: 20,
-                        child:
-                            CircularProgressIndicator(strokeWidth: 2))
+                        child: CircularProgressIndicator(strokeWidth: 2))
                   else
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        if (info.isPublic && info.shareUrl != null) {
-                          _systemShare(info.shareUrl!);
-                        } else {
-                          _toggleSharing(true);
-                        }
-                      },
-                      icon: const Icon(Icons.share, size: 16),
-                      label: const Text('Share Trip',
-                          style: TextStyle(fontSize: 13)),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.brandBlue,
-                        side: const BorderSide(color: AppColors.brandBlue),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                      ),
+                    Switch.adaptive(
+                      value: info.isPublic,
+                      activeColor: AppColors.brandBlue,
+                      onChanged: (val) => _toggleSharing(val),
                     ),
                 ],
               ),
+              // Row 2: share link + copy + share (only when public)
               if (info.isPublic && info.shareUrl != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -104,29 +92,22 @@ class _ShareTripWidgetState extends ConsumerState<ShareTripWidget> {
                         child: const Icon(Icons.copy,
                             size: 18, color: AppColors.brandBlue),
                       ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => _systemShare(info.shareUrl!),
+                        child: const Icon(Icons.ios_share,
+                            size: 18, color: AppColors.brandBlue),
+                      ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Text('${info.shareViews} views',
-                        style: TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary)),
-                    const Spacer(),
-                    TextButton.icon(
-                      onPressed: () => _systemShare(info.shareUrl!),
-                      icon:
-                          const Icon(Icons.ios_share, size: 16),
-                      label: const Text('Share',
-                          style: TextStyle(fontSize: 13)),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.brandBlue,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                    ),
-                  ],
-                ),
+                if (info.shareViews > 0) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                      '${info.shareViews} ${info.shareViews == 1 ? 'view' : 'views'}',
+                      style: TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary)),
+                ],
               ],
             ],
           ),

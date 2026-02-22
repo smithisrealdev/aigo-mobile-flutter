@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 import '../widgets/trip_map_view.dart';
-import '../widgets/booking_options_widget.dart';
 import '../widgets/upgrade_dialog.dart';
 import '../models/models.dart';
 import '../services/itinerary_service.dart';
@@ -121,9 +120,14 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     'hotel': Icons.hotel, 'transport': Icons.directions_car,
   };
   static const _colors = <String, Color>{
-    'restaurant': Color(0xFFF59E0B), 'temple': Color(0xFFEF4444), 'museum': Color(0xFF8B5CF6),
-    'park': Color(0xFF10B981), 'shopping': Color(0xFFEC4899), 'beach': Color(0xFF06B6D4),
-    'hotel': Color(0xFF6366F1), 'transport': Color(0xFF6B7280),
+    'restaurant': AppColors.brandBlue,
+    'temple': Color(0xFF0044E6),
+    'museum': Color(0xFF4D82FF),
+    'park': Color(0xFF80A6FF),
+    'shopping': AppColors.brandBlue,
+    'beach': Color(0xFF4D82FF),
+    'hotel': Color(0xFF0044E6),
+    'transport': Color(0xFF80A6FF),
   };
 
   String _inferCat(Map<String, dynamic> a) {
@@ -204,6 +208,13 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
   static String _fmt(int n) { final s = n.toString(); final b = StringBuffer(); for (var i = 0; i < s.length; i++) { if (i > 0 && (s.length - i) % 3 == 0) b.write(','); b.write(s[i]); } return b.toString(); }
 
+  static String _friendlyDate(String raw) {
+    final d = DateTime.tryParse(raw);
+    if (d == null) return raw;
+    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${m[d.month - 1]} ${d.day}, ${d.year}';
+  }
+
   // ─── BUILD ───
   @override
   Widget build(BuildContext context) {
@@ -263,48 +274,71 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                   ]),
                 ),
                 // Pinned: Day tabs
-                bottom: PreferredSize(preferredSize: const Size.fromHeight(48), child: Container(
-                  color: AppColors.brandBlue,
-                  child: SizedBox(height: 48, child: Row(children: [
-                    Expanded(child: ListView.builder(
-                      scrollDirection: Axis.horizontal, padding: const EdgeInsets.only(left: 16),
-                      itemCount: days.length,
-                      itemBuilder: (_, i) => GestureDetector(
-                        onTap: () => _onDaySelected(i),
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 6, top: 8, bottom: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: _selectedDay == i ? Colors.white : Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(24)),
-                          child: Text('Day ${i + 1}', style: TextStyle(
-                            color: _selectedDay == i ? AppColors.brandBlue : Colors.white,
-                            fontWeight: FontWeight.w600, fontSize: 13)),
+                bottom: PreferredSize(preferredSize: const Size.fromHeight(88), child: Column(children: [
+                  // Day tabs
+                  Container(
+                    color: AppColors.brandBlue,
+                    child: SizedBox(height: 44, child: Row(children: [
+                      Expanded(child: ListView.builder(
+                        scrollDirection: Axis.horizontal, padding: const EdgeInsets.only(left: 16),
+                        itemCount: days.length,
+                        itemBuilder: (_, i) => GestureDetector(
+                          onTap: () => _onDaySelected(i),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 6, top: 6, bottom: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 18),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: _selectedDay == i ? Colors.white : Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(24)),
+                            child: Text('Day ${i + 1}', style: TextStyle(
+                              color: _selectedDay == i ? AppColors.brandBlue : Colors.white,
+                              fontWeight: FontWeight.w600, fontSize: 13)),
+                          ),
                         ),
+                      )),
+                      Container(
+                        margin: const EdgeInsets.only(right: 16),
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          _toggleBtn(Icons.view_list, !_showMap, () => setState(() => _showMap = false)),
+                          _toggleBtn(Icons.map_outlined, _showMap, () => setState(() => _showMap = true)),
+                        ]),
                       ),
-                    )),
-                    // List/Map toggle
-                    Container(
-                      margin: const EdgeInsets.only(right: 16),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        _toggleBtn(Icons.view_list, !_showMap, () => setState(() => _showMap = false)),
-                        _toggleBtn(Icons.map_outlined, _showMap, () => setState(() => _showMap = true)),
+                    ])),
+                  ),
+                  // Section segment control
+                  Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+                    child: Container(
+                      height: 36,
+                      decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
+                      child: Row(children: [
+                        for (final e in [('itinerary', 'Itinerary'), ('checklist', 'Checklist'), ('reservations', 'Reservations'), ('alerts', 'Alerts')])
+                          Expanded(child: GestureDetector(
+                            onTap: () => setState(() => _activeSection = e.$1),
+                            child: Container(
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: _activeSection == e.$1 ? Colors.white : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: _activeSection == e.$1 ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4)] : null,
+                              ),
+                              child: Text(e.$2, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                                color: _activeSection == e.$1 ? AppColors.brandBlue : AppColors.textSecondary)),
+                            ),
+                          )),
                       ]),
                     ),
-                  ])),
-                )),
+                  ),
+                ])),
               ),
 
               // ── CONTENT ──
-              SliverPadding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 100), sliver: SliverList(delegate: SliverChildListDelegate([
+              SliverPadding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 100), sliver: SliverList(delegate: SliverChildListDelegate([
                 // Viewer banner
                 if (role == 'viewer') _viewerBanner(),
-
-                // Section tabs (compact)
-                _sectionTabs(),
-                const SizedBox(height: 14),
 
                 if (_activeSection == 'itinerary') ...[
                   // Day title + budget (compact)
@@ -413,7 +447,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: AppColors.brandBlue, borderRadius: BorderRadius.circular(12)),
             child: Text('Day ${_selectedDay + 1}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700))),
           const SizedBox(width: 10),
-          if (date.toString().isNotEmpty) Text(date.toString(), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          if (date.toString().isNotEmpty) Text(_friendlyDate(date.toString()), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
         ]),
         const SizedBox(height: 6),
         Text(title.toString(), style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary), maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -436,13 +470,16 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   /// AI tools in one compact row: Regenerate | Optimize | Smart Replan
   Widget _aiToolsRow() => Padding(
     padding: const EdgeInsets.only(top: 10),
-    child: Row(children: [
-      _aiActionChip('Regenerate', Icons.refresh, _regenerating, _handleRegenerate),
-      const SizedBox(width: 8),
-      _aiActionChip('Optimize', Icons.auto_awesome, false, () {}),
-      const SizedBox(width: 8),
-      Expanded(child: _aiActionChip(_replanning ? 'Replanning...' : 'Replan', Icons.auto_fix_high, _replanning, _handleSmartReplan)),
-    ]),
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(children: [
+        _aiActionChip('Regenerate', Icons.refresh, _regenerating, _handleRegenerate),
+        const SizedBox(width: 10),
+        _aiActionChip('Optimize', Icons.auto_awesome, false, () {}),
+        const SizedBox(width: 10),
+        _aiActionChip(_replanning ? 'Replanning...' : 'Smart Replan', Icons.auto_fix_high, _replanning, _handleSmartReplan),
+      ]),
+    ),
   );
 
   Widget _aiActionChip(String label, IconData icon, bool loading, VoidCallback onTap) => GestureDetector(
@@ -539,8 +576,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
               ],
             ])),
           ]),
-          const SizedBox(height: 8),
-          BookingChip(placeName: name),
         ]))),
       ])),
     );

@@ -100,6 +100,23 @@ class SharingService {
       return const ShareInfo();
     }
   }
+
+  /// Get a shared trip by share token via edge function.
+  Future<Map<String, dynamic>?> getSharedTrip(String shareToken) async {
+    try {
+      final response = await _client.functions.invoke(
+        'get-shared-trip',
+        body: {'shareToken': shareToken},
+      );
+      final data = response.data as Map<String, dynamic>?;
+      if (data?['success'] == true) {
+        return data?['trip'] as Map<String, dynamic>?;
+      }
+    } catch (e) {
+      debugPrint('SharingService.getSharedTrip error: $e');
+    }
+    return null;
+  }
 }
 
 // ── Providers ──

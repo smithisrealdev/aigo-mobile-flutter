@@ -82,6 +82,26 @@ class SocialService {
     String placeName, {
     String? placeAddress,
   }) async {
+    // Check social_mentions_cache first
+    try {
+      final cached = await _client
+          .from('social_mentions_cache')
+          .select()
+          .eq('place_name', placeName)
+          .maybeSingle();
+
+      if (cached != null && cached['mentions'] != null) {
+        final mentions = cached['mentions'] as List<dynamic>;
+        if (mentions.isNotEmpty) {
+          return mentions
+              .map((m) => PlaceMention.fromJson(m as Map<String, dynamic>))
+              .toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[SocialService] social_mentions_cache lookup error: $e');
+    }
+
     try {
       final response = await _client.functions.invoke(
         'place-mentions-multi',
@@ -98,6 +118,58 @@ class SocialService {
           .toList();
     } catch (e) {
       debugPrint('[SocialService] fetchMentions error: $e');
+      return [];
+    }
+  }
+
+  /// Fetch single-source place mentions via edge function.
+  Future<List<PlaceMention>> fetchSingleMentions(
+    String placeName, {
+    String? platform,
+  }) async {
+    try {
+      final response = await _client.functions.invoke(
+        'place-mentions',
+        body: {
+          'placeName': placeName,
+          if (platform != null) 'platform': platform,
+        },
+      );
+
+      final data = response.data as Map<String, dynamic>?;
+      final mentions = (data?['mentions'] as List<dynamic>?) ?? [];
+      return mentions
+          .map((m) => PlaceMention.fromJson(m as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      debugPrint('[SocialService] fetchSingleMentions error: $e');
+      return [];
+    }
+  }
+
+  /// Search social media via edge function.
+  Future<List<PlaceMention>> socialMediaSearch(
+    String query, {
+    String? platform,
+    int limit = 20,
+  }) async {
+    try {
+      final response = await _client.functions.invoke(
+        'social-media-search',
+        body: {
+          'query': query,
+          if (platform != null) 'platform': platform,
+          'limit': limit,
+        },
+      );
+
+      final data = response.data as Map<String, dynamic>?;
+      final results = (data?['results'] as List<dynamic>?) ?? [];
+      return results
+          .map((m) => PlaceMention.fromJson(m as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      debugPrint('[SocialService] socialMediaSearch error: $e');
       return [];
     }
   }

@@ -48,12 +48,33 @@ class BookingService {
   final _client = SupabaseConfig.client;
   String? _affiliateMarker;
 
-  /// Search bookings via edge function.
+  /// Search bookings — checks booking_cache first, then edge function.
   Future<List<BookingResult>> searchBookings(
     String placeName, {
     String? placeAddress,
     String? activityType,
   }) async {
+    // Check booking_cache table first
+    try {
+      final cached = await _client
+          .from('booking_cache')
+          .select()
+          .eq('place_name', placeName)
+          .maybeSingle();
+
+      if (cached != null && cached['bookings'] != null) {
+        final bookings = cached['bookings'] as List<dynamic>;
+        if (bookings.isNotEmpty) {
+          return bookings
+              .map((b) => BookingResult.fromJson(b as Map<String, dynamic>))
+              .toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[BookingService] booking_cache lookup error: $e');
+    }
+
+    // Fall through to edge function
     try {
       final response = await _client.functions.invoke(
         'search-booking',
@@ -76,6 +97,21 @@ class BookingService {
 
     // Fallback bookings
     return _fallbackBookings(placeName);
+  }
+
+  /// Get cached booking tips for a place.
+  Future<String?> getCachedTips(String placeName) async {
+    try {
+      final data = await _client
+          .from('booking_cache')
+          .select('tips')
+          .eq('place_name', placeName)
+          .maybeSingle();
+      return data?['tips'] as String?;
+    } catch (e) {
+      debugPrint('[BookingService] getCachedTips error: $e');
+      return null;
+    }
   }
 
   List<BookingResult> _fallbackBookings(String placeName) {

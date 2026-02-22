@@ -283,6 +283,58 @@ class RateLimitService {
       return true; // Fail-open
     }
   }
+
+  // ── API Usage Tracking (api_usage table) ──
+
+  /// Log API usage for tracking/billing purposes.
+  Future<void> logApiUsage({
+    required String apiName,
+    required String endpoint,
+    int requestCount = 1,
+    double? estimatedCost,
+  }) async {
+    try {
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      await SupabaseConfig.client.from('api_usage').upsert({
+        'api_name': apiName,
+        'endpoint': endpoint,
+        'request_count': requestCount,
+        'estimated_cost': estimatedCost ?? 0,
+        'usage_date': today,
+        'updated_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'api_name,endpoint,usage_date');
+    } catch (e) {
+      debugPrint('[RateLimitService] logApiUsage error: $e');
+    }
+  }
+
+  /// Get API usage stats for a date range.
+  Future<List<Map<String, dynamic>>> getApiUsageStats({
+    String? apiName,
+    int days = 30,
+  }) async {
+    try {
+      final startDate = DateTime.now()
+          .subtract(Duration(days: days))
+          .toIso8601String()
+          .substring(0, 10);
+
+      var query = SupabaseConfig.client
+          .from('api_usage')
+          .select()
+          .gte('usage_date', startDate);
+
+      if (apiName != null) {
+        query = query.eq('api_name', apiName);
+      }
+
+      final data = await query.order('usage_date', ascending: false);
+      return (data as List).cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('[RateLimitService] getApiUsageStats error: $e');
+      return [];
+    }
+  }
 }
 
 // ── Riverpod providers ──

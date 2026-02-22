@@ -243,6 +243,38 @@ class PlaceService {
     }
     throw lastError ?? Exception('All retries exhausted');
   }
+
+  /// Web search fallback via google-search edge function.
+  Future<List<Map<String, dynamic>>> googleSearch(String query,
+      {int limit = 5}) async {
+    try {
+      final res = await _invokeWithRetry('google-search', body: {
+        'query': query,
+        'limit': limit,
+      });
+      final data = res.data as Map<String, dynamic>?;
+      return ((data?['results'] as List<dynamic>?) ?? [])
+          .cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('[PlaceService] googleSearch error: $e');
+      return [];
+    }
+  }
+
+  /// Read place_details_cache directly.
+  Future<Map<String, dynamic>?> getPlaceDetailsFromCache(
+      String placeKey) async {
+    try {
+      return await SupabaseConfig.client
+          .from('place_details_cache')
+          .select()
+          .eq('place_key', placeKey)
+          .maybeSingle();
+    } catch (e) {
+      debugPrint('[PlaceService] getPlaceDetailsFromCache error: $e');
+      return null;
+    }
+  }
 }
 
 // ── Riverpod providers ──

@@ -32,3 +32,14 @@ export '../services/image_service.dart'
 
 export '../services/billing_service.dart'
     show billingServiceProvider, currentPlanProvider, paymentHistoryProvider;
+
+export '../services/public_guide_service.dart'
+    show publicGuidesProvider, featuredGuidesProvider, guideDetailProvider, guideSearchProvider;
+
+export '../services/packing_service.dart' show packingListProvider;
+
+export '../services/destination_image_service.dart'
+    show destinationImageServiceProvider, heroImageProvider;
+
+export '../services/recommendation_service.dart'
+    show aiRecommendationsProvider, ticketRecommendationsProvider, dealRecommendationsProvider;

@@ -6,6 +6,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_colors.dart';
 import '../config/supabase_config.dart';
 import '../models/models.dart';
+import '../models/public_guide.dart';
+import '../services/public_guide_service.dart';
 
 // Provider to fetch template/public trips
 final _templateTripsProvider = FutureProvider<List<Trip>>((ref) async {
@@ -90,6 +92,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           SliverToBoxAdapter(child: _buildFilterChips()),
           SliverToBoxAdapter(child: _buildSectionHeader('Featured Collections', 'View All')),
           SliverToBoxAdapter(child: _buildFeaturedCards()),
+          // Public Guides from Supabase
+          SliverToBoxAdapter(child: _buildSectionHeader('Travel Guides', 'See All')),
+          SliverToBoxAdapter(child: _buildPublicGuidesSection()),
           SliverToBoxAdapter(child: _buildSectionHeader('Explore Templates', 'See All')),
           templatesAsync.when(
             loading: () => const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(color: AppColors.brandBlue)))),
@@ -359,6 +364,80 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           ]),
         ),
       ]),
+    );
+  }
+
+  Widget _buildPublicGuidesSection() {
+    final guidesAsync = ref.watch(featuredGuidesProvider);
+    return guidesAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(20),
+        child: Center(child: CircularProgressIndicator(color: AppColors.brandBlue)),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (guides) {
+        if (guides.isEmpty) return const SizedBox.shrink();
+        return SizedBox(
+          height: 200,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            scrollDirection: Axis.horizontal,
+            itemCount: guides.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 14),
+            itemBuilder: (context, i) => _buildGuideCard(guides[i]),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildGuideCard(PublicGuide guide) {
+    return GestureDetector(
+      onTap: () {
+        PublicGuideService.instance.incrementViews(guide.id);
+        // Navigate to guide detail if route exists
+      },
+      child: Container(
+        width: 160,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          color: AppColors.cardDark,
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (guide.coverImage != null)
+              CachedNetworkImage(
+                imageUrl: guide.coverImage!,
+                height: 100,
+                width: 160,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => Container(height: 100, color: AppColors.surfaceDark),
+                errorWidget: (_, __, ___) => Container(height: 100, color: AppColors.surfaceDark, child: const Icon(Icons.image, color: AppColors.textSecondary)),
+              )
+            else
+              Container(height: 100, color: AppColors.surfaceDark, child: const Icon(Icons.map, color: AppColors.textSecondary, size: 32)),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(guide.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Row(children: [
+                    const Icon(Icons.location_on, size: 12, color: AppColors.textSecondary),
+                    const SizedBox(width: 4),
+                    Expanded(child: Text(guide.destination, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11))),
+                    if (guide.totalDays > 0) Text('${guide.totalDays}d', style: const TextStyle(color: AppColors.brandBlue, fontSize: 11, fontWeight: FontWeight.w600)),
+                  ]),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

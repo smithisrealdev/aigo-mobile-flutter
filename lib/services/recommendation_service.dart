@@ -123,6 +123,78 @@ class RecommendationService {
       return AIRecommendationResult();
     }
   }
+
+  /// Recommend tickets for a destination via edge function.
+  Future<AIRecommendationResult> recommendTickets({
+    required String destination,
+    String? date,
+    String? category,
+  }) async {
+    try {
+      final response = await _client.functions.invoke(
+        'recommend-tickets',
+        body: {
+          'destination': destination,
+          if (date != null) 'date': date,
+          if (category != null) 'category': category,
+        },
+      );
+      final result = response.data as Map<String, dynamic>?;
+      return AIRecommendationResult(
+        recommendation: result?['recommendation'] as String?,
+        structured: result?['structured'] != null
+            ? StructuredRecommendation.fromJson(
+                result!['structured'] as Map<String, dynamic>)
+            : null,
+      );
+    } catch (e) {
+      debugPrint('[RecommendationService] recommendTickets error: $e');
+      return AIRecommendationResult();
+    }
+  }
+
+  /// Recommend tickets for a specific day via edge function.
+  Future<AIRecommendationResult> recommendTicketDay({
+    required String destination,
+    required String date,
+    List<String>? activities,
+  }) async {
+    try {
+      final response = await _client.functions.invoke(
+        'recommend-ticket-day',
+        body: {
+          'destination': destination,
+          'date': date,
+          if (activities != null) 'activities': activities,
+        },
+      );
+      final result = response.data as Map<String, dynamic>?;
+      return AIRecommendationResult(
+        recommendation: result?['recommendation'] as String?,
+        structured: result?['structured'] != null
+            ? StructuredRecommendation.fromJson(
+                result!['structured'] as Map<String, dynamic>)
+            : null,
+      );
+    } catch (e) {
+      debugPrint('[RecommendationService] recommendTicketDay error: $e');
+      return AIRecommendationResult();
+    }
+  }
+
+  /// Recommend deals for a destination via edge function.
+  Future<AIRecommendationResult> recommendDeals({
+    required String destination,
+    String? category,
+  }) async {
+    return _getRecommendation(
+      type: 'deals',
+      data: {
+        'destination': destination,
+        if (category != null) 'category': category,
+      },
+    );
+  }
 }
 
 // ── Riverpod Providers ──
@@ -130,4 +202,22 @@ class RecommendationService {
 final aiRecommendationsProvider =
     FutureProvider<AIRecommendationResult>((ref) async {
   return RecommendationService.instance.getPersonalizedRecommendations();
+});
+
+final ticketRecommendationsProvider = FutureProvider.family<
+    AIRecommendationResult,
+    ({String destination, String? date})>((ref, params) async {
+  return RecommendationService.instance.recommendTickets(
+    destination: params.destination,
+    date: params.date,
+  );
+});
+
+final dealRecommendationsProvider = FutureProvider.family<
+    AIRecommendationResult,
+    ({String destination, String? category})>((ref, params) async {
+  return RecommendationService.instance.recommendDeals(
+    destination: params.destination,
+    category: params.category,
+  );
 });

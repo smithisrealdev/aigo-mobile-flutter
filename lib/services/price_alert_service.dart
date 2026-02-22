@@ -340,6 +340,79 @@ class PriceAlertService {
       debugPrint('[PriceAlertService] checkHotelAlerts error: $e');
     }
   }
+
+  /// Check generic price alerts via edge function.
+  Future<Map<String, dynamic>> checkPriceAlerts() async {
+    try {
+      final response = await _client.functions.invoke('check-price-alerts');
+      return response.data as Map<String, dynamic>? ?? {};
+    } catch (e) {
+      debugPrint('[PriceAlertService] checkPriceAlerts error: $e');
+      return {};
+    }
+  }
+
+  // ── Generic Price Alerts (price_alerts table) ──
+
+  Future<List<Map<String, dynamic>>> fetchGenericAlerts() async {
+    try {
+      final data = await _client
+          .from('price_alerts')
+          .select()
+          .order('created_at', ascending: false);
+      return (data as List).cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('[PriceAlertService] fetchGenericAlerts error: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> createGenericAlert(
+      Map<String, dynamic> alertData) async {
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return null;
+
+      final data = await _client
+          .from('price_alerts')
+          .insert({...alertData, 'user_id': userId})
+          .select()
+          .single();
+      return data;
+    } catch (e) {
+      debugPrint('[PriceAlertService] createGenericAlert error: $e');
+      return null;
+    }
+  }
+
+  Future<bool> deleteGenericAlert(String id) async {
+    try {
+      await _client.from('price_alerts').delete().eq('id', id);
+      return true;
+    } catch (e) {
+      debugPrint('[PriceAlertService] deleteGenericAlert error: $e');
+      return false;
+    }
+  }
+
+  // ── Price History (generic, for charts) ──
+
+  Future<List<PriceHistoryEntry>> fetchPriceHistoryByPlace(
+      String placeName) async {
+    try {
+      final data = await _client
+          .from('price_history')
+          .select()
+          .eq('place_name', placeName)
+          .order('recorded_at', ascending: true);
+      return (data as List<dynamic>)
+          .map((r) => PriceHistoryEntry.fromJson(r as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      debugPrint('[PriceAlertService] fetchPriceHistoryByPlace error: $e');
+      return [];
+    }
+  }
 }
 
 // ── Riverpod Providers ──

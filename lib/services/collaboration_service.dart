@@ -77,6 +77,21 @@ class CollaborationService {
     }
   }
 
+  /// Get members via the safe view (for non-owner queries).
+  Future<List<TripMember>> getMembersSafe(String tripId) async {
+    try {
+      final data = await _client
+          .from('trip_members_safe')
+          .select()
+          .eq('trip_id', tripId)
+          .order('created_at', ascending: true);
+      return (data as List).map((e) => TripMember.fromJson(e)).toList();
+    } catch (e) {
+      debugPrint('CollaborationService.getMembersSafe error: $e');
+      return [];
+    }
+  }
+
   Future<TripMember?> inviteByEmail({
     required String tripId,
     required String email,
@@ -228,6 +243,12 @@ final collaborationServiceProvider =
 final tripMembersProvider =
     FutureProvider.family<List<TripMember>, String>((ref, tripId) async {
   return CollaborationService.instance.getMembers(tripId);
+});
+
+/// Safe member view (non-owner queries via trip_members_safe view).
+final tripMembersSafeProvider =
+    FutureProvider.family<List<TripMember>, String>((ref, tripId) async {
+  return CollaborationService.instance.getMembersSafe(tripId);
 });
 
 final tripRoleFromCollabProvider =

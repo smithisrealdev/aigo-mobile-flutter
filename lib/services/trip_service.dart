@@ -287,6 +287,39 @@ class TripService {
         .eq('destination_name', destinationName);
     return (data as List).map((e) => DestinationImage.fromJson(e)).toList();
   }
+
+  // ── Extract Trip Info (edge function) ──
+
+  /// Parse trip info from free-form text via AI.
+  Future<Map<String, dynamic>> extractTripInfo(String text) async {
+    try {
+      final response = await _client.functions.invoke(
+        'extract-trip-info',
+        body: {'text': text},
+      );
+      return response.data as Map<String, dynamic>? ?? {};
+    } catch (e) {
+      debugPrint('TripService.extractTripInfo error: $e');
+      return {};
+    }
+  }
+
+  // ── Check Trip Readiness (edge function) ──
+
+  /// Check how ready a trip is (documents, bookings, etc).
+  /// Returns readiness score and missing items.
+  Future<Map<String, dynamic>> checkTripReadiness(String tripId) async {
+    try {
+      final response = await _client.functions.invoke(
+        'check-trip-readiness',
+        body: {'tripId': tripId},
+      );
+      return response.data as Map<String, dynamic>? ?? {};
+    } catch (e) {
+      debugPrint('TripService.checkTripReadiness error: $e');
+      return {};
+    }
+  }
 }
 
 // ──────────────────────────────────────────────
@@ -382,4 +415,9 @@ final tripFollowServiceProvider =
 final isFollowingProvider =
     FutureProvider.family<bool, String>((ref, tripId) async {
   return TripFollowService.instance.isFollowing(tripId);
+});
+
+final tripReadinessProvider =
+    FutureProvider.family<Map<String, dynamic>, String>((ref, tripId) async {
+  return TripService.instance.checkTripReadiness(tripId);
 });

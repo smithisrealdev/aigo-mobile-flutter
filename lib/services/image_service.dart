@@ -52,6 +52,36 @@ class ImageService {
       debugPrint('ImageService.cacheImage failed: $e');
     }
   }
+
+  /// Get cached image URL from `image_cache` table.
+  Future<String?> getCachedImageUrl(String originalUrl) async {
+    try {
+      final data = await SupabaseConfig.client
+          .from('image_cache')
+          .select('cached_url')
+          .eq('original_url', originalUrl)
+          .maybeSingle();
+      return data?['cached_url'] as String?;
+    } catch (e) {
+      debugPrint('ImageService.getCachedImageUrl failed: $e');
+      return null;
+    }
+  }
+
+  /// Get cached image by place name from `image_cache` table.
+  Future<String?> getCachedImageByPlace(String placeName) async {
+    try {
+      final data = await SupabaseConfig.client
+          .from('image_cache')
+          .select('cached_url')
+          .eq('place_name', placeName)
+          .maybeSingle();
+      return data?['cached_url'] as String?;
+    } catch (e) {
+      debugPrint('ImageService.getCachedImageByPlace failed: $e');
+      return null;
+    }
+  }
 }
 
 // ── Riverpod providers ──

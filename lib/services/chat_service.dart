@@ -408,6 +408,63 @@ class ChatService {
       'message_content': messageContent,
     });
   }
+
+  // ── Domain-specific chat edge functions ──
+
+  /// Flight search chat via edge function.
+  Future<Map<String, dynamic>> flightChat(String message,
+      {Map<String, dynamic>? context}) async {
+    try {
+      final response = await SupabaseConfig.client.functions.invoke(
+        'flight-chat',
+        body: {
+          'message': message,
+          if (context != null) 'context': context,
+        },
+      );
+      return response.data as Map<String, dynamic>? ?? {};
+    } catch (e) {
+      debugPrint('[ChatService] flightChat error: $e');
+      return {'error': e.toString()};
+    }
+  }
+
+  /// Hotel search chat via edge function.
+  Future<Map<String, dynamic>> hotelChat(String message,
+      {Map<String, dynamic>? context}) async {
+    try {
+      final response = await SupabaseConfig.client.functions.invoke(
+        'hotel-chat',
+        body: {
+          'message': message,
+          if (context != null) 'context': context,
+        },
+      );
+      return response.data as Map<String, dynamic>? ?? {};
+    } catch (e) {
+      debugPrint('[ChatService] hotelChat error: $e');
+      return {'error': e.toString()};
+    }
+  }
+
+  /// Itinerary-specific chat context via edge function.
+  Future<Map<String, dynamic>> itineraryChat(String message,
+      {String? tripId, Map<String, dynamic>? itineraryContext}) async {
+    try {
+      final response = await SupabaseConfig.client.functions.invoke(
+        'itinerary-chat',
+        body: {
+          'message': message,
+          if (tripId != null) 'tripId': tripId,
+          if (itineraryContext != null) 'context': itineraryContext,
+        },
+      );
+      return response.data as Map<String, dynamic>? ?? {};
+    } catch (e) {
+      debugPrint('[ChatService] itineraryChat error: $e');
+      return {'error': e.toString()};
+    }
+  }
 }
 
 // ──────────────────────────────────────────────

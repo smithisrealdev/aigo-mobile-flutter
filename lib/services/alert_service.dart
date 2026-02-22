@@ -127,6 +127,20 @@ class AlertService {
       return 0;
     }
   }
+
+  /// Check cost alerts for a trip via edge function.
+  Future<Map<String, dynamic>> checkCostAlerts(String tripId) async {
+    try {
+      final response = await _client.functions.invoke(
+        'check-cost-alerts',
+        body: {'tripId': tripId},
+      );
+      return response.data as Map<String, dynamic>? ?? {};
+    } catch (e) {
+      debugPrint('AlertService.checkCostAlerts error: $e');
+      return {};
+    }
+  }
 }
 
 // ── Providers ──

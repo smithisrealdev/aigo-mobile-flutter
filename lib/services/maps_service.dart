@@ -22,10 +22,45 @@ class MapsService {
     return _parseResponse(res);
   }
 
-  /// Get directions/travel info between two points (matches website calculate-travel).
+  /// Get directions/travel info — checks directions_cache first,
+  /// then calls calculate-travel edge function.
   Future<Map<String, dynamic>> calculateTravel(
-      LatLng origin, LatLng dest) async {
+      LatLng origin, LatLng dest, {String mode = 'driving'}) async {
+    // Check directions_cache first
+    try {
+      final cacheKey =
+          '${origin.latitude},${origin.longitude}->${dest.latitude},${dest.longitude}:$mode';
+      final cached = await SupabaseConfig.client
+          .from('directions_cache')
+          .select()
+          .eq('cache_key', cacheKey)
+          .maybeSingle();
+
+      if (cached != null) {
+        return {
+          'distance': cached['distance'],
+          'travel_time': cached['travel_time'],
+          'steps': cached['steps'],
+          'mode': cached['mode'],
+          'cached': true,
+        };
+      }
+    } catch (e) {
+      debugPrint('[MapsService] directions_cache lookup error: $e');
+    }
+
     final res = await _invokeWithRetry('calculate-travel', body: {
+      'origin': {'lat': origin.latitude, 'lng': origin.longitude},
+      'destination': {'lat': dest.latitude, 'lng': dest.longitude},
+      'mode': mode,
+    });
+    return _parseResponse(res);
+  }
+
+  /// Recommend travel mode between two points via edge function.
+  Future<Map<String, dynamic>> recommendTravelMode(
+      LatLng origin, LatLng dest) async {
+    final res = await _invokeWithRetry('recommend-travel-mode', body: {
       'origin': {'lat': origin.latitude, 'lng': origin.longitude},
       'destination': {'lat': dest.latitude, 'lng': dest.longitude},
     });

@@ -439,7 +439,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         subtitle: a['sub']!,
         icon: iconMap[a['icon']]!,
         iconColor: colorMap[a['color']]!,
-        imageUrl: 'https://picsum.photos/100/100?random=${a['img']}',
+        imageUrl: 'https://images.unsplash.com/photo-1528164344705-47542687000d?w=100&h=100&fit=crop',
         showSwapBadge: i == 0,
       ));
       if (i < activities.length - 1) widgets.add(_timelineDivider());

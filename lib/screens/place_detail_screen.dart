@@ -10,7 +10,7 @@ class PlaceDetailScreen extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          CachedNetworkImage(imageUrl: 'https://picsum.photos/800/600?random=90', height: 320, width: double.infinity, fit: BoxFit.cover),
+          CachedNetworkImage(imageUrl: 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=800&h=600&fit=crop', height: 320, width: double.infinity, fit: BoxFit.cover),
           Positioned(top: 0, left: 0, right: 0, child: SafeArea(child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(children: [

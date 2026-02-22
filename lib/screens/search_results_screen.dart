@@ -59,7 +59,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 0.68),
                       itemCount: 8,
                       itemBuilder: (_, i) => DestinationCard(
-                        imageUrl: 'https://picsum.photos/400/300?random=${80 + i}',
+                        imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop',
                         name: ['Maldives', 'Phuket', 'Cancún', 'Zanzibar', 'Maui', 'Seychelles', 'Fiji', 'Boracay'][i],
                         location: ['Indian Ocean', 'Thailand', 'Mexico', 'Tanzania', 'Hawaii', 'Africa', 'Pacific', 'Philippines'][i],
                       ),
@@ -70,7 +70,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                       itemBuilder: (_, i) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: DestinationCard(
-                          imageUrl: 'https://picsum.photos/400/300?random=${80 + i}',
+                          imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop',
                           name: ['Maldives', 'Phuket', 'Cancún', 'Zanzibar', 'Maui', 'Seychelles', 'Fiji', 'Boracay'][i],
                           location: ['Indian Ocean', 'Thailand', 'Mexico', 'Tanzania', 'Hawaii', 'Africa', 'Pacific', 'Philippines'][i],
                         ),

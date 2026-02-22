@@ -15,6 +15,7 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _logoCtrl;
   late AnimationController _gearCtrl;
   late AnimationController _fadeCtrl;
+  late AnimationController _shimmerCtrl;
   late Animation<double> _logoScale;
   late Animation<double> _logoFade;
   late Animation<double> _tagFade;
@@ -56,13 +57,22 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(seconds: 4),
     )..repeat();
 
+    // Shimmer sweep on logo
+    _shimmerCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
     // Generate particles
     _particles = List.generate(18, (_) => _Particle.random(_rand));
 
-    // Sequence: logo first, then tagline after delay
+    // Sequence: logo first, then tagline after delay, then shimmer
     _logoCtrl.forward();
     Future.delayed(const Duration(milliseconds: 700), () {
       if (mounted) _fadeCtrl.forward();
+    });
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) _shimmerCtrl.repeat();
     });
 
     // Navigate
@@ -76,6 +86,7 @@ class _SplashScreenState extends State<SplashScreen>
     _logoCtrl.dispose();
     _gearCtrl.dispose();
     _fadeCtrl.dispose();
+    _shimmerCtrl.dispose();
     super.dispose();
   }
 
@@ -114,14 +125,33 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Logo: scale+fade entrance, then STILL
+                // Logo: scale+fade entrance, then shimmer sweep
                 FadeTransition(
                   opacity: _logoFade,
                   child: ScaleTransition(
                     scale: _logoScale,
-                    child: SvgPicture.asset(
-                      'assets/images/logo_white.svg',
-                      height: 90,
+                    child: AnimatedBuilder(
+                      animation: _shimmerCtrl,
+                      builder: (_, __) => ShaderMask(
+                        shaderCallback: (bounds) {
+                          final dx = _shimmerCtrl.value * 2 - 0.5;
+                          return LinearGradient(
+                            begin: Alignment(dx - 0.3, 0),
+                            end: Alignment(dx + 0.3, 0),
+                            colors: const [
+                              Colors.white,
+                              Color(0x80FFFFFF),
+                              Colors.white,
+                            ],
+                            stops: const [0.0, 0.5, 1.0],
+                          ).createShader(bounds);
+                        },
+                        blendMode: BlendMode.modulate,
+                        child: SvgPicture.asset(
+                          'assets/images/logo_white.svg',
+                          height: 90,
+                        ),
+                      ),
                     ),
                   ),
                 ),

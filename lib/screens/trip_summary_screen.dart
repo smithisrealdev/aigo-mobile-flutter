@@ -14,7 +14,7 @@ class TripSummaryScreen extends StatelessWidget {
           children: [
             Stack(
               children: [
-                CachedNetworkImage(imageUrl: 'https://picsum.photos/800/400?random=40', height: 280, width: double.infinity, fit: BoxFit.cover),
+                CachedNetworkImage(imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&h=400&fit=crop', height: 280, width: double.infinity, fit: BoxFit.cover),
                 Container(height: 280, decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.black.withValues(alpha: 0.3), Colors.transparent, Colors.black.withValues(alpha: 0.6)]))),
                 Positioned(top: 0, left: 0, right: 0, child: SafeArea(child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -62,7 +62,7 @@ class TripSummaryScreen extends StatelessWidget {
                         width: 120, margin: const EdgeInsets.only(right: 12),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          child: CachedNetworkImage(imageUrl: 'https://picsum.photos/200/200?random=${50 + i}', fit: BoxFit.cover),
+                          child: CachedNetworkImage(imageUrl: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=200&h=200&fit=crop', fit: BoxFit.cover),
                         ),
                       ),
                     ),

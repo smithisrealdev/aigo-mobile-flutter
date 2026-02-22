@@ -32,7 +32,7 @@ class SavedPlacesScreen extends StatelessWidget {
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 0.68),
               itemCount: 6,
               itemBuilder: (_, i) => DestinationCard(
-                imageUrl: 'https://picsum.photos/400/300?random=${70 + i}',
+                imageUrl: 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=400&h=300&fit=crop',
                 name: ['Kyoto', 'Santorini', 'Bali', 'Maldives', 'Paris', 'Dubai'][i],
                 location: ['Japan', 'Greece', 'Indonesia', 'Maldives', 'France', 'UAE'][i],
                 saved: true,

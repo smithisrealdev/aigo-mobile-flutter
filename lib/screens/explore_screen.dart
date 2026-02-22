@@ -1,16 +1,34 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_colors.dart';
+import '../config/supabase_config.dart';
+import '../models/models.dart';
 
-class ExploreScreen extends StatefulWidget {
+// Provider to fetch template/public trips
+final _templateTripsProvider = FutureProvider<List<Trip>>((ref) async {
+  final resp = await SupabaseConfig.client
+      .from('trips')
+      .select()
+      .eq('is_public', true)
+      .order('created_at', ascending: false)
+      .limit(50);
+  return (resp as List).map((j) => Trip.fromJson(j)).toList();
+});
+
+class ExploreScreen extends ConsumerStatefulWidget {
   const ExploreScreen({super.key});
 
   @override
-  State<ExploreScreen> createState() => _ExploreScreenState();
+  ConsumerState<ExploreScreen> createState() => _ExploreScreenState();
 }
 
-class _ExploreScreenState extends State<ExploreScreen> {
+class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   int _selectedFilter = 0;
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
 
   final List<String> _filters = [
     'All Templates',
@@ -21,60 +39,146 @@ class _ExploreScreenState extends State<ExploreScreen> {
     'Budget',
   ];
 
+  // Fallback featured items when no data from backend
   final List<Map<String, String>> _featured = [
-    {
-      'title': 'Southeast Asia Explorer',
-      'subtitle': '5 countries in 30 days',
-      'badge': 'FEATURED',
-      'image': 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=520&h=320&fit=crop',
-    },
-    {
-      'title': 'European Classics',
-      'subtitle': 'Paris, Rome & Barcelona',
-      'badge': 'CURATED',
-      'image': 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=520&h=320&fit=crop',
-    },
-    {
-      'title': 'Island Paradise',
-      'subtitle': 'Maldives & Bali retreat',
-      'badge': 'TRENDING',
-      'image': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=520&h=320&fit=crop',
-    },
+    {'title': 'Southeast Asia Explorer', 'subtitle': '5 countries in 30 days', 'badge': 'FEATURED', 'image': 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=520&h=320&fit=crop'},
+    {'title': 'European Classics', 'subtitle': 'Paris, Rome & Barcelona', 'badge': 'CURATED', 'image': 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=520&h=320&fit=crop'},
+    {'title': 'Island Paradise', 'subtitle': 'Maldives & Bali retreat', 'badge': 'TRENDING', 'image': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=520&h=320&fit=crop'},
   ];
 
-  final List<Map<String, String>> _templates = [
+  // Fallback templates
+  final List<Map<String, String>> _fallbackTemplates = [
     {'name': 'Kyoto Heritage', 'country': 'Japan', 'days': '5 Days', 'image': 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=400&h=240&fit=crop'},
     {'name': 'Santorini Escape', 'country': 'Greece', 'days': '4 Days', 'image': 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=400&h=240&fit=crop'},
     {'name': 'Machu Picchu Trek', 'country': 'Peru', 'days': '7 Days', 'image': 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=400&h=240&fit=crop'},
     {'name': 'Dubai Luxury', 'country': 'UAE', 'days': '3 Days', 'image': 'https://images.unsplash.com/photo-1504150558240-0b4fd8946624?w=400&h=240&fit=crop'},
     {'name': 'Sydney Adventure', 'country': 'Australia', 'days': '6 Days', 'image': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&h=240&fit=crop'},
     {'name': 'Maldives Retreat', 'country': 'Maldives', 'days': '5 Days', 'image': 'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?w=400&h=240&fit=crop'},
-    {'name': 'Iceland Wonders', 'country': 'Iceland', 'days': '8 Days', 'image': 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&h=240&fit=crop'},
-    {'name': 'Bangkok Street Food', 'country': 'Thailand', 'days': '4 Days', 'image': 'https://images.unsplash.com/photo-1552733407-5d5c46c3bb3b?w=400&h=240&fit=crop'},
   ];
+
+  List<Trip> _filterAndSearch(List<Trip> trips) {
+    var result = trips;
+    // Search
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      result = result.where((t) => t.title.toLowerCase().contains(q) || t.destination.toLowerCase().contains(q)).toList();
+    }
+    // Category filter
+    if (_selectedFilter > 0) {
+      final cat = _filters[_selectedFilter].toLowerCase();
+      result = result.where((t) => (t.category ?? '').toLowerCase().contains(cat) || t.title.toLowerCase().contains(cat)).toList();
+    }
+    return result;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final templatesAsync = ref.watch(_templateTripsProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-          // --- Header ---
           SliverToBoxAdapter(child: _buildHeader()),
-          // --- Search ---
           SliverToBoxAdapter(child: _buildSearchBar()),
-          // --- Filter chips ---
           SliverToBoxAdapter(child: _buildFilterChips()),
-          // --- Featured Collections ---
           SliverToBoxAdapter(child: _buildSectionHeader('Featured Collections', 'View All')),
           SliverToBoxAdapter(child: _buildFeaturedCards()),
-          // --- Explore Templates ---
           SliverToBoxAdapter(child: _buildSectionHeader('Explore Templates', 'See All')),
-          _buildTemplateGrid(),
-          // --- Bottom CTA ---
+          templatesAsync.when(
+            loading: () => const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(color: AppColors.brandBlue)))),
+            error: (_, __) => _buildFallbackTemplateGrid(),
+            data: (trips) {
+              final filtered = _filterAndSearch(trips);
+              if (filtered.isEmpty && trips.isEmpty) return _buildFallbackTemplateGrid();
+              if (filtered.isEmpty) {
+                return SliverToBoxAdapter(child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Center(child: Text('No templates match your search', style: TextStyle(color: AppColors.textSecondary))),
+                ));
+              }
+              return SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, i) => _buildTripTemplateCard(filtered[i]),
+                    childCount: filtered.length,
+                  ),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 14, crossAxisSpacing: 14, childAspectRatio: 0.78),
+                ),
+              );
+            },
+          ),
           SliverToBoxAdapter(child: _buildBottomCTA()),
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTripTemplateCard(Trip trip) {
+    final startDate = trip.startDate != null ? DateTime.tryParse(trip.startDate!) : null;
+    final endDate = trip.endDate != null ? DateTime.tryParse(trip.endDate!) : null;
+    final days = (startDate != null && endDate != null) ? '${endDate.difference(startDate).inDays} Days' : '';
+    final imageUrl = trip.coverImage ?? 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&h=240&fit=crop';
+
+    return GestureDetector(
+      onTap: () => context.push('/itinerary', extra: trip),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                child: CachedNetworkImage(imageUrl: imageUrl, height: 120, width: double.infinity, fit: BoxFit.cover,
+                  errorWidget: (_, __, ___) => Container(height: 120, color: AppColors.border)),
+              ),
+              if (days.isNotEmpty)
+                Positioned(top: 8, right: 8, child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(12)),
+                  child: Text(days, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                )),
+            ]),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(trip.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 4),
+                Row(children: [
+                  const Icon(Icons.location_on, size: 14, color: AppColors.textSecondary),
+                  const SizedBox(width: 4),
+                  Expanded(child: Text(trip.destination, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                ]),
+              ]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  SliverPadding _buildFallbackTemplateGrid() {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      sliver: SliverGrid(
+        delegate: SliverChildBuilderDelegate(
+          (context, i) => _buildTemplateCard(_fallbackTemplates[i]),
+          childCount: _fallbackTemplates.length,
+        ),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 14, crossAxisSpacing: 14, childAspectRatio: 0.78),
       ),
     );
   }
@@ -84,38 +188,26 @@ class _ExploreScreenState extends State<ExploreScreen> {
       width: double.infinity,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
           colors: [Color(0xFF2B6FFF), Color(0xFF1A5EFF), Color(0xFF0044E6)],
           stops: [0.0, 0.4, 1.0],
         ),
       ),
       clipBehavior: Clip.hardEdge,
-      child: Stack(
-        children: [
-          Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _ExploreHeaderDecoPainter()))),
-          SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                'Discover Your Next Journey',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
+      child: Stack(children: [
+        Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _ExploreHeaderDecoPainter()))),
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
+              Text('Discover Your Next Journey', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
               SizedBox(height: 4),
-              Text(
-                'Go places and see the world',
-                style: TextStyle(fontSize: 13, color: Colors.white70),
-              ),
-            ],
+              Text('Go places and see the world', style: TextStyle(fontSize: 13, color: Colors.white70)),
+            ]),
           ),
         ),
-      ),
-        ],
-      ),
+      ]),
     );
   }
 
@@ -125,14 +217,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
       child: Container(
         height: 48,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 2)),
-          ],
+          color: Colors.white, borderRadius: BorderRadius.circular(24),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 2))],
         ),
-        child: const TextField(
-          decoration: InputDecoration(
+        child: TextField(
+          controller: _searchController,
+          onChanged: (v) => setState(() => _searchQuery = v),
+          decoration: const InputDecoration(
             hintText: 'Where do you want to go?',
             hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
             prefixIcon: Icon(Icons.search, color: Color(0xFF9CA3AF)),
@@ -166,14 +257,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   border: selected ? null : Border.all(color: AppColors.border),
                 ),
                 alignment: Alignment.center,
-                child: Text(
-                  _filters[i],
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: selected ? Colors.white : AppColors.textSecondary,
-                  ),
-                ),
+                child: Text(_filters[i], style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: selected ? Colors.white : AppColors.textSecondary)),
               ),
             );
           },
@@ -205,65 +289,36 @@ class _ExploreScreenState extends State<ExploreScreen> {
         separatorBuilder: (_, __) => const SizedBox(width: 14),
         itemBuilder: (_, i) {
           final item = _featured[i];
-          return Container(
-            width: 260,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              image: DecorationImage(image: NetworkImage(item['image']!), fit: BoxFit.cover),
-            ),
+          return GestureDetector(
+            onTap: () => context.push('/ai-chat', extra: 'Plan a trip: ${item['title']}'),
             child: Container(
+              width: 260,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black54],
-                ),
+                image: DecorationImage(image: NetworkImage(item['image']!), fit: BoxFit.cover),
               ),
-              child: Stack(
-                children: [
-                  // Badge
-                  Positioned(
-                    top: 10,
-                    left: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.brandBlue,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        item['badge']!,
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5),
-                      ),
-                    ),
-                  ),
-                  // Heart
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(color: Colors.black26, shape: BoxShape.circle),
-                      child: const Icon(Icons.favorite_border, color: Colors.white, size: 18),
-                    ),
-                  ),
-                  // Text
-                  Positioned(
-                    bottom: 12,
-                    left: 12,
-                    right: 12,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(item['title']!, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 2),
-                        Text(item['subtitle']!, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                ],
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black54]),
+                ),
+                child: Stack(children: [
+                  Positioned(top: 10, left: 10, child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: AppColors.brandBlue, borderRadius: BorderRadius.circular(12)),
+                    child: Text(item['badge']!, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                  )),
+                  Positioned(top: 10, right: 10, child: Container(
+                    width: 32, height: 32,
+                    decoration: const BoxDecoration(color: Colors.black26, shape: BoxShape.circle),
+                    child: const Icon(Icons.favorite_border, color: Colors.white, size: 18),
+                  )),
+                  Positioned(bottom: 12, left: 12, right: 12, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(item['title']!, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 2),
+                    Text(item['subtitle']!, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  ])),
+                ]),
               ),
             ),
           );
@@ -272,80 +327,38 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  SliverPadding _buildTemplateGrid() {
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      sliver: SliverGrid(
-        delegate: SliverChildBuilderDelegate(
-          (context, i) => _buildTemplateCard(_templates[i]),
-          childCount: _templates.length,
-        ),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 14,
-          crossAxisSpacing: 14,
-          childAspectRatio: 0.78,
-        ),
-      ),
-    );
-  }
-
   Widget _buildTemplateCard(Map<String, String> t) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2)),
-        ],
+        color: Colors.white, borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2))],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: Image.network(
-                  t['image']!,
-                  height: 120,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(height: 120, color: AppColors.border),
-                ),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(12)),
-                  child: Text(t['days']!, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-                ),
-              ),
-            ],
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Stack(children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            child: Image.network(t['image']!, height: 120, width: double.infinity, fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(height: 120, color: AppColors.border)),
           ),
-          // Info
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(t['name']!, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, size: 14, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
-                    Text(t['country']!, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+          Positioned(top: 8, right: 8, child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(12)),
+            child: Text(t['days']!, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+          )),
+        ]),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(t['name']!, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 4),
+            Row(children: [
+              const Icon(Icons.location_on, size: 14, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text(t['country']!, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            ]),
+          ]),
+        ),
+      ]),
     );
   }
 
@@ -353,30 +366,21 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 28, 20, 0),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      decoration: BoxDecoration(
-        gradient: AppColors.blueGradient,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          const Text(
-            "Can't find what you're looking for?",
-            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-            textAlign: TextAlign.center,
+      decoration: BoxDecoration(gradient: AppColors.blueGradient, borderRadius: BorderRadius.circular(16)),
+      child: Column(children: [
+        const Text("Can't find what you're looking for?", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+        const SizedBox(height: 14),
+        OutlinedButton(
+          onPressed: () => context.push('/ai-chat'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.white,
+            side: const BorderSide(color: Colors.white, width: 1.5),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
           ),
-          const SizedBox(height: 14),
-          OutlinedButton(
-            onPressed: () {},
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: const BorderSide(color: Colors.white, width: 1.5),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-            ),
-            child: const Text('Create Custom Trip', style: TextStyle(fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
+          child: const Text('Create Custom Trip', style: TextStyle(fontWeight: FontWeight.w600)),
+        ),
+      ]),
     );
   }
 }
@@ -399,10 +403,7 @@ class _ExploreHeaderDecoPainter extends CustomPainter {
     canvas.translate(sw * 0.08, sh * 0.3);
     canvas.rotate(math.pi / 5);
     fill.color = Colors.white.withValues(alpha: 0.07);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(-6, -6, 12, 12), const Radius.circular(3)),
-      fill,
-    );
+    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-6, -6, 12, 12), const Radius.circular(3)), fill);
     canvas.restore();
 
     fill.color = Colors.white.withValues(alpha: 0.1);

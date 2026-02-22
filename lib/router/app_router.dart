@@ -21,6 +21,7 @@ import '../screens/map_view_screen.dart';
 import '../screens/search_results_screen.dart';
 import '../screens/place_detail_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../models/models.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -58,12 +59,12 @@ final appRouter = GoRouter(
       routes: [
         GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
         GoRoute(path: '/explore', builder: (_, __) => const ExploreScreen()),
-        GoRoute(path: '/ai-chat', builder: (_, __) => const AIChatScreen()),
+        GoRoute(path: '/ai-chat', builder: (_, state) => AIChatScreen(initialMessage: state.extra as String?)),
         GoRoute(path: '/trips', builder: (_, __) => const TripsListScreen()),
         GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
       ],
     ),
-    GoRoute(path: '/itinerary', builder: (_, __) => const ItineraryScreen()),
+    GoRoute(path: '/itinerary', builder: (_, state) => ItineraryScreen(trip: state.extra as Trip?)),
     GoRoute(path: '/packing-list', builder: (_, __) => const PackingListScreen()),
     GoRoute(path: '/travel-tips', builder: (_, __) => const TravelTipsScreen()),
     GoRoute(path: '/budget', builder: (_, __) => const BudgetScreen()),
@@ -73,6 +74,12 @@ final appRouter = GoRouter(
     GoRoute(path: '/saved-places', builder: (_, __) => const SavedPlacesScreen()),
     GoRoute(path: '/map-view', builder: (_, __) => const MapViewScreen()),
     GoRoute(path: '/search-results', builder: (_, __) => const SearchResultsScreen()),
-    GoRoute(path: '/place-detail', builder: (_, __) => const PlaceDetailScreen()),
+    GoRoute(path: '/place-detail', builder: (_, state) {
+      final extra = state.extra;
+      if (extra is Map<String, String?>) {
+        return PlaceDetailScreen(placeId: extra['placeId'], placeName: extra['placeName']);
+      }
+      return const PlaceDetailScreen();
+    }),
   ],
 );

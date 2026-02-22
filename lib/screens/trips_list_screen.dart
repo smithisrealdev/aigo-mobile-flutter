@@ -1,21 +1,78 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_colors.dart';
+import '../services/trip_service.dart';
+import '../services/auth_service.dart';
+import '../models/models.dart';
 
-class TripsListScreen extends StatefulWidget {
+class TripsListScreen extends ConsumerStatefulWidget {
   const TripsListScreen({super.key});
 
   @override
-  State<TripsListScreen> createState() => _TripsListScreenState();
+  ConsumerState<TripsListScreen> createState() => _TripsListScreenState();
 }
 
-class _TripsListScreenState extends State<TripsListScreen> {
+class _TripsListScreenState extends ConsumerState<TripsListScreen> {
   int _selectedFilter = 0;
   final _filters = ['All', 'Upcoming', 'Active', 'Done', 'Drafts'];
 
+  List<Trip> _filterTrips(List<Trip> trips) {
+    final now = DateTime.now();
+    switch (_selectedFilter) {
+      case 1: // Upcoming
+        return trips.where((t) {
+          if (t.startDate == null) return false;
+          final start = DateTime.tryParse(t.startDate!);
+          return start != null && start.isAfter(now);
+        }).toList();
+      case 2: // Active
+        return trips.where((t) {
+          if (t.startDate == null || t.endDate == null) return false;
+          final start = DateTime.tryParse(t.startDate!);
+          final end = DateTime.tryParse(t.endDate!);
+          return start != null && end != null && now.isAfter(start) && now.isBefore(end);
+        }).toList();
+      case 3: // Done
+        return trips.where((t) {
+          if (t.endDate == null) return false;
+          final end = DateTime.tryParse(t.endDate!);
+          return end != null && now.isAfter(end);
+        }).toList();
+      case 4: // Drafts
+        return trips.where((t) => t.status == 'draft' || t.startDate == null).toList();
+      default:
+        return trips;
+    }
+  }
+
+  String _formatDateRange(Trip trip) {
+    if (trip.startDate == null) return 'Not scheduled yet';
+    final start = DateTime.tryParse(trip.startDate!);
+    final end = trip.endDate != null ? DateTime.tryParse(trip.endDate!) : null;
+    if (start == null) return 'Not scheduled yet';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final s = '${months[start.month - 1]} ${start.day}';
+    if (end != null) return '$s – ${months[end.month - 1]} ${end.day}, ${end.year}';
+    return '$s, ${start.year}';
+  }
+
+  _Badge _getBadge(Trip trip) {
+    final now = DateTime.now();
+    if (trip.status == 'draft' || trip.startDate == null) return const _Badge('Draft', Color(0xFF9CA3AF));
+    final start = DateTime.tryParse(trip.startDate!);
+    final end = trip.endDate != null ? DateTime.tryParse(trip.endDate!) : null;
+    if (end != null && now.isAfter(end)) return const _Badge('Completed', Color(0xFF374151));
+    if (start != null && end != null && now.isAfter(start) && now.isBefore(end)) return const _Badge('In Progress', Color(0xFF10B981));
+    return const _Badge('Upcoming', AppColors.brandBlue);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final tripsAsync = ref.watch(tripsProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
@@ -34,9 +91,9 @@ class _TripsListScreenState extends State<TripsListScreen> {
               bottom: false,
               child: Stack(
                 children: [
-                    Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _TripsHeaderDecoPainter()))),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                  Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _TripsHeaderDecoPainter()))),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
                     child: Row(
                       children: [
                         Expanded(
@@ -44,29 +101,21 @@ class _TripsListScreenState extends State<TripsListScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: const [
-                              Text(
-                                'My Trips',
-                                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
-                              ),
-                              Text(
-                                'Go places and see the world',
-                                style: TextStyle(fontSize: 12, color: Colors.white70),
-                              ),
+                              Text('My Trips', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+                              Text('Go places and see the world', style: TextStyle(fontSize: 12, color: Colors.white70)),
                             ],
                           ),
                         ),
                         SizedBox(
                           height: 36,
                           child: ElevatedButton.icon(
-                            onPressed: () {},
+                            onPressed: () => context.push('/ai-chat'),
                             icon: const Icon(Icons.add, size: 16),
                             label: const Text('New Trip'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: AppColors.brandBlue,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),
-                              ),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                               textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                               padding: const EdgeInsets.symmetric(horizontal: 14),
                               elevation: 0,
@@ -120,103 +169,140 @@ class _TripsListScreenState extends State<TripsListScreen> {
 
           // Trip cards
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-              children: [
-
-            // Card 1 — In Progress
-            _TripCard(
-              imageUrl: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&h=400&fit=crop',
-              badge: _Badge('In Progress', const Color(0xFF10B981)),
-              title: 'Kyoto, Japan',
-              subtitle: 'Mar 15 – Mar 22, 2026',
-              extra: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 10),
-                  // Progress bar
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: 0.65,
-                      minHeight: 6,
-                      backgroundColor: AppColors.border,
-                      valueColor: const AlwaysStoppedAnimation(AppColors.brandBlue),
-                    ),
+            child: tripsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator(color: AppColors.brandBlue)),
+              error: (e, _) => Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text('Failed to load trips', style: TextStyle(color: AppColors.textSecondary)),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () => ref.invalidate(tripsProvider),
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('Retry'),
                   ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Text('5 activities', style: _metaStyle),
-                      _dot,
-                      Text('~฿15,000', style: _metaStyle),
-                      _dot,
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.brandBlue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'AI Generated',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.brandBlue),
+                ]),
+              ),
+              data: (trips) {
+                final filtered = _filterTrips(trips);
+                if (filtered.isEmpty) {
+                  return Center(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.flight_takeoff, size: 48, color: AppColors.textSecondary.withValues(alpha: 0.3)),
+                      const SizedBox(height: 12),
+                      Text('No trips found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                      const SizedBox(height: 4),
+                      Text('Create your first trip with AI!', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () => context.push('/ai-chat'),
+                        icon: const Icon(Icons.auto_awesome, size: 16),
+                        label: const Text('Plan a Trip'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.brandBlue,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                         ),
                       ),
-                    ],
+                    ]),
+                  );
+                }
+                return RefreshIndicator(
+                  color: AppColors.brandBlue,
+                  onRefresh: () async => ref.invalidate(tripsProvider),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 16),
+                    itemBuilder: (_, i) {
+                      final trip = filtered[i];
+                      final badge = _getBadge(trip);
+                      final progress = (trip.budgetTotal != null && trip.budgetTotal! > 0 && trip.budgetSpent != null)
+                          ? (trip.budgetSpent! / trip.budgetTotal!).clamp(0.0, 1.0)
+                          : 0.0;
+
+                      return Dismissible(
+                        key: ValueKey(trip.id),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          decoration: BoxDecoration(color: Colors.red.shade400, borderRadius: BorderRadius.circular(16)),
+                          child: const Icon(Icons.delete, color: Colors.white),
+                        ),
+                        confirmDismiss: (_) async {
+                          return await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Delete Trip'),
+                              content: Text('Delete "${trip.title}"?'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+                              ],
+                            ),
+                          );
+                        },
+                        onDismissed: (_) async {
+                          try {
+                            await TripService.instance.deleteTrip(trip.id);
+                            ref.invalidate(tripsProvider);
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
+                            }
+                          }
+                        },
+                        child: GestureDetector(
+                          onTap: () => context.push('/itinerary', extra: trip),
+                          child: _TripCard(
+                            imageUrl: trip.coverImage ?? 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&h=400&fit=crop',
+                            badge: badge,
+                            title: trip.title,
+                            subtitle: _formatDateRange(trip),
+                            extra: progress > 0
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 10),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(4),
+                                        child: LinearProgressIndicator(
+                                          value: progress,
+                                          minHeight: 6,
+                                          backgroundColor: AppColors.border,
+                                          valueColor: const AlwaysStoppedAnimation(AppColors.brandBlue),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Row(children: [
+                                        Text('${(progress * 100).toInt()}% budget used', style: _metaStyle),
+                                        if (trip.itineraryData != null) ...[
+                                          _dot,
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.brandBlue.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Text('AI Generated', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
+                                          ),
+                                        ],
+                                      ]),
+                                    ],
+                                  )
+                                : trip.status == 'draft'
+                                    ? const Padding(
+                                        padding: EdgeInsets.only(top: 8),
+                                        child: Text('✨ AI Draft — tap to continue', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.brandBlue)),
+                                      )
+                                    : null,
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Continue Planning →',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.brandBlueDark),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Card 2 — Upcoming
-            _TripCard(
-              imageUrl: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800&h=400&fit=crop',
-              badge: _Badge('Upcoming', AppColors.brandBlue),
-              title: 'Bali Beach & Culture',
-              subtitle: 'Apr 5 – Apr 12, 2026',
-            ),
-            const SizedBox(height: 16),
-
-            // Card 3 — Draft
-            _TripCard(
-              imageUrl: 'https://images.unsplash.com/photo-1504829857797-ddff29c27927?w=800&h=400&fit=crop',
-              badge: _Badge('Draft', const Color(0xFF9CA3AF)),
-              title: 'Iceland Northern Lights',
-              subtitle: 'Not scheduled yet',
-              extra: const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text(
-                  '✨ AI Draft — tap to continue',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.brandBlue),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Card 4 — Completed
-            _TripCard(
-              imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&h=400&fit=crop',
-              badge: _Badge('Completed', const Color(0xFF374151)),
-              title: 'Tokyo Golden Route',
-              subtitle: 'Jan 10 – Jan 17, 2026',
-              extra: Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Row(
-                  children: [
-                    const Icon(Icons.star_rounded, size: 18, color: Color(0xFFF59E0B)),
-                    const SizedBox(width: 4),
-                    Text('4.8', style: _metaStyle.copyWith(fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-            ),
-              ],
+                );
+              },
             ),
           ),
         ],
@@ -258,43 +344,32 @@ class _TripCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Image with badge
           Stack(
             children: [
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: Image.network(
-                  imageUrl,
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
                   height: 140,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 140,
-                    color: AppColors.border,
-                    child: const Center(child: Icon(Icons.image, color: AppColors.textSecondary)),
-                  ),
+                  errorWidget: (_, __, ___) => Container(height: 140, color: AppColors.border, child: const Center(child: Icon(Icons.image, color: AppColors.textSecondary))),
                 ),
               ),
               Positioned.fill(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [Colors.transparent, Colors.black.withOpacity(0.3)],
-                      stops: [0.5, 1.0],
+                      stops: const [0.5, 1.0],
                     ),
                   ),
                 ),
@@ -304,18 +379,8 @@ class _TripCard extends StatelessWidget {
                 left: 12,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: badge.color,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    badge.label,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                  decoration: BoxDecoration(color: badge.color, borderRadius: BorderRadius.circular(8)),
+                  child: Text(badge.label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
                 ),
               ),
             ],
@@ -325,19 +390,9 @@ class _TripCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
+                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                 const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                ),
+                Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                 if (extra != null) extra!,
               ],
             ),
@@ -366,10 +421,7 @@ class _TripsHeaderDecoPainter extends CustomPainter {
     canvas.translate(sw * 0.07, sh * 0.4);
     canvas.rotate(math.pi / 5);
     fill.color = Colors.white.withValues(alpha: 0.06);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(-5, -5, 10, 10), const Radius.circular(2)),
-      fill,
-    );
+    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-5, -5, 10, 10), const Radius.circular(2)), fill);
     canvas.restore();
 
     fill.color = Colors.white.withValues(alpha: 0.1);

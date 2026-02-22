@@ -1,10 +1,15 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 import '../widgets/plan_card.dart';
 import '../widgets/payment_history_list.dart';
+import '../services/auth_service.dart';
+import '../services/trip_service.dart';
+import '../services/billing_service.dart';
+import '../config/supabase_config.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -16,6 +21,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _notificationsEnabled = true;
   bool _darkModeEnabled = false;
+  bool _loggingOut = false;
 
   final Map<String, bool> _preferences = {
     'Adventure': true,
@@ -28,10 +34,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     'Nightlife': false,
   };
 
+  String _getUserName() {
+    final user = SupabaseConfig.client.auth.currentUser;
+    if (user == null) return 'Guest';
+    final meta = user.userMetadata;
+    if (meta != null && meta['full_name'] != null) return meta['full_name'] as String;
+    return user.email?.split('@').first ?? 'Guest';
+  }
+
+  String _getUserEmail() {
+    return SupabaseConfig.client.auth.currentUser?.email ?? 'Not signed in';
+  }
+
+  Future<void> _handleLogout() async {
+    setState(() => _loggingOut = true);
+    try {
+      await AuthService.instance.signOut();
+      if (mounted) context.go('/login');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Logout failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _loggingOut = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pad = MediaQuery.of(context).padding;
     final sw = MediaQuery.of(context).size.width;
+    final tripsAsync = ref.watch(tripsProvider);
+
+    final userName = _getUserName();
+    final userEmail = _getUserEmail();
+
+    // Derive stats from trips
+    int tripCount = 0;
+    int placesCount = 0;
+    final countries = <String>{};
+    tripsAsync.whenData((trips) {
+      tripCount = trips.length;
+      for (final t in trips) {
+        // Count activities from itinerary data
+        if (t.itineraryData != null && t.itineraryData!['days'] is List) {
+          for (final day in t.itineraryData!['days'] as List) {
+            if (day is Map && day['activities'] is List) {
+              placesCount += (day['activities'] as List).length;
+            }
+          }
+        }
+        // Count unique countries from destination
+        if (t.destination.isNotEmpty) {
+          final parts = t.destination.split(',');
+          if (parts.length > 1) countries.add(parts.last.trim());
+        }
+      }
+    });
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -44,7 +103,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                // Gradient bg
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: const BoxDecoration(
@@ -61,55 +119,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   ),
                 ),
-                // Decorations
-                CustomPaint(
-                  size: Size(sw, 200 + pad.top),
-                  painter: _ProfileDecoPainter(),
-                ),
-                // Title + edit
+                CustomPaint(size: Size(sw, 200 + pad.top), painter: _ProfileDecoPainter()),
                 Positioned(
-                  left: 20,
-                  right: 20,
-                  top: pad.top + 12,
+                  left: 20, right: 20, top: pad.top + 12,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('Profile', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.edit_outlined, size: 14, color: Colors.white70),
-                            const SizedBox(width: 4),
-                            Text('Edit', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white70)),
-                          ],
-                        ),
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(16)),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.edit_outlined, size: 14, color: Colors.white70),
+                          const SizedBox(width: 4),
+                          Text('Edit', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white70)),
+                        ]),
                       ),
                     ],
                   ),
                 ),
-                // Name + email centered
                 Positioned(
-                  left: 0,
-                  right: 0,
-                  top: pad.top + 60,
+                  left: 0, right: 0, top: pad.top + 60,
                   child: Column(
                     children: [
-                      // Avatar
                       Stack(
                         children: [
                           Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 3),
-                              boxShadow: [
-                                BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 12, offset: const Offset(0, 4)),
-                              ],
+                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 12, offset: const Offset(0, 4))],
                             ),
                             child: const CircleAvatar(
                               radius: 38,
@@ -118,13 +157,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ),
                           ),
                           Positioned(
-                            bottom: 0,
-                            right: 0,
+                            bottom: 0, right: 0,
                             child: Container(
                               padding: const EdgeInsets.all(5),
                               decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
+                                color: Colors.white, shape: BoxShape.circle,
                                 boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4)],
                               ),
                               child: const Icon(Icons.camera_alt, size: 13, color: AppColors.brandBlue),
@@ -133,9 +170,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      Text('Alex Johnson', style: GoogleFonts.dmSans(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white)),
+                      Text(userName, style: GoogleFonts.dmSans(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white)),
                       const SizedBox(height: 2),
-                      Text('alex.johnson@email.com', style: GoogleFonts.dmSans(fontSize: 13, color: Colors.white60)),
+                      Text(userEmail, style: GoogleFonts.dmSans(fontSize: 13, color: Colors.white60)),
                     ],
                   ),
                 ),
@@ -158,11 +195,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   child: Row(
                     children: [
-                      _statItem('5', 'Trips'),
+                      _statItem('$tripCount', 'Trips'),
                       _divider(),
-                      _statItem('12', 'Places'),
+                      _statItem('$placesCount', 'Places'),
                       _divider(),
-                      _statItem('3', 'Countries'),
+                      _statItem('${countries.length}', 'Countries'),
                     ],
                   ),
                 ),
@@ -195,20 +232,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           decoration: BoxDecoration(
                             color: selected ? AppColors.brandBlue : Colors.white,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: selected ? AppColors.brandBlue : Colors.grey.shade200,
-                              width: selected ? 1.5 : 1,
-                            ),
+                            border: Border.all(color: selected ? AppColors.brandBlue : Colors.grey.shade200, width: selected ? 1.5 : 1),
                             boxShadow: selected ? [BoxShadow(color: AppColors.brandBlue.withValues(alpha: 0.2), blurRadius: 6, offset: const Offset(0, 2))] : null,
                           ),
-                          child: Text(
-                            e.key,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: selected ? Colors.white : AppColors.textSecondary,
-                            ),
-                          ),
+                          child: Text(e.key, style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w500, color: selected ? Colors.white : AppColors.textSecondary)),
                         ),
                       );
                     }).toList(),
@@ -222,24 +249,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   child: Column(
                     children: [
                       _settingRow(Icons.notifications_outlined, 'Notifications',
-                        trailing: Switch.adaptive(
-                          value: _notificationsEnabled,
-                          onChanged: (v) => setState(() => _notificationsEnabled = v),
-                          activeTrackColor: AppColors.brandBlue,
-                        ),
-                      ),
+                        trailing: Switch.adaptive(value: _notificationsEnabled, onChanged: (v) => setState(() => _notificationsEnabled = v), activeTrackColor: AppColors.brandBlue)),
                       _thinDivider(),
                       _settingRow(Icons.attach_money, 'Currency', trailingText: 'THB'),
                       _thinDivider(),
                       _settingRow(Icons.language, 'Language', trailingText: 'English'),
                       _thinDivider(),
                       _settingRow(Icons.dark_mode_outlined, 'Dark Mode',
-                        trailing: Switch.adaptive(
-                          value: _darkModeEnabled,
-                          onChanged: (v) => setState(() => _darkModeEnabled = v),
-                          activeTrackColor: AppColors.brandBlue,
-                        ),
-                      ),
+                        trailing: Switch.adaptive(value: _darkModeEnabled, onChanged: (v) => setState(() => _darkModeEnabled = v), activeTrackColor: AppColors.brandBlue)),
                     ],
                   ),
                 ),
@@ -264,9 +281,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   height: 48,
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.logout, size: 18),
-                    label: Text('Log out', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                    onPressed: _loggingOut ? null : _handleLogout,
+                    icon: _loggingOut
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.logout, size: 18),
+                    label: Text(_loggingOut ? 'Logging out...' : 'Log out', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.red.shade400,
                       side: BorderSide(color: Colors.red.shade200),
@@ -297,9 +316,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _divider() {
-    return Container(width: 1, height: 30, color: Colors.grey.shade200);
-  }
+  Widget _divider() => Container(width: 1, height: 30, color: Colors.grey.shade200);
 
   Widget _menuItem(IconData icon, String label, {VoidCallback? onTap}) {
     return Container(
@@ -310,12 +327,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
       child: ListTile(
         leading: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: AppColors.brandBlue.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(10),
-          ),
+          width: 36, height: 36,
+          decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
           child: Icon(icon, size: 18, color: AppColors.brandBlue),
         ),
         title: Text(label, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
@@ -331,8 +344,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white, borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Column(
@@ -340,10 +352,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         children: [
           if (title != null) ...[
             Text(title, style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-            if (subtitle != null) ...[
-              const SizedBox(height: 2),
-              Text(subtitle, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
-            ],
+            if (subtitle != null) ...[const SizedBox(height: 2), Text(subtitle, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary))],
             const SizedBox(height: 12),
           ],
           child,
@@ -391,9 +400,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _thinDivider() => Divider(height: 1, thickness: 0.5, color: Colors.grey.shade100);
 }
 
-// ══════════════════════════════════
-// Profile header decorations (subtle)
-// ══════════════════════════════════
 class _ProfileDecoPainter extends CustomPainter {
   static const _orange = Color(0xFFFFB347);
 
@@ -403,32 +409,24 @@ class _ProfileDecoPainter extends CustomPainter {
     final sh = size.height;
     final fill = Paint()..style = PaintingStyle.fill;
 
-    // Subtle circles
     fill.color = Colors.white.withValues(alpha: 0.04);
     canvas.drawCircle(Offset(sw * 0.85, sh * 0.2), 50, fill);
     canvas.drawCircle(Offset(sw * 0.1, sh * 0.7), 35, fill);
 
-    // Orange dot accent
     fill.color = _orange.withValues(alpha: 0.35);
     canvas.drawCircle(Offset(sw * 0.92, sh * 0.35), 4, fill);
 
-    // Floating square
     canvas.save();
     canvas.translate(sw * 0.08, sh * 0.3);
     canvas.rotate(math.pi / 5);
     fill.color = Colors.white.withValues(alpha: 0.07);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(-7, -7, 14, 14), const Radius.circular(3)),
-      fill,
-    );
+    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-7, -7, 14, 14), const Radius.circular(3)), fill);
     canvas.restore();
 
-    // Dots
     fill.color = Colors.white.withValues(alpha: 0.1);
     canvas.drawCircle(Offset(sw * 0.7, sh * 0.2), 2.5, fill);
     canvas.drawCircle(Offset(sw * 0.3, sh * 0.85), 2, fill);
 
-    // Dotted arc
     fill.color = Colors.white.withValues(alpha: 0.1);
     for (var i = 0; i < 4; i++) {
       final angle = -0.4 + i * 0.2;

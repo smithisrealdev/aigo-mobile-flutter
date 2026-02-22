@@ -2,17 +2,23 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../services/auth_service.dart';
+import '../services/trip_service.dart';
+import '../services/expense_service.dart';
+import '../config/supabase_config.dart';
+import '../models/models.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
+class _HomeScreenState extends ConsumerState<HomeScreen>
     with SingleTickerProviderStateMixin {
   static const _cardShadow = BoxShadow(
     color: Color(0x0A000000),
@@ -85,8 +91,24 @@ class _HomeScreenState extends State<HomeScreen>
     return 'Good evening';
   }
 
+  String _getUserName() {
+    final user = SupabaseConfig.client.auth.currentUser;
+    if (user == null) return 'Traveler';
+    final meta = user.userMetadata;
+    if (meta != null && meta['full_name'] != null) {
+      final fullName = meta['full_name'] as String;
+      return fullName.split(' ').first;
+    }
+    if (user.email != null) {
+      return user.email!.split('@').first;
+    }
+    return 'Traveler';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final tripsAsync = ref.watch(tripsProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
@@ -99,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen>
             child: RefreshIndicator(
               color: AppColors.brandBlue,
               onRefresh: () async {
-                await Future.delayed(const Duration(seconds: 1));
+                ref.invalidate(tripsProvider);
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -109,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen>
                   children: [
                     // ── Greeting + Style Tags ──
                     Text(
-                      '${_greeting()}, Smith',
+                      '${_greeting()}, ${_getUserName()}',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -146,13 +168,13 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.add_circle_outline,
                           label: 'Create Trip',
                           bgColor: AppColors.brandBlue.withValues(alpha: 0.08),
-                          onTap: () => context.push('/create-trip'),
+                          onTap: () => context.push('/ai-chat'),
                         ),
                         _QuickAction(
                           icon: Icons.map_outlined,
                           label: 'My Trips',
                           bgColor: const Color(0xFFFFB347).withValues(alpha: 0.12),
-                          onTap: () => context.push('/trips'),
+                          onTap: () => context.go('/trips'),
                         ),
                         _QuickAction(
                           icon: Icons.account_balance_wallet_outlined,
@@ -164,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.public_outlined,
                           label: 'Marketplace',
                           bgColor: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
-                          onTap: () => context.push('/explore'),
+                          onTap: () => context.go('/explore'),
                         ),
                       ],
                     ),
@@ -184,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                         GestureDetector(
-                          onTap: () => context.push('/trips'),
+                          onTap: () => context.go('/trips'),
                           child: const Text(
                             'See All',
                             style: TextStyle(
@@ -197,7 +219,11 @@ class _HomeScreenState extends State<HomeScreen>
                       ],
                     ),
                     const SizedBox(height: 10),
-                    _buildUpcomingTrip(context),
+                    tripsAsync.when(
+                      data: (trips) => _buildUpcomingTripReal(context, trips),
+                      loading: () => _buildUpcomingTripSkeleton(),
+                      error: (e, _) => _buildErrorCard('Failed to load trips', () => ref.invalidate(tripsProvider)),
+                    ),
 
                     const SizedBox(height: 20),
 
@@ -211,7 +237,11 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                     const SizedBox(height: 10),
-                    _buildBudget(context),
+                    tripsAsync.when(
+                      data: (trips) => _buildBudgetReal(context, trips),
+                      loading: () => _buildBudgetSkeleton(),
+                      error: (_, __) => _buildBudget(context),
+                    ),
 
                     const SizedBox(height: 24),
 
@@ -234,6 +264,219 @@ class _HomeScreenState extends State<HomeScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildUpcomingTripReal(BuildContext context, List<Trip> trips) {
+    if (trips.isEmpty) {
+      return GestureDetector(
+        onTap: () => context.push('/ai-chat'),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: const [_cardShadow],
+            border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.1)),
+          ),
+          child: Column(
+            children: [
+              Icon(Icons.flight_takeoff, size: 40, color: AppColors.brandBlue.withValues(alpha: 0.5)),
+              const SizedBox(height: 8),
+              const Text('No trips yet', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              const Text('Tap to plan your first trip with AI!', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Find upcoming trip (earliest future start date, or most recent)
+    final now = DateTime.now();
+    Trip? upcoming;
+    for (final t in trips) {
+      if (t.startDate != null) {
+        final start = DateTime.tryParse(t.startDate!);
+        if (start != null && start.isAfter(now)) {
+          if (upcoming == null || start.isBefore(DateTime.parse(upcoming.startDate!))) {
+            upcoming = t;
+          }
+        }
+      }
+    }
+    upcoming ??= trips.first;
+
+    final startDate = upcoming.startDate != null ? DateTime.tryParse(upcoming.startDate!) : null;
+    final endDate = upcoming.endDate != null ? DateTime.tryParse(upcoming.endDate!) : null;
+    final days = (startDate != null && endDate != null) ? endDate.difference(startDate).inDays : null;
+    final dateStr = startDate != null ? '${_monthDay(startDate)}${endDate != null ? ' – ${_monthDay(endDate)}' : ''}${days != null ? ' · $days days' : ''}' : 'Not scheduled';
+    final progress = (upcoming.budgetTotal != null && upcoming.budgetTotal! > 0 && upcoming.budgetSpent != null)
+        ? (upcoming.budgetSpent! / upcoming.budgetTotal!).clamp(0.0, 1.0)
+        : 0.0;
+    final imageUrl = upcoming.coverImage ?? 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200&h=200&fit=crop';
+
+    return GestureDetector(
+      onTap: () => context.push('/itinerary', extra: upcoming),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [_cardShadow],
+          border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.1)),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                width: 52,
+                height: 52,
+                fit: BoxFit.cover,
+                errorWidget: (_, __, ___) => Container(width: 52, height: 52, color: AppColors.border, child: const Icon(Icons.image, size: 20)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    upcoming.title,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(dateStr, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  if (progress > 0) ...[
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 4,
+                        backgroundColor: AppColors.border,
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.brandBlue),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text('${(progress * 100).toInt()}% budget used', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUpcomingTripSkeleton() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [_cardShadow],
+      ),
+      child: Row(
+        children: [
+          Container(width: 52, height: 52, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(12))),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(width: 120, height: 14, color: AppColors.border),
+            const SizedBox(height: 6),
+            Container(width: 160, height: 12, color: AppColors.border),
+          ])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBudgetReal(BuildContext context, List<Trip> trips) {
+    double totalBudget = 0;
+    double totalSpent = 0;
+    for (final t in trips) {
+      if (t.budgetTotal != null) totalBudget += t.budgetTotal!;
+      if (t.budgetSpent != null) totalSpent += t.budgetSpent!;
+    }
+    if (totalBudget == 0) {
+      return _buildBudget(context); // fallback
+    }
+    final pct = (totalSpent / totalBudget).clamp(0.0, 1.0);
+
+    return GestureDetector(
+      onTap: () => context.push('/budget'),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [_cardShadow],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.account_balance_wallet_outlined, color: AppColors.brandBlue, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Total Budget', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                const SizedBox(height: 2),
+                Text('฿${totalSpent.toStringAsFixed(0)} / ฿${totalBudget.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              ]),
+            ),
+            SizedBox(
+              width: 40, height: 40,
+              child: Stack(alignment: Alignment.center, children: [
+                CircularProgressIndicator(value: pct, strokeWidth: 3, backgroundColor: AppColors.border, valueColor: const AlwaysStoppedAnimation<Color>(AppColors.brandBlue)),
+                Text('${(pct * 100).toInt()}%', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.brandBlue)),
+              ]),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBudgetSkeleton() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [_cardShadow]),
+      child: Row(children: [
+        Container(width: 40, height: 40, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(12))),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(width: 100, height: 14, color: AppColors.border),
+          const SizedBox(height: 4),
+          Container(width: 140, height: 12, color: AppColors.border),
+        ])),
+      ]),
+    );
+  }
+
+  Widget _buildErrorCard(String message, VoidCallback onRetry) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [_cardShadow]),
+      child: Column(children: [
+        Text(message, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+        const SizedBox(height: 8),
+        TextButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh, size: 16), label: const Text('Retry')),
+      ]),
+    );
+  }
+
+  String _monthDay(DateTime d) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[d.month - 1]} ${d.day}';
   }
 
   // ── Header: compact blue with embedded search ──
@@ -292,7 +535,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 const SizedBox(width: 4),
                 GestureDetector(
-                  onTap: () => context.push('/profile'),
+                  onTap: () => context.go('/profile'),
                   child: const CircleAvatar(
                     radius: 18,
                     backgroundColor: Colors.white24,
@@ -431,80 +674,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ── Upcoming Trip Card ──
-  Widget _buildUpcomingTrip(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.push('/trips'),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [_cardShadow],
-          border: Border.all(
-              color: AppColors.brandBlue.withValues(alpha: 0.1)),
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl:
-                    'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200&h=200&fit=crop',
-                width: 52,
-                height: 52,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Trip to Tokyo',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Mar 15 – Mar 22 · 7 days',
-                    style: TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: 0.65,
-                      minHeight: 4,
-                      backgroundColor: AppColors.border,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppColors.brandBlue),
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '65% planned · 5 of 8 activities',
-                    style: TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Icon(Icons.chevron_right,
-                color: AppColors.textSecondary, size: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Budget Card ──
+  // ── Budget Card (fallback) ──
   Widget _buildBudget(BuildContext context) {
     return GestureDetector(
       onTap: () => context.push('/budget'),
@@ -533,50 +703,18 @@ class _HomeScreenState extends State<HomeScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Monthly Budget',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
+                    'No budget data yet',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '฿15,000 / ฿20,000',
-                    style: TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary),
+                    'Create a trip to start tracking',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ],
               ),
             ),
-            // Progress ring
-            SizedBox(
-              width: 40,
-              height: 40,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    value: 0.75,
-                    strokeWidth: 3,
-                    backgroundColor: AppColors.border,
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                        AppColors.brandBlue),
-                  ),
-                  const Text(
-                    '75%',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.brandBlue,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right,
-                color: AppColors.textSecondary, size: 20),
+            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
           ],
         ),
       ),
@@ -617,7 +755,7 @@ class _HomeScreenState extends State<HomeScreen>
           ],
         ),
         GestureDetector(
-          onTap: () => context.push('/explore'),
+          onTap: () => context.go('/explore'),
           child: const Text(
             'See All',
             style: TextStyle(
@@ -668,7 +806,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ── Offline Indicator ──
   void _submitTrip(BuildContext context) {
     final query = _tripController.text.trim();
     if (query.isNotEmpty) {

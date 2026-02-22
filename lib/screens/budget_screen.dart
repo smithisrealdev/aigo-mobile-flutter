@@ -1,90 +1,277 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
 import '../theme/app_colors.dart';
+import '../services/trip_service.dart' hide tripExpensesProvider;
+import '../services/expense_service.dart';
+import '../services/auth_service.dart';
+import '../models/models.dart';
+import '../config/supabase_config.dart';
 
-class BudgetScreen extends StatelessWidget {
+class BudgetScreen extends ConsumerStatefulWidget {
   const BudgetScreen({super.key});
 
   @override
+  ConsumerState<BudgetScreen> createState() => _BudgetScreenState();
+}
+
+class _BudgetScreenState extends ConsumerState<BudgetScreen> {
+  String? _selectedTripId;
+
+  @override
   Widget build(BuildContext context) {
+    final tripsAsync = ref.watch(tripsProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          Container(
-            decoration: const BoxDecoration(gradient: AppColors.blueGradient),
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                child: Column(
-                  children: [
-                    Row(children: [
-                      GestureDetector(onTap: () => Navigator.maybePop(context), child: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20)),
-                      const SizedBox(width: 12),
-                      Text('Budget', style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
-                    ]),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: 140, height: 140,
-                      child: CustomPaint(
-                        painter: _DonutPainter(0.85),
-                        child: Center(
-                          child: Column(mainAxisSize: MainAxisSize.min, children: [
-                            Text('\$1,280', style: GoogleFonts.dmSans(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
-                            Text('of \$1,500', style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.7))),
-                          ]),
+      body: tripsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.brandBlue)),
+        error: (e, _) => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text('Failed to load budget data', style: TextStyle(color: AppColors.textSecondary)),
+          const SizedBox(height: 8),
+          TextButton.icon(onPressed: () => ref.invalidate(tripsProvider), icon: const Icon(Icons.refresh, size: 16), label: const Text('Retry')),
+        ])),
+        data: (trips) {
+          // Calculate totals
+          double totalBudget = 0;
+          double totalSpent = 0;
+          for (final t in trips) {
+            if (t.budgetTotal != null) totalBudget += t.budgetTotal!;
+            if (t.budgetSpent != null) totalSpent += t.budgetSpent!;
+          }
+          final pct = totalBudget > 0 ? (totalSpent / totalBudget).clamp(0.0, 1.0) : 0.0;
+
+          // Select trip for expense details
+          final selectedTrip = _selectedTripId != null
+              ? trips.cast<Trip?>().firstWhere((t) => t!.id == _selectedTripId, orElse: () => null)
+              : (trips.isNotEmpty ? trips.first : null);
+
+          return Column(
+            children: [
+              Container(
+                decoration: const BoxDecoration(gradient: AppColors.blueGradient),
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                    child: Column(
+                      children: [
+                        Row(children: [
+                          GestureDetector(onTap: () => Navigator.maybePop(context), child: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20)),
+                          const SizedBox(width: 12),
+                          Text('Budget', style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
+                        ]),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: 140, height: 140,
+                          child: CustomPaint(
+                            painter: _DonutPainter(pct),
+                            child: Center(
+                              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                                Text('฿${totalSpent.toStringAsFixed(0)}', style: GoogleFonts.dmSans(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
+                                Text('of ฿${totalBudget.toStringAsFixed(0)}', style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.7))),
+                              ]),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(20),
+              // Trip selector
+              if (trips.length > 1)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: SizedBox(
+                    height: 36,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: trips.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (_, i) {
+                        final t = trips[i];
+                        final selected = t.id == (selectedTrip?.id ?? '');
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedTripId = t.id),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              color: selected ? AppColors.brandBlue : Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              border: selected ? null : Border.all(color: AppColors.border),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(t.title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: selected ? Colors.white : AppColors.textSecondary), maxLines: 1),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: selectedTrip != null
+                    ? _TripBudgetDetail(tripId: selectedTrip.id, trip: selectedTrip)
+                    : ListView(
+                        padding: const EdgeInsets.all(20),
+                        children: [
+                          Center(child: Column(children: [
+                            const SizedBox(height: 40),
+                            Icon(Icons.account_balance_wallet_outlined, size: 48, color: AppColors.textSecondary.withValues(alpha: 0.3)),
+                            const SizedBox(height: 12),
+                            const Text('No trips yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                            const SizedBox(height: 4),
+                            const Text('Create a trip to start tracking budget', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                          ])),
+                        ],
+                      ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _TripBudgetDetail extends ConsumerWidget {
+  final String tripId;
+  final Trip trip;
+
+  const _TripBudgetDetail({required this.tripId, required this.trip});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final expensesAsync = ref.watch(tripExpensesProvider(tripId));
+
+    return expensesAsync.when(
+      loading: () => const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(color: AppColors.brandBlue))),
+      error: (e, _) => Center(child: Text('Failed to load expenses: $e', style: const TextStyle(color: AppColors.textSecondary))),
+      data: (expenses) {
+        // Group by category
+        final Map<String, double> byCategory = {};
+        for (final exp in expenses) {
+          byCategory[exp.category] = (byCategory[exp.category] ?? 0) + exp.amount;
+        }
+
+        final categoryEmojis = {'accommodation': '🏨', 'food': '🍜', 'transport': '🚃', 'activities': '🎯', 'shopping': '🛍️', 'other': '📦'};
+        final categoryColors = {'accommodation': AppColors.brandBlue, 'food': AppColors.warning, 'transport': AppColors.success, 'activities': Colors.purple, 'shopping': Colors.orange, 'other': const Color(0xFF6B7280)};
+
+        final totalSpent = expenses.fold<double>(0, (sum, e) => sum + e.amount);
+        final budget = trip.budgetTotal ?? totalSpent * 1.2;
+
+        return ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            const Text('Spending by Category', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 16),
+            if (byCategory.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+                child: const Center(child: Text('No expenses recorded yet', style: TextStyle(color: AppColors.textSecondary))),
+              )
+            else
+              ...byCategory.entries.map((e) {
+                final emoji = categoryEmojis[e.key] ?? '📦';
+                final color = categoryColors[e.key] ?? const Color(0xFF6B7280);
+                final catBudget = budget / byCategory.length;
+                return _budgetBar('$emoji ${e.key[0].toUpperCase()}${e.key.substring(1)}', e.value, catBudget, color);
+              }),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Spending by Category', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 16),
-                _budgetBar('🏨 Accommodation', 520, 600, AppColors.brandBlue),
-                _budgetBar('🍜 Food & Dining', 340, 400, AppColors.warning),
-                _budgetBar('🚃 Transport', 220, 250, AppColors.success),
-                _budgetBar('🎯 Activities', 200, 250, Colors.purple),
-                const SizedBox(height: 24),
                 const Text('Recent Expenses', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 12),
-                _expense('Sushi Dai', '🍣', '\$45', 'Today'),
-                _expense('JR Rail Pass', '🚃', '\$200', 'Yesterday'),
-                _expense('Hotel Gracery', '🏨', '\$180', 'Yesterday'),
-                _expense('teamLab Borderless', '🎨', '\$32', 'Mar 16'),
+                TextButton.icon(
+                  onPressed: () => _showAddExpenseDialog(context, ref),
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Add'),
+                ),
               ],
             ),
-          ),
-        ],
-      ),
+            const SizedBox(height: 12),
+            if (expenses.isEmpty)
+              const Padding(padding: EdgeInsets.all(16), child: Center(child: Text('No expenses yet', style: TextStyle(color: AppColors.textSecondary))))
+            else
+              ...expenses.take(20).map((e) {
+                final emoji = categoryEmojis[e.category] ?? '📦';
+                final date = e.expenseDate ?? e.createdAt?.substring(0, 10) ?? '';
+                return _expense(e.title, emoji, '฿${e.amount.toStringAsFixed(0)}', date);
+              }),
+          ],
+        );
+      },
     );
   }
 
-  Widget _budgetBar(String label, double spent, double total, Color color) {
+  void _showAddExpenseDialog(BuildContext context, WidgetRef ref) {
+    final titleCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    String category = 'food';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setDState) => AlertDialog(
+        title: const Text('Add Expense'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Title')),
+          const SizedBox(height: 8),
+          TextField(controller: amountCtrl, decoration: const InputDecoration(labelText: 'Amount (฿)'), keyboardType: TextInputType.number),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            value: category,
+            items: ['food', 'accommodation', 'transport', 'activities', 'shopping', 'other'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+            onChanged: (v) => setDState(() => category = v ?? 'food'),
+            decoration: const InputDecoration(labelText: 'Category'),
+          ),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final amount = double.tryParse(amountCtrl.text);
+              if (titleCtrl.text.isEmpty || amount == null) return;
+              Navigator.pop(ctx);
+              try {
+                await ExpenseService.instance.addExpense(CreateExpenseInput(
+                  tripId: tripId,
+                  title: titleCtrl.text,
+                  amount: amount,
+                  currency: 'USD',
+                  category: category,
+                ));
+                ref.invalidate(tripExpensesProvider(tripId));
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                }
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      )),
+    );
+  }
+
+  static Widget _budgetBar(String label, double spent, double total, Color color) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        children: [
-          Row(children: [Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)), const Spacer(), Text('\$${spent.toInt()} / \$${total.toInt()}', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary))]),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(value: spent / total, backgroundColor: color.withValues(alpha: 0.12), valueColor: AlwaysStoppedAnimation(color), minHeight: 8),
-          ),
-        ],
-      ),
+      child: Column(children: [
+        Row(children: [Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)), const Spacer(), Text('฿${spent.toInt()} / ฿${total.toInt()}', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary))]),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(value: (spent / total).clamp(0.0, 1.0), backgroundColor: color.withValues(alpha: 0.12), valueColor: AlwaysStoppedAnimation(color), minHeight: 8),
+        ),
+      ]),
     );
   }
 
-  Widget _expense(String title, String emoji, String amount, String date) {
+  static Widget _expense(String title, String emoji, String amount, String date) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),

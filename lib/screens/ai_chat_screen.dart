@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../theme/app_colors.dart';
 import '../widgets/brand_deco_circles.dart';
 import '../services/chat_service.dart';
+import '../services/itinerary_service.dart';
+import '../config/supabase_config.dart';
 
 // ── Shimmer ──
 class _ShimmerBox extends StatefulWidget {
@@ -35,7 +38,8 @@ class _ShimmerBoxState extends State<_ShimmerBox> with SingleTickerProviderState
 }
 
 class AIChatScreen extends StatefulWidget {
-  const AIChatScreen({super.key});
+  final String? initialMessage;
+  const AIChatScreen({super.key, this.initialMessage});
   @override
   State<AIChatScreen> createState() => _AIChatScreenState();
 }
@@ -57,6 +61,22 @@ class _AIChatScreenState extends State<AIChatScreen> with TickerProviderStateMix
       if (has != _hasText) setState(() => _hasText = has);
       if (_controller.text.length > _maxChars - 50) setState(() {});
     });
+    // Send initial message if provided
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Auth check
+      if (SupabaseConfig.client.auth.currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Please sign in to use AI chat'),
+            action: SnackBarAction(label: 'Sign In', onPressed: () => context.go('/login')),
+          ),
+        );
+        return;
+      }
+      if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
+        _send(widget.initialMessage!);
+      }
+    });
   }
 
   @override
@@ -76,12 +96,37 @@ class _AIChatScreenState extends State<AIChatScreen> with TickerProviderStateMix
     // Call the real AI chat service
     ChatService.instance.sendMessage(message: text.trim()).then((reply) {
       if (!mounted) return;
+      
+      // Parse special markers from AI response
+      var content = reply.content;
+      final tripData = reply.responseData;
+      
+      // Check for [READY_TO_GENERATE] marker
+      if (content.contains('[READY_TO_GENERATE]') && tripData != null) {
+        content = content.replaceAll('[READY_TO_GENERATE]', '').trim();
+        final tripId = tripData['trip_id'] as String?;
+        if (tripId != null) {
+          // Generate itinerary and navigate
+          _generateAndNavigate(tripId, tripData);
+        }
+      }
+      
+      // Check for [TRIP_SUMMARY] marker  
+      String? summaryText;
+      if (content.contains('[TRIP_SUMMARY]')) {
+        final parts = content.split('[TRIP_SUMMARY]');
+        content = parts[0].trim();
+        if (parts.length > 1) {
+          summaryText = parts[1].replaceAll('[/TRIP_SUMMARY]', '').trim();
+        }
+      }
+
       setState(() {
         _isTyping = false;
         _messages.add(_ChatMsg(
           isUser: false,
           time: DateTime.now(),
-          text: reply.content,
+          text: content.isEmpty ? (summaryText ?? 'Trip planned!') : content,
           followUps: reply.responseData?['suggestions'] != null
               ? (reply.responseData!['suggestions'] as List).cast<String>()
               : null,
@@ -100,6 +145,23 @@ class _AIChatScreenState extends State<AIChatScreen> with TickerProviderStateMix
       });
       _scrollToBottom();
     });
+  }
+
+  Future<void> _generateAndNavigate(String tripId, Map<String, dynamic> tripData) async {
+    try {
+      await ItineraryService.instance.generateItinerary(
+        params: GenerateItineraryParams(
+          destination: tripData['destination']?.toString() ?? '',
+          startDate: tripData['start_date']?.toString() ?? '',
+          endDate: tripData['end_date']?.toString() ?? '',
+        ),
+      );
+      if (mounted) context.push('/itinerary');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to generate itinerary: $e')));
+      }
+    }
   }
 
   void _scrollToBottom() {

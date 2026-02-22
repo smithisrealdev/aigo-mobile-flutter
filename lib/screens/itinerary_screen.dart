@@ -16,6 +16,7 @@ import '../widgets/trip_reservations_widget.dart';
 import '../widgets/trip_members_widget.dart';
 import '../widgets/share_trip_widget.dart';
 import '../widgets/trip_alerts_widget.dart';
+import '../widgets/activity_detail_sheet.dart';
 
 class ItineraryScreen extends ConsumerStatefulWidget {
   final Trip? trip;
@@ -530,7 +531,10 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
       widgets.add(FadeTransition(opacity: anim, child: SlideTransition(
         position: Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(anim),
-        child: _activityCard(a, cat, canEdit: canEdit, isFirst: i == 0),
+        child: GestureDetector(
+          onTap: () => showActivityDetailSheet(context, activity: a, tripId: _trip?.id ?? ''),
+          child: _activityCard(a, cat, canEdit: canEdit, isFirst: i == 0),
+        ),
       )));
 
       if (i < activities.length - 1) widgets.add(_connector());

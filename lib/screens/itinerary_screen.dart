@@ -237,7 +237,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           CustomScrollView(controller: _scrollController, slivers: [
               // ── HERO HEADER ──
               SliverAppBar(
-                expandedHeight: 220,
+                expandedHeight: 240,
                 pinned: true,
                 automaticallyImplyLeading: false,
                 backgroundColor: AppColors.brandBlue,
@@ -250,7 +250,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                       gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
                         colors: [Colors.black.withValues(alpha: 0.15), Colors.black.withValues(alpha: 0.65)])))),
                     // Title + info over hero
-                    Positioned(left: 20, right: 20, bottom: 60, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Positioned(left: 20, right: 20, bottom: 80, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(_tripTitle, style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 6),
                       Row(children: [
@@ -310,10 +310,11 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                   // Section segment control
                   Container(
                     color: Colors.white,
-                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                     child: Container(
-                      height: 36,
-                      decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
+                      height: 38,
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(color: const Color(0xFFF0F1F3), borderRadius: BorderRadius.circular(12)),
                       child: Row(children: [
                         for (final e in [('itinerary', 'Itinerary'), ('checklist', 'Checklist'), ('reservations', 'Reservations'), ('alerts', 'Alerts')])
                           Expanded(child: GestureDetector(
@@ -557,7 +558,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 child: Text(duration.startsWith('~') ? duration : '~$duration', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
             ],
             const Spacer(),
-            if (canEdit && isFirst) GestureDetector(onTap: () => _handleSwapPlace(a),
+            if (canEdit) GestureDetector(onTap: () => _handleSwapPlace(a),
               child: Icon(Icons.swap_horiz, size: 16, color: AppColors.textSecondary.withValues(alpha: 0.5))),
             if (canEdit) ...[const SizedBox(width: 4), const Icon(Icons.drag_indicator, size: 16, color: AppColors.textSecondary)],
           ]),
@@ -620,14 +621,14 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   Widget _buildFab() => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: [
     if (_fabExpanded) ...[
       for (final item in [
-        ('Edit', Icons.edit, AppColors.brandBlue), ('Map', Icons.map, AppColors.success),
-        ('AI Chat', Icons.chat_bubble_outline, AppColors.warning), ('Optimize', Icons.auto_awesome, AppColors.brandBlue),
+        ('Edit', Icons.edit), ('Map', Icons.map_outlined),
+        ('AI Chat', Icons.chat_bubble_outline), ('Optimize', Icons.auto_awesome),
       ].reversed) Padding(padding: const EdgeInsets.only(bottom: 10), child: Row(mainAxisSize: MainAxisSize.min, children: [
         Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8)]),
           child: Text(item.$1, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
         const SizedBox(width: 8),
-        SizedBox(width: 44, height: 44, child: FloatingActionButton(heroTag: item.$1, backgroundColor: item.$3, elevation: 3,
+        SizedBox(width: 44, height: 44, child: FloatingActionButton(heroTag: item.$1, backgroundColor: AppColors.brandBlue, elevation: 3,
           onPressed: () { setState(() => _fabExpanded = false);
             if (item.$1 == 'AI Chat') context.push('/ai-chat');
             if (item.$1 == 'Map') setState(() => _showMap = true);

@@ -219,9 +219,11 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       floatingActionButton: canEdit ? _buildFab() : null,
-      body: _showMap
-          ? Column(children: [_buildMapBar(role, days), Expanded(child: TripMapView(activities: _mapActivities.isNotEmpty ? _mapActivities : const [MapActivity(name: '', time: '', lat: 35.6762, lng: 139.6503)]))])
-          : CustomScrollView(controller: _scrollController, slivers: [
+      body: Stack(children: [
+        if (_showMap)
+          Column(children: [_buildMapBar(role, days), Expanded(child: TripMapView(activities: _mapActivities.isNotEmpty ? _mapActivities : const [MapActivity(name: '', time: '', lat: 35.6762, lng: 139.6503)]))])
+        else
+          CustomScrollView(controller: _scrollController, slivers: [
               // ── HERO HEADER ──
               SliverAppBar(
                 expandedHeight: 220,
@@ -331,6 +333,12 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 ],
               ]))),
             ]),
+        // FAB backdrop overlay
+        if (_fabExpanded) GestureDetector(
+          onTap: () => setState(() => _fabExpanded = false),
+          child: Container(color: Colors.black.withValues(alpha: 0.3)),
+        ),
+      ]),
     );
   }
 
@@ -508,8 +516,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             ],
             if (duration.isNotEmpty) ...[
               const SizedBox(width: 8),
-              Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                child: Text(duration.startsWith('~') ? duration : '~$duration', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color))),
+              Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(8)),
+                child: Text(duration.startsWith('~') ? duration : '~$duration', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
             ],
             const Spacer(),
             if (canEdit && isFirst) GestureDetector(onTap: () => _handleSwapPlace(a),
@@ -524,7 +532,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
               decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
               child: Icon(icon, size: 18, color: color)),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(name, style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              Text(name, style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary), maxLines: 2, overflow: TextOverflow.ellipsis),
               if (desc.isNotEmpty) ...[
                 const SizedBox(height: 2),
                 Text(desc, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.3), maxLines: 2, overflow: TextOverflow.ellipsis),

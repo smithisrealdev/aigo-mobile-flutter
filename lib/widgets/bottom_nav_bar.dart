@@ -101,15 +101,29 @@ class _CenterFab extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(
-          gradient: AppColors.blueGradient,
-          shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: AppColors.brandBlue.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
-        ),
-        child: const Icon(Icons.auto_awesome, color: Colors.white, size: 26),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              gradient: AppColors.blueGradient,
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: AppColors.brandBlue.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
+            ),
+            child: const Icon(Icons.auto_awesome, color: Colors.white, size: 24),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'AI Chat',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+              color: active ? AppColors.brandBlue : AppColors.textSecondary,
+            ),
+          ),
+        ],
       ),
     );
   }

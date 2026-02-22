@@ -56,7 +56,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
               child: _isGrid
                   ? GridView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 0.72),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 0.68),
                       itemCount: 8,
                       itemBuilder: (_, i) => DestinationCard(
                         imageUrl: 'https://picsum.photos/400/300?random=${80 + i}',

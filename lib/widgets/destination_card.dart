@@ -32,6 +32,7 @@ class DestinationCard extends StatelessWidget {
           color: Colors.white,
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 16, offset: const Offset(0, 4))],
         ),
+        clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -41,46 +42,52 @@ class DestinationCard extends StatelessWidget {
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                   child: CachedNetworkImage(
                     imageUrl: imageUrl,
-                    height: 160,
+                    height: 140,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(height: 160, color: AppColors.border),
-                    errorWidget: (_, __, ___) => Container(height: 160, color: AppColors.border, child: const Icon(Icons.image)),
+                    placeholder: (_, __) => Container(height: 140, color: AppColors.border),
+                    errorWidget: (_, __, ___) => Container(height: 140, color: AppColors.border, child: const Icon(Icons.image)),
                   ),
                 ),
                 Positioned(
-                  top: 12,
-                  right: 12,
+                  top: 10,
+                  right: 10,
                   child: GestureDetector(
                     onTap: onSave,
                     child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.9), shape: BoxShape.circle),
-                      child: Icon(saved ? Icons.favorite : Icons.favorite_border, color: saved ? AppColors.error : AppColors.textSecondary, size: 18),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 8, offset: const Offset(0, 2))],
+                      ),
+                      child: Icon(saved ? Icons.favorite : Icons.favorite_border, color: saved ? AppColors.error : AppColors.textSecondary, size: 16),
                     ),
                   ),
                 ),
               ],
             ),
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on, size: 14, color: AppColors.textSecondary),
-                      const SizedBox(width: 4),
-                      Text(location, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                      const Spacer(),
-                      const Icon(Icons.star, size: 14, color: AppColors.warning),
-                      const SizedBox(width: 4),
-                      Text(rating.toString(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ],
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, size: 13, color: AppColors.textSecondary),
+                        const SizedBox(width: 3),
+                        Expanded(child: Text(location, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        const Icon(Icons.star, size: 13, color: AppColors.warning),
+                        const SizedBox(width: 3),
+                        Text(rating.toString(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

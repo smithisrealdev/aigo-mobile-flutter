@@ -29,7 +29,7 @@ class SavedPlacesScreen extends StatelessWidget {
           Expanded(
             child: GridView.builder(
               padding: const EdgeInsets.all(20),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 0.72),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 0.68),
               itemCount: 6,
               itemBuilder: (_, i) => DestinationCard(
                 imageUrl: 'https://picsum.photos/400/300?random=${70 + i}',

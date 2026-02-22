@@ -1,6 +1,6 @@
 import Flutter
 import UIKit
-import GoogleMaps
+// import GoogleMaps  // TODO: Re-enable when API key is configured
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -8,7 +8,7 @@ import GoogleMaps
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    GMSServices.provideAPIKey("REDACTED_API_KEY")
+    // GMSServices.provideAPIKey("YOUR_KEY")  // TODO: Add real Google Maps API key
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }

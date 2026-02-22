@@ -196,36 +196,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _QuickAction(
-                          icon: Icons.lightbulb_outline,
-                          label: 'Travel Tips',
-                          bgColor: const Color(0xFFFF6B6B).withValues(alpha: 0.1),
-                          onTap: () => context.push('/travel-tips'),
-                        ),
-                        _QuickAction(
-                          icon: Icons.flight_outlined,
-                          label: 'Flights',
-                          bgColor: const Color(0xFF06B6D4).withValues(alpha: 0.1),
-                          onTap: () => context.push('/flight-search'),
-                        ),
-                        _QuickAction(
-                          icon: Icons.hotel_outlined,
-                          label: 'Hotels',
-                          bgColor: const Color(0xFFF59E0B).withValues(alpha: 0.1),
-                          onTap: () => context.push('/hotel-search'),
-                        ),
-                        _QuickAction(
-                          icon: Icons.map_outlined,
-                          label: 'Map View',
-                          bgColor: const Color(0xFF14B8A6).withValues(alpha: 0.1),
-                          onTap: () => context.push('/map-view'),
-                        ),
-                      ],
-                    ),
 
                     const SizedBox(height: 24),
 

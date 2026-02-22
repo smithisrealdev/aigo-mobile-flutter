@@ -9,6 +9,7 @@ import '../widgets/payment_history_list.dart';
 import '../services/auth_service.dart';
 import '../services/trip_service.dart';
 import '../services/billing_service.dart';
+import '../services/saved_search_service.dart';
 import '../config/supabase_config.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -276,6 +277,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // Saved Flight Searches
+                _buildSavedFlightSearches(),
+
+                const SizedBox(height: 24),
+
                 // Log out
                 SizedBox(
                   height: 48,
@@ -398,6 +404,61 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _thinDivider() => Divider(height: 1, thickness: 0.5, color: Colors.grey.shade100);
+
+  Widget _buildSavedFlightSearches() {
+    final searchesAsync = ref.watch(savedFlightSearchesProvider);
+    return searchesAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (searches) {
+        if (searches.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Saved Flight Searches',
+                style: GoogleFonts.dmSans(
+                    fontSize: 16, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 10),
+            ...searches.map((s) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.flight, size: 18, color: AppColors.brandBlue),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(s.name,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 13)),
+                          Text(
+                            '${s.originName ?? s.originCode} → ${s.destinationName ?? s.destinationCode}',
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline,
+                          size: 18, color: AppColors.textSecondary),
+                      onPressed: () async {
+                        await SavedSearchService.instance.deleteSearch(s.id);
+                        ref.invalidate(savedFlightSearchesProvider);
+                      },
+                    ),
+                  ]),
+                )),
+          ],
+        );
+      },
+    );
+  }
 }
 
 class _ProfileDecoPainter extends CustomPainter {

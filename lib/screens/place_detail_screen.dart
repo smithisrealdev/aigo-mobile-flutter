@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
 import '../services/place_service.dart';
 import '../services/weather_service.dart';
+import '../widgets/social_mentions_widget.dart';
+import '../widgets/place_videos_widget.dart';
+import '../widgets/place_comments_widget.dart';
 
 class PlaceDetailScreen extends StatefulWidget {
   final String? placeId;
@@ -134,6 +138,26 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                       if (_error != null) ...[
                         const SizedBox(height: 12),
                         Center(child: TextButton.icon(onPressed: _loadData, icon: const Icon(Icons.refresh, size: 16), label: const Text('Retry loading details'))),
+                      ],
+                      // Social mentions
+                      const SizedBox(height: 20),
+                      SocialMentionsWidget(
+                        placeName: name,
+                        placeAddress: null,
+                      ),
+                      // Videos
+                      if (widget.placeId != null) ...[
+                        const SizedBox(height: 20),
+                        PlaceVideosWidget(placeId: widget.placeId!),
+                      ],
+                      // Comments (only if we have a tripId context — show placeholder otherwise)
+                      if (widget.placeId != null) ...[
+                        const SizedBox(height: 20),
+                        // Comments require tripId; show section header as placeholder
+                        const Text('Comments', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 8),
+                        const Text('Open from a trip to add comments.',
+                            style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                       ],
                       const SizedBox(height: 24),
                       SizedBox(

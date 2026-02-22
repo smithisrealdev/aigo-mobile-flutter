@@ -8,6 +8,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import '../services/trip_service.dart';
 import '../services/expense_service.dart';
+import '../services/recommendation_service.dart';
 import '../config/supabase_config.dart';
 import '../models/models.dart';
 
@@ -254,6 +255,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ),
                     const SizedBox(height: 12),
                     _buildAiPicks(context),
+
+                    const SizedBox(height: 24),
+
+                    // ── Tailored for You (AI Recommendations) ──
+                    _buildTailoredForYou(),
 
                     const SizedBox(height: 20),
                   ],
@@ -839,9 +845,81 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
     );
   }
-}
 
-// ── AI Pick Card ──
+  Widget _buildTailoredForYou() {
+    final recAsync = ref.watch(aiRecommendationsProvider);
+    return recAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (result) {
+        final items = result.structured?.items ?? [];
+        if (items.isEmpty && result.recommendation == null) {
+          return const SizedBox.shrink();
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(children: [
+              Icon(Icons.auto_awesome, size: 18, color: AppColors.brandBlue),
+              SizedBox(width: 6),
+              Text('Tailored for You',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            ]),
+            const SizedBox(height: 8),
+            if (result.recommendation != null)
+              Text(result.recommendation!,
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textSecondary, height: 1.5)),
+            if (items.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              ...items.map((item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(children: [
+                      Text(item.emoji, style: const TextStyle(fontSize: 16)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${item.label}: ${item.value}',
+                                style: const TextStyle(
+                                    fontSize: 13, fontWeight: FontWeight.w500)),
+                            if (item.detail != null)
+                              Text(item.detail!,
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                    ]),
+                  )),
+            ],
+            if (result.structured?.tip != null) ...[
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.brandBlue.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(children: [
+                  const Text('💡', style: TextStyle(fontSize: 14)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(result.structured!.tip!,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
+                  ),
+                ]),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
 
 class _AiPickCard extends StatelessWidget {
   final String imageUrl;

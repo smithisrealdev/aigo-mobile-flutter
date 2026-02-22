@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 import '../widgets/trip_map_view.dart';
+import '../widgets/booking_options_widget.dart';
 import '../models/models.dart';
 import '../services/itinerary_service.dart';
 import '../services/expense_service.dart';
@@ -574,6 +575,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           const SizedBox(height: 2),
           Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
           if (subtitle.isNotEmpty) Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+          const SizedBox(height: 4),
+          BookingChip(placeName: title),
         ])),
       ]),
     );

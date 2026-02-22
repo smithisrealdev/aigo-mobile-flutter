@@ -730,21 +730,9 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                       if (_activeSection == 'alerts' && _trip != null)
                         TripAlertsWidget(tripId: _trip!.id),
 
-                      // Trip-level info — only on Itinerary tab, shown ONCE (not per day)
-                      if (_activeSection == 'itinerary' && _trip != null) ...[
-                        const SizedBox(height: 24),
-                        const Divider(),
-                        const SizedBox(height: 12),
-                        _budgetTracker(),
-                        const SizedBox(height: 14),
-                        if (_travelIntel != null) _generalTipsSection(),
-                        if (_travelIntel != null) const SizedBox(height: 14),
-                        _reservationsPreview(),
-                        const SizedBox(height: 14),
-                        if (isOwner) ShareTripWidget(tripId: _trip!.id),
-                        if (isOwner) const SizedBox(height: 16),
-                        TripMembersWidget(tripId: _trip!.id),
-                      ],
+                      // Trip-level info removed from Itinerary tab
+                      // Budget → FAB Summary, Tips → FAB Travel Tips
+                      // Reservations → Reservations tab, Share → FAB Share
                       const SizedBox(height: 80),
                     ]))),
               ]),
@@ -1893,6 +1881,28 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             ])),
       );
 
+  void _showShareSheet() {
+    if (_trip == null) return;
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ShareTripWidget(tripId: _trip!.id),
+            const SizedBox(height: 16),
+            TripMembersWidget(tripId: _trip!.id),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFab() => Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -1907,6 +1917,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 ('Smart Replan', Icons.route),
                 ('Travel Tips', Icons.lightbulb_outline),
                 ('Summary', Icons.summarize_outlined),
+                ('Share', Icons.share),
+                ('Budget', Icons.account_balance_wallet_outlined),
                 ('Packing List', Icons.backpack_outlined),
               ].reversed)
                 Padding(
@@ -1959,6 +1971,10 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                                     if (item.$1 == 'Packing List')
                                       context.push('/packing-list',
                                           extra: _trip);
+                                    if (item.$1 == 'Budget')
+                                      context.push('/budget', extra: _trip);
+                                    if (item.$1 == 'Share')
+                                      _showShareSheet();
                                   },
                                   child: Icon(item.$2,
                                       color: Colors.white, size: 20))),

@@ -572,7 +572,17 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                               height: 44,
                               child: Row(children: [
                                 Expanded(
-                                    child: ListView.builder(
+                                    child: ShaderMask(
+                                      shaderCallback: (Rect bounds) {
+                                        return const LinearGradient(
+                                          begin: Alignment.centerLeft,
+                                          end: Alignment.centerRight,
+                                          colors: [Colors.white, Colors.white, Colors.transparent],
+                                          stops: [0.0, 0.85, 1.0],
+                                        ).createShader(bounds);
+                                      },
+                                      blendMode: BlendMode.dstIn,
+                                      child: ListView.builder(
                                   scrollDirection: Axis.horizontal,
                                   padding: const EdgeInsets.only(left: 16),
                                   itemCount: days.length,
@@ -600,7 +610,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                                               fontSize: 13)),
                                     ),
                                   ),
-                                )),
+                                ))),
                                 Container(
                                   margin: const EdgeInsets.only(right: 16),
                                   decoration: BoxDecoration(
@@ -687,10 +697,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         _todaysPlanCard(),
                         const SizedBox(height: 12),
 
-                        // Add activity button
-                        if (canEdit) _addActivityButton(),
-                        if (canEdit) const SizedBox(height: 12),
-
                         // Budget tracker
                         _budgetTracker(),
                         const SizedBox(height: 12),
@@ -751,6 +757,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         if (isOwner) const SizedBox(height: 16),
                         TripMembersWidget(tripId: _trip!.id),
                       ],
+                      const SizedBox(height: 80),
                     ]))),
               ]),
         // FAB backdrop overlay
@@ -868,7 +875,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary)),
               const SizedBox(height: 2),
-              Text('$visited / $total places',
+              Text('$visited / $total ${total == 1 ? 'place' : 'places'}',
                   style: const TextStyle(
                       fontSize: 13, color: AppColors.textSecondary)),
             ])),
@@ -938,9 +945,9 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         const SizedBox(height: 12),
         // Stats row
         Row(children: [
-          _statChip(Icons.place, '$placesCount places'),
+          _statChip(Icons.place, '$placesCount ${placesCount == 1 ? 'place' : 'places'}'),
           const SizedBox(width: 12),
-          _statChip(Icons.visibility, '$sightsCount sights'),
+          _statChip(Icons.visibility, '$sightsCount ${sightsCount == 1 ? 'sight' : 'sights'}'),
         ]),
         // Next up
         if (nextUp != null) ...[
@@ -1110,7 +1117,18 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                   minHeight: 6)),
           const SizedBox(height: 6),
         ],
-        Text('Track spending by day and category',
+        if (spent == 0)
+          InkWell(
+            onTap: () => context.push('/budget', extra: _trip),
+            borderRadius: BorderRadius.circular(8),
+            child: Text('Tap to add your first expense',
+                style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.brandBlue,
+                    fontWeight: FontWeight.w600)),
+          )
+        else
+          Text('Track spending by day and category',
             style: TextStyle(
                 fontSize: 12,
                 color: AppColors.textSecondary.withValues(alpha: 0.8))),
@@ -1241,17 +1259,11 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                           fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary)),
                   const SizedBox(width: 4),
-                  Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 1),
-                      decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8)),
-                      child: const Text('Soon',
-                          style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.warning))),
+                  Text('(coming soon)',
+                      style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic)),
                 ]),
               ),
           ]),
@@ -1346,7 +1358,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         style: const TextStyle(
                             fontSize: 12, color: AppColors.textSecondary)),
                   if (date.isNotEmpty) const SizedBox(width: 8),
-                  Text('${activities.length} places',
+                  Text('${activities.length} ${activities.length == 1 ? 'place' : 'places'}',
                       style: const TextStyle(
                           fontSize: 12, color: AppColors.textSecondary)),
                 ]),

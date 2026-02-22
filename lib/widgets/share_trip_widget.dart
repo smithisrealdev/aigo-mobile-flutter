@@ -58,10 +58,25 @@ class _ShareTripWidgetState extends ConsumerState<ShareTripWidget> {
                         child:
                             CircularProgressIndicator(strokeWidth: 2))
                   else
-                    Switch(
-                      value: info.isPublic,
-                      activeTrackColor: AppColors.brandBlue,
-                      onChanged: (val) => _toggleSharing(val),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        if (info.isPublic && info.shareUrl != null) {
+                          _systemShare(info.shareUrl!);
+                        } else {
+                          _toggleSharing(true);
+                        }
+                      },
+                      icon: const Icon(Icons.share, size: 16),
+                      label: const Text('Share Trip',
+                          style: TextStyle(fontSize: 13)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.brandBlue,
+                        side: const BorderSide(color: AppColors.brandBlue),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                      ),
                     ),
                 ],
               ),

@@ -196,6 +196,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
       _scrollToBottom();
     }).catchError((e) {
       if (!mounted) return;
+      debugPrint('AI Chat error: $e');
       setState(() {
         _isTyping = false;
         _messages.add(_ChatMsg(

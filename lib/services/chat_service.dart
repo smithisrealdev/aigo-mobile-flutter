@@ -191,7 +191,7 @@ class ChatService {
           },
           responseType: ResponseType.stream,
           sendTimeout: Duration(milliseconds: _chatInitialTimeoutMs),
-          receiveTimeout: Duration(milliseconds: _chatStreamTimeoutMs),
+          // No receiveTimeout for SSE — we handle timeout manually in the stream loop
         ),
         cancelToken: cancelToken,
       );

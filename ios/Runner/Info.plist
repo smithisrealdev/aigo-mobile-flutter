@@ -59,6 +59,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.googleusercontent.apps.566607202117-4s2hl6tg58li95mb4j90csldh2cc86do</string>
+				<string>com.aigo.aigoMobile</string>
 			</array>
 		</dict>
 	</array>

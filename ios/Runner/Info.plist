@@ -51,5 +51,16 @@
 	<string>AiGo needs microphone access for voice input to plan your trips hands-free.</string>
 	<key>GOOGLE_MAPS_API_KEY</key>
 	<string>$(GOOGLE_MAPS_API_KEY)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.566607202117-4s2hl6tg58li95mb4j90csldh2cc86do</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

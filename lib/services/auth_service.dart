@@ -66,8 +66,8 @@ class AuthService {
 
   // ── Google OAuth ──
   Future<AuthResponse> signInWithGoogle() async {
-    const webClientId = '';
-    const iosClientId = '';
+    const webClientId = '566607202117-rocpiig2v082i0fctl6ih9lkjt6vi6gg.apps.googleusercontent.com';
+    const iosClientId = '566607202117-4s2hl6tg58li95mb4j90csldh2cc86do.apps.googleusercontent.com';
 
     final googleSignIn = GoogleSignIn(
       clientId: iosClientId.isNotEmpty ? iosClientId : null,

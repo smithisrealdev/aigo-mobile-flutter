@@ -8,6 +8,12 @@ import '../models/models.dart';
 import '../services/itinerary_service.dart';
 import '../services/expense_service.dart';
 import '../services/trip_service.dart';
+import '../services/replan_service.dart';
+import '../widgets/trip_checklist_widget.dart';
+import '../widgets/trip_reservations_widget.dart';
+import '../widgets/trip_members_widget.dart';
+import '../widgets/share_trip_widget.dart';
+import '../widgets/trip_alerts_widget.dart';
 
 class ItineraryScreen extends ConsumerStatefulWidget {
   final Trip? trip;
@@ -23,6 +29,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   bool _isBookmarked = false;
   bool _showMap = false;
   bool _regenerating = false;
+  bool _replanning = false;
+  String _activeSection = 'itinerary'; // itinerary | checklist | reservations | alerts
 
   Trip? get _trip => widget.trip;
 
@@ -86,7 +94,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Itinerary regenerated!')));
-        // Refresh trip data
         ref.invalidate(tripProvider(_trip!.id));
       }
     } catch (e) {
@@ -94,6 +101,68 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     } finally {
       if (mounted) setState(() => _regenerating = false);
     }
+  }
+
+  Future<void> _handleSmartReplan() async {
+    if (_trip == null || _replanning) return;
+    setState(() => _replanning = true);
+    try {
+      final result = await ReplanService.instance.replanDay(
+        tripId: _trip!.id,
+        tripData: _trip!.itineraryData ?? {},
+        dayIndex: _selectedDay,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.success ? '✨ ${result.summary}' : result.summary)),
+        );
+        if (result.success) ref.invalidate(tripProvider(_trip!.id));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Replan failed: $e')));
+    } finally {
+      if (mounted) setState(() => _replanning = false);
+    }
+  }
+
+  Future<void> _handleSwapPlace(Map<String, dynamic> activity) async {
+    if (_trip == null) return;
+    final alternatives = await ReplanService.instance.suggestAlternatives(
+      placeId: activity['id']?.toString() ?? '',
+      placeName: activity['name']?.toString() ?? activity['title']?.toString() ?? '',
+      category: activity['category']?.toString() ?? activity['type']?.toString() ?? '',
+      destination: _trip!.destination,
+      lat: (activity['lat'] as num?)?.toDouble(),
+      lng: (activity['lng'] as num?)?.toDouble(),
+    );
+    if (!mounted || alternatives.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No alternatives found')));
+      return;
+    }
+    // Show alternatives bottom sheet
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Alternative Places', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 12),
+            ...alternatives.take(5).map((alt) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(backgroundColor: AppColors.brandBlue.withValues(alpha: 0.1), child: const Icon(Icons.place, color: AppColors.brandBlue, size: 20)),
+              title: Text(alt.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text(alt.category, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              trailing: alt.cost != null ? Text('${alt.currency ?? '฿'}${alt.cost!.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.brandBlue)) : null,
+              onTap: () => Navigator.pop(ctx),
+            )),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -130,17 +199,94 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         _buildAiChipsRow(),
                         const SizedBox(height: 16),
                         _buildAiInsightCard(),
-                        const SizedBox(height: 16),
-                        _buildDayHeader(days),
                         const SizedBox(height: 12),
-                        if (activities.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-                            child: Center(child: Text('No activities for this day', style: TextStyle(color: AppColors.textSecondary))),
-                          )
-                        else
-                          ..._buildActivityList(activities),
+
+                        // Smart Replan button
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _replanning ? null : _handleSmartReplan,
+                            icon: _replanning
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.auto_fix_high, size: 16),
+                            label: Text(_replanning ? 'Replanning...' : '✨ Smart Replan Day ${_selectedDay + 1}'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF8B5CF6),
+                              side: const BorderSide(color: Color(0xFF8B5CF6)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Section tabs
+                        SizedBox(
+                          height: 36,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              for (final entry in [
+                                ('itinerary', 'Itinerary', Icons.map_outlined),
+                                ('checklist', 'Checklist', Icons.checklist),
+                                ('reservations', 'Reservations', Icons.receipt_long),
+                                ('alerts', 'Alerts', Icons.notifications_outlined),
+                              ])
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: GestureDetector(
+                                    onTap: () => setState(() => _activeSection = entry.$1),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                                      decoration: BoxDecoration(
+                                        color: _activeSection == entry.$1 ? AppColors.brandBlue : Colors.white,
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: _activeSection == entry.$1 ? AppColors.brandBlue : AppColors.border),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(entry.$3, size: 14, color: _activeSection == entry.$1 ? Colors.white : AppColors.textSecondary),
+                                          const SizedBox(width: 4),
+                                          Text(entry.$2, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _activeSection == entry.$1 ? Colors.white : AppColors.textSecondary)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Section content
+                        if (_activeSection == 'itinerary') ...[
+                          _buildDayHeader(days),
+                          const SizedBox(height: 12),
+                          if (activities.isEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                              child: Center(child: Text('No activities for this day', style: TextStyle(color: AppColors.textSecondary))),
+                            )
+                          else
+                            ..._buildActivityList(activities),
+                        ],
+                        if (_activeSection == 'checklist' && _trip != null)
+                          TripChecklistWidget(tripId: _trip!.id),
+                        if (_activeSection == 'reservations' && _trip != null)
+                          TripReservationsWidget(tripId: _trip!.id),
+                        if (_activeSection == 'alerts' && _trip != null)
+                          TripAlertsWidget(tripId: _trip!.id),
+
+                        // Share + Members sections
+                        if (_trip != null) ...[
+                          const SizedBox(height: 20),
+                          ShareTripWidget(tripId: _trip!.id),
+                          const SizedBox(height: 16),
+                          TripMembersWidget(tripId: _trip!.id),
+                        ],
+
                         const SizedBox(height: 80),
                       ],
                     ),
@@ -169,6 +315,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                     icon: Icon(_isBookmarked ? Icons.bookmark : Icons.bookmark_border, color: Colors.white),
                     onPressed: () => setState(() => _isBookmarked = !_isBookmarked),
                   ),
+                  if (_trip != null) TripMemberAvatars(tripId: _trip!.id),
+                  const SizedBox(width: 4),
                   GestureDetector(
                     onTap: () {},
                     child: Container(

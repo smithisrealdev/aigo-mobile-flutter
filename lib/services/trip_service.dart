@@ -309,3 +309,77 @@ final tripExpensesProvider =
     FutureProvider.family<List<ManualExpense>, String>((ref, tripId) async {
   return TripService.instance.listExpenses(tripId);
 });
+
+// ──────────────────────────────────────────────
+// Trip Follows (trip_follows table)
+// Mirrors: useTripFollows.ts
+// ──────────────────────────────────────────────
+
+class TripFollowService {
+  TripFollowService._();
+  static final TripFollowService instance = TripFollowService._();
+
+  final _client = SupabaseConfig.client;
+  String? get _uid => _client.auth.currentUser?.id;
+
+  Future<bool> isFollowing(String tripId) async {
+    final uid = _uid;
+    if (uid == null) return false;
+    try {
+      final data = await _client
+          .from('trip_follows')
+          .select('id')
+          .eq('user_id', uid)
+          .eq('trip_id', tripId)
+          .maybeSingle();
+      return data != null;
+    } catch (e) {
+      debugPrint('TripFollowService.isFollowing error: $e');
+      return false;
+    }
+  }
+
+  Future<void> follow(String tripId) async {
+    final uid = _uid;
+    if (uid == null) return;
+    try {
+      await _client.from('trip_follows').insert({
+        'user_id': uid,
+        'trip_id': tripId,
+      });
+    } catch (e) {
+      debugPrint('TripFollowService.follow error: $e');
+    }
+  }
+
+  Future<void> unfollow(String tripId) async {
+    final uid = _uid;
+    if (uid == null) return;
+    try {
+      await _client
+          .from('trip_follows')
+          .delete()
+          .eq('user_id', uid)
+          .eq('trip_id', tripId);
+    } catch (e) {
+      debugPrint('TripFollowService.unfollow error: $e');
+    }
+  }
+
+  Future<void> toggleFollow(String tripId) async {
+    final following = await isFollowing(tripId);
+    if (following) {
+      await unfollow(tripId);
+    } else {
+      await follow(tripId);
+    }
+  }
+}
+
+final tripFollowServiceProvider =
+    Provider((_) => TripFollowService.instance);
+
+final isFollowingProvider =
+    FutureProvider.family<bool, String>((ref, tripId) async {
+  return TripFollowService.instance.isFollowing(tripId);
+});

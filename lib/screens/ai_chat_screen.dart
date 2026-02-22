@@ -486,6 +486,66 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
     return '$h:$m';
   }
 
+  // Parse markdown images ![alt](IMAGE:name) and render as real images
+  static final _mdImageRegex = RegExp(r'!\[([^\]]*)\]\(IMAGE:([^)]+)\)');
+
+  Widget _buildRichText(String text) {
+    final matches = _mdImageRegex.allMatches(text).toList();
+    if (matches.isEmpty) {
+      return Text(text, style: TextStyle(color: _textP(context), fontSize: 15, height: 1.5));
+    }
+
+    final widgets = <Widget>[];
+    int lastEnd = 0;
+    for (final m in matches) {
+      if (m.start > lastEnd) {
+        final before = text.substring(lastEnd, m.start).trim();
+        if (before.isNotEmpty) {
+          widgets.add(Text(before, style: TextStyle(color: _textP(context), fontSize: 15, height: 1.5)));
+        }
+      }
+      final placeName = m.group(2) ?? m.group(1) ?? '';
+      final query = Uri.encodeComponent(placeName);
+      final imageUrl = 'https://images.unsplash.com/photo-1500835556837-99ac94a94552?w=600&q=80&fit=crop';
+      final searchUrl = 'https://source.unsplash.com/600x300/?$query,travel';
+      widgets.add(Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: CachedNetworkImage(
+            imageUrl: searchUrl,
+            height: 160,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => Container(
+              height: 160,
+              decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
+              child: const Center(child: Icon(Icons.image_outlined, size: 32, color: Color(0xFFD1D5DB))),
+            ),
+            errorWidget: (_, __, ___) => CachedNetworkImage(
+              imageUrl: imageUrl,
+              height: 160,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      ));
+      widgets.add(Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Text(placeName, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _textS(context))),
+      ));
+      lastEnd = m.end;
+    }
+    if (lastEnd < text.length) {
+      final after = text.substring(lastEnd).trim();
+      if (after.isNotEmpty) {
+        widgets.add(Text(after, style: TextStyle(color: _textP(context), fontSize: 15, height: 1.5)));
+      }
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: widgets);
+  }
+
   Widget _buildMessage(_ChatMsg msg, {required bool showAvatar, required bool showTime, required bool showReactions}) {
     return Column(children: [
       // Timestamp
@@ -516,7 +576,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
             Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(color: _surface(context),
                 borderRadius: BorderRadius.only(topLeft: Radius.circular(showAvatar ? 4 : 20), topRight: const Radius.circular(20), bottomLeft: const Radius.circular(20), bottomRight: const Radius.circular(20))),
-              child: Text(msg.text, style: TextStyle(color: _textP(context), fontSize: 15, height: 1.5))),
+              child: _buildRichText(msg.text)),
 
             // Rich card with place thumbnails
             if (msg.richCard != null) ...[

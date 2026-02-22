@@ -379,10 +379,12 @@ class ChatService {
       messages: messages,
       onDelta: (delta) => buffer.write(delta),
       onDone: () {
-        completer.complete(ChatMessage(
-          role: 'assistant',
-          content: buffer.toString(),
-        ));
+        if (!completer.isCompleted) {
+          completer.complete(ChatMessage(
+            role: 'assistant',
+            content: buffer.toString(),
+          ));
+        }
       },
       onError: (errorCode, {bool isRetrying = false}) {
         if (!isRetrying && !completer.isCompleted) {

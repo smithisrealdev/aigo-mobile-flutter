@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import '../theme/app_colors.dart';
 import '../services/trip_service.dart' hide tripExpensesProvider;
 import '../services/expense_service.dart';
+import '../services/exchange_rate_service.dart';
 import '../services/auth_service.dart';
 import '../models/models.dart';
 import '../config/supabase_config.dart';
@@ -20,12 +21,28 @@ class BudgetScreen extends ConsumerStatefulWidget {
 class _BudgetScreenState extends ConsumerState<BudgetScreen> {
   String? _selectedTripId;
 
+  void _showCurrencyConverter(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _CurrencyConverterSheet(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tripsAsync = ref.watch(tripsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showCurrencyConverter(context, ref),
+        backgroundColor: AppColors.brandBlue,
+        child: const Icon(Icons.currency_exchange, color: Colors.white),
+      ),
       body: tripsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.brandBlue)),
         error: (e, _) => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -286,6 +303,203 @@ class _TripBudgetDetail extends ConsumerWidget {
         ])),
         Text(amount, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
       ]),
+    );
+  }
+}
+
+class _CurrencyConverterSheet extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_CurrencyConverterSheet> createState() =>
+      _CurrencyConverterSheetState();
+}
+
+class _CurrencyConverterSheetState
+    extends ConsumerState<_CurrencyConverterSheet> {
+  final _amountCtrl = TextEditingController(text: '100');
+  String _from = 'USD';
+  String _to = 'THB';
+  double? _result;
+  double? _rate;
+  bool _loading = false;
+
+  static const _currencies = [
+    'USD', 'EUR', 'GBP', 'JPY', 'THB', 'CAD', 'AUD', 'SGD',
+    'HKD', 'KRW', 'CNY', 'MYR', 'VND', 'PHP', 'IDR', 'INR',
+    'NZD', 'CHF', 'TWD',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final homeCurrency = ref.read(homeCurrencyProvider);
+      homeCurrency.whenData((c) {
+        if (mounted) setState(() => _to = c);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _convert() async {
+    final amount = double.tryParse(_amountCtrl.text);
+    if (amount == null || amount <= 0) return;
+    setState(() => _loading = true);
+    final result = await ExchangeRateService.instance.convertToHomeCurrency(
+      amount: amount,
+      fromCurrency: _from,
+      homeCurrency: _to,
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      if (result != null) {
+        _result = result.convertedAmount;
+        _rate = result.rate;
+      } else if (_from == _to) {
+        _result = amount;
+        _rate = 1.0;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('Currency Converter',
+              style: GoogleFonts.dmSans(
+                  fontSize: 20, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 20),
+          // Amount
+          TextField(
+            controller: _amountCtrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Amount',
+              prefixIcon: const Icon(Icons.attach_money),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // From / To row
+          Row(children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: _from,
+                items: _currencies
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (v) => setState(() => _from = v ?? 'USD'),
+                decoration: InputDecoration(
+                  labelText: 'From',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: IconButton(
+                onPressed: () => setState(() {
+                  final tmp = _from;
+                  _from = _to;
+                  _to = tmp;
+                  _result = null;
+                }),
+                icon: const Icon(Icons.swap_horiz,
+                    color: AppColors.brandBlue, size: 28),
+              ),
+            ),
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: _to,
+                items: _currencies
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (v) => setState(() => _to = v ?? 'THB'),
+                decoration: InputDecoration(
+                  labelText: 'To',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 20),
+          // Convert button
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: _loading ? null : _convert,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.brandBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+              ),
+              child: _loading
+                  ? const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                  : Text('Convert',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 16, fontWeight: FontWeight.w600)),
+            ),
+          ),
+          // Result
+          if (_result != null) ...[
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.brandBlue.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                    color: AppColors.brandBlue.withValues(alpha: 0.15)),
+              ),
+              child: Column(children: [
+                Text(
+                  '${getCurrencySymbol(_to)} ${_result!.toStringAsFixed(2)}',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.brandBlue),
+                ),
+                if (_rate != null)
+                  Text(
+                    '1 $_from = ${_rate!.toStringAsFixed(4)} $_to',
+                    style: const TextStyle(
+                        fontSize: 13, color: AppColors.textSecondary),
+                  ),
+              ]),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

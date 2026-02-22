@@ -9,6 +9,7 @@ import '../widgets/upgrade_dialog.dart';
 import '../services/chat_service.dart';
 import '../services/itinerary_service.dart';
 import '../services/rate_limit_service.dart';
+import '../services/voice_service.dart';
 import '../config/supabase_config.dart';
 
 // ── Shimmer ──
@@ -52,6 +53,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
   final _focusNode = FocusNode();
   bool _hasText = false;
   bool _isTyping = false;
+  bool _isRecording = false;
   final _messages = <_ChatMsg>[];
   static const _maxChars = 500;
 
@@ -83,6 +85,44 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
 
   @override
   void dispose() { _controller.dispose(); _scrollController.dispose(); _focusNode.dispose(); super.dispose(); }
+
+  void _toggleVoice() async {
+    if (_isRecording) {
+      // Stop and transcribe
+      setState(() => _isRecording = false);
+      try {
+        final voiceSvc = ref.read(voiceServiceProvider);
+        final text = await voiceSvc.stopAndTranscribe();
+        if (text.isNotEmpty && mounted) {
+          _controller.text = text;
+          setState(() => _hasText = true);
+          _send(text);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Transcription failed: $e')),
+          );
+        }
+      }
+    } else {
+      // Start recording
+      final voiceSvc = ref.read(voiceServiceProvider);
+      final granted = await voiceSvc.requestPermission();
+      if (!granted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Microphone permission denied')),
+          );
+        }
+        return;
+      }
+      final started = await voiceSvc.startRecording();
+      if (started && mounted) {
+        setState(() => _isRecording = true);
+      }
+    }
+  }
 
   void _send(String text) async {
     if (text.trim().isEmpty || text.length > _maxChars) return;
@@ -262,13 +302,19 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
               )),
               const SizedBox(width: 8),
               GestureDetector(
-                onTap: () => _hasText ? _send(_controller.text) : null,
+                onTap: () => _hasText ? _send(_controller.text) : _toggleVoice(),
                 child: AnimatedContainer(duration: const Duration(milliseconds: 200), width: 44, height: 44,
-                  decoration: BoxDecoration(gradient: _hasText ? AppColors.blueGradient : null, color: _hasText ? null : _surface(context), shape: BoxShape.circle),
-                  child: Icon(_hasText ? Icons.arrow_upward_rounded : Icons.mic_none_rounded, color: _hasText ? Colors.white : _textS(context), size: 22),
+                  decoration: BoxDecoration(gradient: _hasText ? AppColors.blueGradient : null, color: _hasText ? null : (_isRecording ? const Color(0xFFEF4444) : _surface(context)), shape: BoxShape.circle),
+                  child: Icon(_hasText ? Icons.arrow_upward_rounded : (_isRecording ? Icons.stop_rounded : Icons.mic_none_rounded), color: _hasText || _isRecording ? Colors.white : _textS(context), size: 22),
                 ),
               ),
             ]),
+            if (_isRecording)
+              Padding(padding: const EdgeInsets.only(top: 6), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFFEF4444), shape: BoxShape.circle)),
+                const SizedBox(width: 6),
+                Text('Recording...', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _textS(context))),
+              ])),
             if (_controller.text.length > _maxChars - 100)
               Padding(padding: const EdgeInsets.only(top: 4, right: 56), child: Align(alignment: Alignment.centerRight,
                 child: Text('${_controller.text.length}/$_maxChars', style: TextStyle(fontSize: 11, color: _controller.text.length > _maxChars - 20 ? const Color(0xFFEF4444) : _textS(context))),

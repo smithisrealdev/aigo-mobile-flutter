@@ -702,19 +702,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         else
                           ..._buildActivityCards(
                               _currentActivities, canEdit: canEdit),
-
-                        const SizedBox(height: 14),
-
-                        // 3. Budget tracker
-                        _budgetTracker(),
-                        const SizedBox(height: 14),
-
-                        // 4. General Tips (travel intel)
-                        if (_travelIntel != null) _generalTipsSection(),
-                        if (_travelIntel != null) const SizedBox(height: 14),
-
-                        // 5. Reservations section
-                        _reservationsPreview(),
                       ],
 
                       if (_activeSection == 'checklist' && _trip != null) ...[
@@ -743,8 +730,17 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                       if (_activeSection == 'alerts' && _trip != null)
                         TripAlertsWidget(tripId: _trip!.id),
 
-                      if (_trip != null) ...[
+                      // Trip-level info — only on Itinerary tab, shown ONCE (not per day)
+                      if (_activeSection == 'itinerary' && _trip != null) ...[
                         const SizedBox(height: 24),
+                        const Divider(),
+                        const SizedBox(height: 12),
+                        _budgetTracker(),
+                        const SizedBox(height: 14),
+                        if (_travelIntel != null) _generalTipsSection(),
+                        if (_travelIntel != null) const SizedBox(height: 14),
+                        _reservationsPreview(),
+                        const SizedBox(height: 14),
                         if (isOwner) ShareTripWidget(tripId: _trip!.id),
                         if (isOwner) const SizedBox(height: 16),
                         TripMembersWidget(tripId: _trip!.id),

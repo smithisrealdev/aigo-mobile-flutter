@@ -8,7 +8,6 @@ import '../widgets/booking_options_widget.dart';
 import '../widgets/upgrade_dialog.dart';
 import '../models/models.dart';
 import '../services/itinerary_service.dart';
-import '../services/expense_service.dart';
 import '../services/trip_service.dart';
 import '../services/replan_service.dart';
 import '../services/permission_service.dart';
@@ -27,7 +26,7 @@ class ItineraryScreen extends ConsumerStatefulWidget {
 }
 
 class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   int _selectedDay = 0;
   bool _fabExpanded = false;
   bool _isBookmarked = false;
@@ -35,7 +34,29 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   bool _regenerating = false;
   bool _replanning = false;
   String _activeSection = 'itinerary';
-  bool _insightExpanded = false; // PM fix #1: collapsible insight card
+  bool _insightExpanded = false;
+  final ScrollController _scrollController = ScrollController();
+
+  // Staggered animation
+  late AnimationController _staggerController;
+  
+
+  @override
+  void initState() {
+    super.initState();
+    _staggerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _staggerController.forward();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _staggerController.dispose();
+    super.dispose();
+  }
 
   Trip? get _trip => widget.trip;
 
@@ -84,6 +105,59 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     if (end != null) return '$s - ${m[end.month - 1]} ${end.day}, ${end.year}';
     return '$s, ${start.year}';
   }
+
+  // --- Category icon inference ---
+  static const _categoryKeywords = <String, List<String>>{
+    'restaurant': ['restaurant', 'food', 'eat', 'dining', 'cafe', 'coffee', 'lunch', 'dinner', 'breakfast', 'brunch', 'bistro', 'ramen', 'sushi', 'noodle', 'street food', 'hawker'],
+    'temple': ['temple', 'shrine', 'wat', 'pagoda', 'mosque', 'church', 'cathedral', 'spiritual'],
+    'museum': ['museum', 'gallery', 'art', 'exhibition', 'cultural center'],
+    'park': ['park', 'garden', 'nature', 'forest', 'hiking', 'trail', 'mountain', 'waterfall', 'lake'],
+    'shopping': ['shopping', 'mall', 'market', 'bazaar', 'outlet', 'souvenir', 'shop', 'store'],
+    'beach': ['beach', 'coast', 'island', 'snorkel', 'diving', 'surf', 'seaside', 'bay'],
+    'hotel': ['hotel', 'resort', 'hostel', 'check-in', 'check-out', 'accommodation', 'stay', 'airbnb'],
+    'transport': ['airport', 'station', 'transfer', 'taxi', 'train', 'bus', 'ferry', 'flight', 'drive', 'transport'],
+  };
+
+  static const _categoryIcons = <String, IconData>{
+    'restaurant': Icons.restaurant,
+    'temple': Icons.temple_buddhist,
+    'museum': Icons.museum,
+    'park': Icons.park,
+    'shopping': Icons.shopping_bag,
+    'beach': Icons.beach_access,
+    'hotel': Icons.hotel,
+    'transport': Icons.directions_car,
+  };
+
+  static const _categoryColors = <String, Color>{
+    'restaurant': Color(0xFFF59E0B),
+    'temple': Color(0xFFEF4444),
+    'museum': Color(0xFF8B5CF6),
+    'park': Color(0xFF10B981),
+    'shopping': Color(0xFFEC4899),
+    'beach': Color(0xFF06B6D4),
+    'hotel': Color(0xFF6366F1),
+    'transport': Color(0xFF6B7280),
+  };
+
+  String _inferCategory(Map<String, dynamic> activity) {
+    // Direct category/type field
+    final explicit = (activity['type'] ?? activity['category'] ?? '').toString().toLowerCase();
+    for (final cat in _categoryKeywords.keys) {
+      if (explicit.contains(cat)) return cat;
+    }
+    // Keyword inference from name + description
+    final text = '${activity['name'] ?? ''} ${activity['title'] ?? ''} ${activity['description'] ?? ''} ${activity['subtitle'] ?? ''}'.toLowerCase();
+    for (final entry in _categoryKeywords.entries) {
+      for (final kw in entry.value) {
+        if (text.contains(kw)) return entry.key;
+      }
+    }
+    return 'default';
+  }
+
+  IconData _iconForCategory(String cat) => _categoryIcons[cat] ?? Icons.place;
+  Color _colorForCategory(String cat) => _categoryColors[cat] ?? AppColors.brandBlue;
 
   /// Permission-aware check before AI actions.
   Future<bool> _checkAiQuota() async {
@@ -184,7 +258,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
               leading: CircleAvatar(backgroundColor: AppColors.brandBlue.withValues(alpha: 0.1), child: const Icon(Icons.place, color: AppColors.brandBlue, size: 20)),
               title: Text(alt.name, style: const TextStyle(fontWeight: FontWeight.w600)),
               subtitle: Text(alt.category, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-              trailing: alt.cost != null ? Text('${alt.currency ?? '฿'}${alt.cost!.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.brandBlue)) : null,
+              trailing: alt.cost != null ? Text('${alt.currency ?? '\u0E3F'}${alt.cost!.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.brandBlue)) : null,
               onTap: () => Navigator.pop(ctx),
             )),
           ],
@@ -193,12 +267,25 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     );
   }
 
+  void _onDaySelected(int index) {
+    if (index == _selectedDay) return;
+    setState(() {
+      
+      _selectedDay = index;
+      _staggerController.reset();
+      _staggerController.forward();
+    });
+    // Scroll to top when switching days (#12)
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final days = _days;
     final activities = _currentActivities;
 
-    // Watch role for permission guards
     final roleAsync = _trip != null
         ? ref.watch(tripRoleProvider(_trip!.id))
         : const AsyncData<String>('owner');
@@ -208,6 +295,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     final canEdit = perm.canEditActivities(role);
     final isOwner = perm.canManageMembers(role);
 
+    final coverImage = _trip?.coverImage ?? _heroImageUrl;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       floatingActionButton: canEdit ? _buildExpandableFab() : null,
@@ -215,17 +304,197 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         onTap: () {
           if (_fabExpanded) setState(() => _fabExpanded = false);
         },
-        child: Column(
-          children: [
-            _buildHeroHeader(days, role),
-            Expanded(
-              child: _showMap
-                  ? TripMapView(activities: _mapActivities.isNotEmpty ? _mapActivities : const [
+        child: _showMap
+            ? Column(
+                children: [
+                  _buildSimpleAppBar(role),
+                  Expanded(
+                    child: TripMapView(activities: _mapActivities.isNotEmpty ? _mapActivities : const [
                       MapActivity(name: 'No locations', time: '', lat: 35.6762, lng: 139.6503),
-                    ])
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                      children: [
+                    ]),
+                  ),
+                ],
+              )
+            : CustomScrollView(
+                controller: _scrollController,
+                slivers: [
+                  // #5: SliverAppBar with collapsing hero
+                  SliverAppBar(
+                    expandedHeight: 260,
+                    pinned: true,
+                    automaticallyImplyLeading: false,
+                    backgroundColor: AppColors.brandBlue,
+                    flexibleSpace: FlexibleSpaceBar(
+                      collapseMode: CollapseMode.pin,
+                      background: Container(
+                        decoration: BoxDecoration(
+                          image: DecorationImage(
+                            image: NetworkImage(coverImage),
+                            fit: BoxFit.cover,
+                            colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.45), BlendMode.darken),
+                          ),
+                        ),
+                        child: SafeArea(
+                          bottom: false,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Top row: back + title
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: GestureDetector(onTap: () => Navigator.maybePop(context), child: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20)),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: Text(
+                                      _tripTitle,
+                                      style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white, height: 1.2),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    )),
+                                  ],
+                                ),
+                                // Second row: role badge + date + bookmark + share
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(28, 6, 0, 0),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(12)),
+                                        child: Text(role.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5)),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      if (_tripDateRange.isNotEmpty) ...[
+                                        const Icon(Icons.calendar_today, color: Colors.white70, size: 12),
+                                        const SizedBox(width: 4),
+                                        Flexible(child: Text(_tripDateRange, style: const TextStyle(color: Colors.white70, fontSize: 12), overflow: TextOverflow.ellipsis)),
+                                      ],
+                                      const Spacer(),
+                                      GestureDetector(
+                                        onTap: () => setState(() => _isBookmarked = !_isBookmarked),
+                                        child: Icon(_isBookmarked ? Icons.bookmark : Icons.bookmark_border, color: Colors.white, size: 22),
+                                      ),
+                                      if (perm.canShareTrip(role)) ...[
+                                        const SizedBox(width: 12),
+                                        GestureDetector(
+                                          onTap: () {},
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(20)),
+                                            child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                                              Icon(Icons.share, color: Colors.white, size: 14),
+                                              SizedBox(width: 4),
+                                              Text('Share', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                                            ]),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                // Destination
+                                if (_tripDestination.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(28, 4, 0, 0),
+                                    child: Row(children: [
+                                      const Icon(Icons.location_on, color: Colors.white70, size: 13),
+                                      const SizedBox(width: 4),
+                                      Text(_tripDestination, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                                      if (_trip != null) ...[
+                                        const SizedBox(width: 8),
+                                        TripMemberAvatars(tripId: _trip!.id),
+                                      ],
+                                    ]),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Pinned day tabs at bottom of app bar
+                    bottom: PreferredSize(
+                      preferredSize: const Size.fromHeight(56),
+                      child: Container(
+                        color: AppColors.brandBlue.withValues(alpha: 0.95),
+                        padding: const EdgeInsets.only(bottom: 12, top: 8),
+                        child: SizedBox(
+                          height: 36,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  padding: const EdgeInsets.only(left: 20),
+                                  itemCount: days.length,
+                                  itemBuilder: (_, i) => GestureDetector(
+                                    onTap: () => _onDaySelected(i),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      margin: const EdgeInsets.only(right: 8),
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: _selectedDay == i ? Colors.white : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(24),
+                                      ),
+                                      child: Text(
+                                        'Day ${i + 1}',
+                                        style: TextStyle(
+                                          color: _selectedDay == i ? AppColors.brandBlue : Colors.white.withValues(alpha: 0.85),
+                                          fontWeight: FontWeight.w600, fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // List/Map toggle
+                              Padding(
+                                padding: const EdgeInsets.only(right: 16),
+                                child: Container(
+                                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
+                                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                    GestureDetector(
+                                      onTap: () => setState(() => _showMap = false),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: !_showMap ? Colors.white : Colors.transparent,
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Icon(Icons.list, size: 18, color: !_showMap ? AppColors.brandBlue : Colors.white70),
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () => setState(() => _showMap = true),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: _showMap ? Colors.white : Colors.transparent,
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Icon(Icons.map_outlined, size: 18, color: _showMap ? AppColors.brandBlue : Colors.white70),
+                                      ),
+                                    ),
+                                  ]),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Content
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 100), // #10: bottom safe area
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
                         _buildAiChipsRow(),
                         const SizedBox(height: 16),
 
@@ -250,7 +519,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         if (canEdit) ...[
                           _buildAiInsightCard(canEdit),
                           const SizedBox(height: 12),
-                          // Smart Replan button
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton.icon(
@@ -286,7 +554,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                                   padding: const EdgeInsets.only(right: 8),
                                   child: GestureDetector(
                                     onTap: () => setState(() => _activeSection = entry.$1),
-                                    child: Container(
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
                                       padding: const EdgeInsets.symmetric(horizontal: 14),
                                       decoration: BoxDecoration(
                                         color: _activeSection == entry.$1 ? AppColors.brandBlue : Colors.white,
@@ -329,128 +598,44 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         if (_activeSection == 'alerts' && _trip != null)
                           TripAlertsWidget(tripId: _trip!.id),
 
-                        // Share + Members sections (owner only for share, all for members)
+                        // Share + Members sections
                         if (_trip != null) ...[
                           const SizedBox(height: 20),
                           if (isOwner) ShareTripWidget(tripId: _trip!.id),
                           if (isOwner) const SizedBox(height: 16),
                           TripMembersWidget(tripId: _trip!.id),
                         ],
-
-                        const SizedBox(height: 80),
-                      ],
+                      ]),
                     ),
-            ),
-          ],
-        ),
+                  ),
+                ],
+              ),
       ),
     );
   }
 
-  /// Fallback hero image based on destination
-  String get _heroImageUrl {
-    final dest = _tripDestination.toLowerCase();
-    if (dest.contains('japan') || dest.contains('tokyo')) return 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&q=80';
-    if (dest.contains('thai') || dest.contains('bangkok')) return 'https://images.unsplash.com/photo-1563492065599-3520f775eeed?w=800&q=80';
-    if (dest.contains('paris') || dest.contains('france')) return 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80';
-    if (dest.contains('london') || dest.contains('uk')) return 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&q=80';
-    if (dest.contains('bali') || dest.contains('indonesia')) return 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800&q=80';
-    if (dest.contains('korea') || dest.contains('seoul')) return 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800&q=80';
-    return 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&q=80'; // generic travel
-  }
-
-  Widget _buildHeroHeader(List<Map<String, dynamic>> days, String role) {
-    final perm = PermissionService.instance;
-    final coverImage = _trip?.coverImage ?? _heroImageUrl;
+  /// Simple app bar for map mode (keeps back button + day tabs)
+  Widget _buildSimpleAppBar(String role) {
+    final days = _days;
     return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: NetworkImage(coverImage),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.45), BlendMode.darken),
-        ),
-      ),
+      color: AppColors.brandBlue,
       child: SafeArea(
         bottom: false,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Top row: back + title (max 2 lines)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: GestureDetector(onTap: () => Navigator.maybePop(context), child: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20)),
-                  ),
+                  GestureDetector(onTap: () => Navigator.maybePop(context), child: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20)),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(
-                    _tripTitle,
-                    style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white, height: 1.2),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  )),
+                  Expanded(child: Text(_tripTitle, style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis)),
                 ],
               ),
             ),
-            // Second row: role badge + date + location + bookmark + share
-            Padding(
-              padding: const EdgeInsets.fromLTRB(44, 6, 16, 0),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(12)),
-                    child: Text(role.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5)),
-                  ),
-                  const SizedBox(width: 10),
-                  if (_tripDateRange.isNotEmpty) ...[
-                    const Icon(Icons.calendar_today, color: Colors.white70, size: 12),
-                    const SizedBox(width: 4),
-                    Flexible(child: Text(_tripDateRange, style: const TextStyle(color: Colors.white70, fontSize: 12), overflow: TextOverflow.ellipsis)),
-                  ],
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: () => setState(() => _isBookmarked = !_isBookmarked),
-                    child: Icon(_isBookmarked ? Icons.bookmark : Icons.bookmark_border, color: Colors.white, size: 22),
-                  ),
-                  if (perm.canShareTrip(role)) ...[
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: () {},
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(20)),
-                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.share, color: Colors.white, size: 14),
-                          SizedBox(width: 4),
-                          Text('Share', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-                        ]),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            // Third row: destination
-            if (_tripDestination.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(44, 4, 16, 0),
-                child: Row(children: [
-                  const Icon(Icons.location_on, color: Colors.white70, size: 13),
-                  const SizedBox(width: 4),
-                  Text(_tripDestination, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                  if (_trip != null) ...[
-                    const SizedBox(width: 8),
-                    TripMemberAvatars(tripId: _trip!.id),
-                  ],
-                ]),
-              ),
-            const SizedBox(height: 16),
-            // PM fix #3: Day tabs + List/Map toggle on same row
             SizedBox(
-              height: 44,
+              height: 36,
               child: Row(
                 children: [
                   Expanded(
@@ -459,10 +644,10 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                       padding: const EdgeInsets.only(left: 20),
                       itemCount: days.length,
                       itemBuilder: (_, i) => GestureDetector(
-                        onTap: () => setState(() => _selectedDay = i),
+                        onTap: () => _onDaySelected(i),
                         child: Container(
                           margin: const EdgeInsets.only(right: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                           decoration: BoxDecoration(
                             color: _selectedDay == i ? Colors.white : Colors.transparent,
                             borderRadius: BorderRadius.circular(24),
@@ -478,7 +663,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                       ),
                     ),
                   ),
-                  // List/Map toggle inline with day tabs
                   Padding(
                     padding: const EdgeInsets.only(right: 16),
                     child: Container(
@@ -487,7 +671,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         GestureDetector(
                           onTap: () => setState(() => _showMap = false),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: !_showMap ? Colors.white : Colors.transparent,
                               borderRadius: BorderRadius.circular(20),
@@ -498,7 +682,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         GestureDetector(
                           onTap: () => setState(() => _showMap = true),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: _showMap ? Colors.white : Colors.transparent,
                               borderRadius: BorderRadius.circular(20),
@@ -512,11 +696,23 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
           ],
         ),
       ),
     );
+  }
+
+  /// Fallback hero image based on destination
+  String get _heroImageUrl {
+    final dest = _tripDestination.toLowerCase();
+    if (dest.contains('japan') || dest.contains('tokyo')) return 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&q=80';
+    if (dest.contains('thai') || dest.contains('bangkok')) return 'https://images.unsplash.com/photo-1563492065599-3520f775eeed?w=800&q=80';
+    if (dest.contains('paris') || dest.contains('france')) return 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80';
+    if (dest.contains('london') || dest.contains('uk')) return 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&q=80';
+    if (dest.contains('bali') || dest.contains('indonesia')) return 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800&q=80';
+    if (dest.contains('korea') || dest.contains('seoul')) return 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800&q=80';
+    return 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&q=80';
   }
 
   Widget _buildAiChipsRow() {
@@ -548,7 +744,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(16)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // PM fix #1: collapsible header
         GestureDetector(
           onTap: () => setState(() => _insightExpanded = !_insightExpanded),
           child: Row(children: [
@@ -562,54 +757,62 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             ),
           ]),
         ),
-        if (_insightExpanded) ...[
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8, runSpacing: 8,
-            children: (prefs.map((t) => t.toString()).toList()).map((tag) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.4)), borderRadius: BorderRadius.circular(16)),
-                child: Text(tag, style: const TextStyle(fontSize: 12, color: AppColors.brandBlue, fontWeight: FontWeight.w500)),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 10),
-          const Text('Based on your preferences', style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.textSecondary)),
-          if (canEdit) ...[
-            const SizedBox(height: 12),
-            Row(children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _regenerating ? null : _handleRegenerate,
-                  icon: _regenerating
-                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.refresh, size: 14),
-                  label: Text(_regenerating ? 'Generating...' : 'Regenerate', style: const TextStyle(fontSize: 13)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.brandBlue,
-                    side: const BorderSide(color: AppColors.brandBlue),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
-                ),
+        // #1: Only show content when explicitly expanded
+        AnimatedCrossFade(
+          firstChild: const SizedBox.shrink(),
+          secondChild: Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Wrap(
+                spacing: 8, runSpacing: 8,
+                children: (prefs.map((t) => t.toString()).toList()).map((tag) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.4)), borderRadius: BorderRadius.circular(16)),
+                    child: Text(tag, style: const TextStyle(fontSize: 12, color: AppColors.brandBlue, fontWeight: FontWeight.w500)),
+                  );
+                }).toList(),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.auto_awesome, size: 14),
-                  label: const Text('Optimize', style: TextStyle(fontSize: 13)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.brandBlue, foregroundColor: Colors.white, elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+              const SizedBox(height: 10),
+              const Text('Based on your preferences', style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.textSecondary)),
+              if (canEdit) ...[
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _regenerating ? null : _handleRegenerate,
+                      icon: _regenerating
+                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.refresh, size: 14),
+                      label: Text(_regenerating ? 'Generating...' : 'Regenerate', style: const TextStyle(fontSize: 13)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.brandBlue,
+                        side: const BorderSide(color: AppColors.brandBlue),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.auto_awesome, size: 14),
+                      label: const Text('Optimize', style: TextStyle(fontSize: 13)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.brandBlue, foregroundColor: Colors.white, elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
+                ]),
+              ],
             ]),
-          ],
-        ],
+          ),
+          crossFadeState: _insightExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 250),
+        ),
       ]),
     );
   }
@@ -633,7 +836,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     final spent = (_trip?.budgetSpent ?? 0) / (days.length > 0 ? days.length : 1);
     final total = (_trip?.budgetTotal ?? 0) / (days.length > 0 ? days.length : 1);
     final pct = total > 0 ? (spent / total).clamp(0.0, 1.0) : 0.0;
-    // PM fix #4: blue gradient for under budget, red for over
     final barColor = pct < 0.8 ? AppColors.brandBlue : AppColors.error;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -652,11 +854,12 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       if (total > 0) ...[
         const SizedBox(height: 8),
         Row(children: [
-          Text('฿${_formatNum(spent.toInt())} / ฿${_formatNum(total.toInt())}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          Text('\u0E3F${_formatNum(spent.toInt())} / \u0E3F${_formatNum(total.toInt())}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
           const SizedBox(width: 10),
+          // #3: Thicker budget bar
           Expanded(child: ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(value: pct, backgroundColor: AppColors.border, valueColor: AlwaysStoppedAnimation(barColor), minHeight: 3),
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(value: pct, backgroundColor: AppColors.border, valueColor: AlwaysStoppedAnimation(barColor), minHeight: 5),
           )),
         ]),
       ],
@@ -664,26 +867,42 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   }
 
   List<Widget> _buildActivityList(List<Map<String, dynamic>> activities, {required bool canEdit}) {
-    final iconMap = {'restaurant': Icons.restaurant, 'temple': Icons.temple_buddhist, 'walk': Icons.directions_walk, 'park': Icons.park, 'nature': Icons.nature, 'hotel': Icons.hotel, 'shopping': Icons.shopping_bag, 'museum': Icons.museum, 'beach': Icons.beach_access};
-    final colorMap = {'restaurant': AppColors.warning, 'temple': AppColors.error, 'walk': AppColors.brandBlue, 'park': AppColors.success, 'nature': AppColors.success, 'hotel': AppColors.brandBlue, 'shopping': Colors.purple, 'museum': AppColors.warning, 'beach': AppColors.brandBlue};
-
     final widgets = <Widget>[];
     for (var i = 0; i < activities.length; i++) {
       final a = activities[i];
-      final name = a['name'] ?? a['title'] ?? 'Activity';
-      final time = a['time'] ?? a['start_time'] ?? '';
-      final desc = a['description'] ?? a['subtitle'] ?? '';
-      final type = (a['type'] ?? a['category'] ?? 'walk').toString().toLowerCase();
+      final name = (a['name'] ?? a['title'] ?? 'Activity').toString();
+      final time = (a['time'] ?? a['start_time'] ?? '').toString();
+      final desc = (a['description'] ?? a['subtitle'] ?? '').toString();
+      final duration = (a['duration'] ?? a['estimated_duration'] ?? '').toString();
+      final category = _inferCategory(a);
 
-      widgets.add(_buildEnhancedActivityCard(
-        time: time.toString(),
-        title: name.toString(),
-        subtitle: desc.toString(),
-        icon: iconMap[type] ?? Icons.place,
-        iconColor: colorMap[type] ?? AppColors.brandBlue,
-        showSwapBadge: canEdit && i == 0,
-        showDragHandle: canEdit,
-      ));
+      // #7: Staggered fade-in animation
+      final delay = (i * 0.1).clamp(0.0, 0.8);
+      final animation = CurvedAnimation(
+        parent: _staggerController,
+        curve: Interval(delay, (delay + 0.4).clamp(0.0, 1.0), curve: Curves.easeOut),
+      );
+
+      widgets.add(
+        FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(animation),
+            child: _buildEnhancedActivityCard(
+              time: time,
+              title: name,
+              subtitle: desc,
+              duration: duration,
+              icon: _iconForCategory(category),
+              iconColor: _colorForCategory(category),
+              showSwapBadge: canEdit && i == 0,
+              showDragHandle: canEdit,
+              placeName: name,
+            ),
+          ),
+        ),
+      );
+      // #8: Better timeline connector
       if (i < activities.length - 1) widgets.add(_timelineDivider());
     }
     return widgets;
@@ -691,48 +910,115 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
   Widget _buildEnhancedActivityCard({
     required String time, required String title, required String subtitle,
+    required String duration,
     required IconData icon, required Color iconColor,
     bool showSwapBadge = false, bool showDragHandle = true,
+    required String placeName,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10), // PM fix #6: more card spacing
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white, borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 2))],
+        // #11: Uniform shadow
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
       ),
-      child: Row(children: [
-        if (showDragHandle) const Icon(Icons.drag_indicator, color: AppColors.textSecondary, size: 18),
-        if (showDragHandle) const SizedBox(width: 8),
-        Container(width: 48, height: 48, decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-          child: Icon(icon, color: iconColor, size: 22)),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          if (time.isNotEmpty) Row(children: [
-            Icon(Icons.access_time, size: 12, color: AppColors.textSecondary),
-            const SizedBox(width: 4),
-            Text(time, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
-            const Spacer(),
-            if (showSwapBadge)
-              // PM fix #5: small icon instead of text
-              Icon(Icons.swap_horiz, size: 16, color: AppColors.brandBlue.withValues(alpha: 0.6)),
-          ]),
-          if (time.isEmpty && showSwapBadge)
-            Align(alignment: Alignment.centerRight, child: Icon(Icons.swap_horiz, size: 16, color: AppColors.brandBlue.withValues(alpha: 0.6))),
-          const SizedBox(height: 2),
-          Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-          if (subtitle.isNotEmpty) Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary), maxLines: 3, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 4),
-          BookingChip(placeName: title),
-        ])),
-      ]),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // #6: Place photo thumbnail
+          ClipRRect(
+            borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
+            child: SizedBox(
+              width: 80,
+              height: 100,
+              child: Image.network(
+                'https://source.unsplash.com/200x200/?${Uri.encodeComponent(placeName)},travel',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  color: iconColor.withValues(alpha: 0.1),
+                  child: Icon(icon, color: iconColor, size: 28),
+                ),
+                loadingBuilder: (_, child, progress) {
+                  if (progress == null) return child;
+                  return Container(
+                    color: iconColor.withValues(alpha: 0.06),
+                    child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: iconColor))),
+                  );
+                },
+              ),
+            ),
+          ),
+          // Card content
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // #4: Time display + duration badge
+                  Row(children: [
+                    if (time.isNotEmpty) ...[
+                      Icon(Icons.access_time, size: 12, color: AppColors.textSecondary),
+                      const SizedBox(width: 4),
+                      Text(time, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                    ],
+                    // #9: Duration badge
+                    if (duration.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.brandBlue.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(duration.startsWith('~') ? duration : '~$duration', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
+                      ),
+                    ],
+                    const Spacer(),
+                    if (showSwapBadge) Icon(Icons.swap_horiz, size: 16, color: AppColors.brandBlue.withValues(alpha: 0.6)),
+                    if (showDragHandle) const Icon(Icons.drag_indicator, color: AppColors.textSecondary, size: 16),
+                  ]),
+                  const SizedBox(height: 4),
+                  // Category icon + title
+                  Row(children: [
+                    Icon(icon, size: 14, color: iconColor),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
+                  ]),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  ],
+                  const SizedBox(height: 4),
+                  BookingChip(placeName: title),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
+  // #8: Enhanced timeline divider with dots
   Widget _timelineDivider() {
     return Padding(
-      padding: const EdgeInsets.only(left: 32),
-      child: Row(children: [Container(width: 2, height: 24, color: AppColors.border)]),
+      padding: const EdgeInsets.only(left: 38),
+      child: SizedBox(
+        height: 28,
+        child: Column(
+          children: [
+            Container(width: 6, height: 6, decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.3), shape: BoxShape.circle)),
+            Expanded(
+              child: CustomPaint(
+                size: const Size(2, 16),
+                painter: _DashedLinePainter(color: AppColors.border),
+              ),
+            ),
+            Container(width: 6, height: 6, decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.3), shape: BoxShape.circle)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -785,4 +1071,28 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       ),
     ]);
   }
+}
+
+/// Custom painter for dashed vertical line
+class _DashedLinePainter extends CustomPainter {
+  final Color color;
+  _DashedLinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+    const dashHeight = 3.0;
+    const gap = 3.0;
+    double y = 0;
+    while (y < size.height) {
+      canvas.drawLine(Offset(size.width / 2, y), Offset(size.width / 2, (y + dashHeight).clamp(0, size.height)), paint);
+      y += dashHeight + gap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

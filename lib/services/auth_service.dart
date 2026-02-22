@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -66,15 +69,31 @@ class AuthService {
   }
 
   // ── Google OAuth ──
+  /// Generate a random nonce string
+  String _generateRawNonce([int length = 32]) {
+    const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
+  }
+
+  /// SHA256 hash of the nonce
+  String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
   Future<AuthResponse> signInWithGoogle() async {
     const webClientId = '566607202117-rocpiig2v082i0fctl6ih9lkjt6vi6gg.apps.googleusercontent.com';
     const iosClientId = '566607202117-4s2hl6tg58li95mb4j90csldh2cc86do.apps.googleusercontent.com';
 
+    // Generate nonce for iOS
+    final rawNonce = _generateRawNonce();
+    final hashedNonce = _sha256ofString(rawNonce);
+
     final isIOS = Platform.isIOS;
 
     final googleSignIn = GoogleSignIn(
-      // On iOS: set serverClientId to webClientId so id_token has web audience
-      // On Android: serverClientId for id_token audience
       clientId: isIOS ? iosClientId : null,
       serverClientId: webClientId,
     );

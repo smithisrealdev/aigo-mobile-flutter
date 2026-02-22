@@ -383,6 +383,18 @@ class _TripCard extends StatelessWidget {
                   child: Text(badge.label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
                 ),
               ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: GestureDetector(
+                  onTap: () => context.push('/trip-summary', extra: trip),
+                  child: Container(
+                    width: 32, height: 32,
+                    decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
+                    child: const Icon(Icons.info_outline, color: Colors.white, size: 16),
+                  ),
+                ),
+              ),
             ],
           ),
           Padding(

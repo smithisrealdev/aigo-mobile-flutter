@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../theme/app_colors.dart';
 import '../services/place_service.dart';
 import '../services/weather_service.dart';
@@ -167,6 +168,20 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                           icon: const Icon(Icons.add),
                           label: const Text('Add to Trip'),
                           style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => context.push('/travel-tips', extra: widget.placeName),
+                          icon: const Icon(Icons.lightbulb_outline, size: 18),
+                          label: const Text('Travel Tips'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.brandBlue,
+                            side: const BorderSide(color: AppColors.brandBlue),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
                         ),
                       ),
                     ]),

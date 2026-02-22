@@ -215,6 +215,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _buildAiQuotaCard(),
                 const SizedBox(height: 8),
 
+                // Saved Places
+                _menuItem(Icons.bookmark_outline, 'Saved Places', onTap: () => context.push('/saved-places')),
+                const SizedBox(height: 8),
+
+                // My Bookings
+                _menuItem(Icons.luggage_outlined, 'My Bookings', onTap: () => context.push('/booking')),
+                const SizedBox(height: 8),
+
                 // Payment History
                 _menuItem(Icons.receipt_long_outlined, 'Payment History', onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PaymentHistoryScreen()));

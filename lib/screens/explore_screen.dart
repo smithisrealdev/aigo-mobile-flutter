@@ -205,10 +205,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           bottom: false,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
-              Text('Discover Your Next Journey', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-              SizedBox(height: 4),
-              Text('Go places and see the world', style: TextStyle(fontSize: 13, color: Colors.white70)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Expanded(child: Text('Discover Your Next Journey', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white))),
+                IconButton(icon: const Icon(Icons.search, color: Colors.white), onPressed: () => context.push('/search-results'), tooltip: 'Search'),
+                IconButton(icon: const Icon(Icons.bookmark_outline, color: Colors.white), onPressed: () => context.push('/saved-places'), tooltip: 'Saved'),
+              ]),
+              const SizedBox(height: 4),
+              const Text('Go places and see the world', style: TextStyle(fontSize: 13, color: Colors.white70)),
             ]),
           ),
         ),

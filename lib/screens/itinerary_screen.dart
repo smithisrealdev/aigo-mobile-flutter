@@ -356,7 +356,17 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                   else
                     ..._buildTimeline(activities, canEdit: canEdit),
                 ],
-                if (_activeSection == 'checklist' && _trip != null) TripChecklistWidget(tripId: _trip!.id),
+                if (_activeSection == 'checklist' && _trip != null) ...[
+                  TripChecklistWidget(tripId: _trip!.id),
+                  const SizedBox(height: 12),
+                  SizedBox(width: double.infinity, child: OutlinedButton.icon(
+                    onPressed: () => context.push('/packing-list', extra: _trip),
+                    icon: const Icon(Icons.backpack_outlined, size: 18),
+                    label: const Text('Generate Packing List'),
+                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.brandBlue, side: const BorderSide(color: AppColors.brandBlue),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 12)),
+                  )),
+                ],
                 if (_activeSection == 'reservations' && _trip != null) TripReservationsWidget(tripId: _trip!.id),
                 if (_activeSection == 'alerts' && _trip != null) TripAlertsWidget(tripId: _trip!.id),
 
@@ -623,6 +633,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       for (final item in [
         ('Edit', Icons.edit), ('Map', Icons.map_outlined),
         ('AI Chat', Icons.chat_bubble_outline), ('Optimize', Icons.auto_awesome),
+        ('Travel Tips', Icons.lightbulb_outline), ('Summary', Icons.summarize_outlined),
+        ('Packing List', Icons.backpack_outlined),
       ].reversed) Padding(padding: const EdgeInsets.only(bottom: 10), child: Row(mainAxisSize: MainAxisSize.min, children: [
         Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8)]),
@@ -633,6 +645,9 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             if (item.$1 == 'AI Chat') context.push('/ai-chat');
             if (item.$1 == 'Map') setState(() => _showMap = true);
             if (item.$1 == 'Optimize') _handleRegenerate();
+            if (item.$1 == 'Travel Tips') context.push('/travel-tips', extra: _tripDestination);
+            if (item.$1 == 'Summary') context.push('/trip-summary', extra: _trip);
+            if (item.$1 == 'Packing List') context.push('/packing-list', extra: _trip);
           }, child: Icon(item.$2, color: Colors.white, size: 20))),
       ])),
     ],

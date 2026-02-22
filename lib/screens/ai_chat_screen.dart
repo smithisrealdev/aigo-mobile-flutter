@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../config/supabase_config.dart';
 import '../theme/app_colors.dart';
 import '../widgets/brand_deco_circles.dart';
 import '../widgets/upgrade_dialog.dart';
@@ -209,13 +210,15 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
 
   Future<void> _generateAndNavigate(String tripId, Map<String, dynamic> tripData) async {
     try {
-      await ItineraryService.instance.generateItinerary(
+      final itinerary = await ItineraryService.instance.generateItinerary(
         params: GenerateItineraryParams(
           destination: tripData['destination']?.toString() ?? '',
           startDate: tripData['start_date']?.toString() ?? '',
           endDate: tripData['end_date']?.toString() ?? '',
         ),
       );
+      // Save generated itinerary back to trip
+      await SupabaseConfig.client.from('trips').update({'itinerary_data': itinerary, 'status': 'published'}).eq('id', tripId);
       if (mounted) context.push('/itinerary');
     } catch (e) {
       if (mounted) {

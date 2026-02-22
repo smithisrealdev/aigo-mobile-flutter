@@ -8,6 +8,7 @@ import '../widgets/upgrade_dialog.dart';
 import '../models/models.dart';
 import '../services/itinerary_service.dart';
 import '../services/trip_service.dart';
+import '../config/supabase_config.dart';
 import '../services/replan_service.dart';
 import '../services/permission_service.dart';
 import '../services/rate_limit_service.dart' as quota;
@@ -155,8 +156,10 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     if (!await _checkAiQuota()) return;
     setState(() => _regenerating = true);
     try {
-      await ItineraryService.instance.generateItinerary(
+      final itinerary = await ItineraryService.instance.generateItinerary(
         params: GenerateItineraryParams(destination: _trip!.destination, startDate: _trip!.startDate ?? '', endDate: _trip!.endDate ?? ''));
+      // Save generated itinerary back to trip
+      await SupabaseConfig.client.from('trips').update({'itinerary_data': itinerary, 'status': 'published'}).eq('id', _trip!.id);
       await quota.RateLimitService.instance.incrementAiUsage();
       ref.invalidate(quota.aiQuotaProvider);
       if (mounted) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Itinerary regenerated!'))); ref.invalidate(tripProvider(_trip!.id)); }

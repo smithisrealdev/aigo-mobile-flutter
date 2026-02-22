@@ -1,4 +1,19 @@
 /// Plan with limits and features.
+import 'dart:convert';
+
+List<String> _parseFeatures(dynamic raw) {
+  if (raw == null) return [];
+  if (raw is List) return raw.cast<String>();
+  if (raw is String) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) return decoded.cast<String>();
+    } catch (_) {}
+    return raw.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+  }
+  return [];
+}
+
 class PlanLimit {
   final String id;
   final String name;
@@ -6,6 +21,7 @@ class PlanLimit {
   final int maxAiRequests;
   final int maxCollaborators;
   final double price;
+  final double yearlyPrice;
   final List<String> features;
 
   PlanLimit({
@@ -15,6 +31,7 @@ class PlanLimit {
     required this.maxAiRequests,
     required this.maxCollaborators,
     required this.price,
+    this.yearlyPrice = 0,
     required this.features,
   });
 
@@ -24,8 +41,9 @@ class PlanLimit {
         maxTrips: json['max_trips'] as int? ?? 3,
         maxAiRequests: json['max_ai_requests'] as int? ?? 10,
         maxCollaborators: json['max_collaborators'] as int? ?? 1,
-        price: (json['price'] as num?)?.toDouble() ?? 0,
-        features: (json['features'] as List?)?.cast<String>() ?? [],
+        price: ((json['monthly_price_cents'] ?? json['price'] ?? 0) as num).toDouble() / 100,
+        yearlyPrice: ((json['yearly_price_cents'] ?? 0) as num).toDouble() / 100,
+        features: _parseFeatures(json['features']),
       );
 
   bool get isFree => name.toLowerCase() == 'free';

@@ -127,8 +127,8 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
   }
 
   Widget _buildPlanCard(PlanLimit plan, bool isCurrent) {
-    final price = _isYearly ? (plan.price * 10 / 12) : plan.price; // yearly = 10 months
-    final priceStr = plan.isFree ? 'Free' : '\$${price.toStringAsFixed(0)}/mo';
+    final price = _isYearly ? (plan.yearlyPrice / 12) : plan.price;
+    final priceStr = plan.isFree ? 'Free' : '\$${price.toStringAsFixed(2)}/mo';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

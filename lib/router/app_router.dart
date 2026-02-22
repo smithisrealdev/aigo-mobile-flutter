@@ -48,7 +48,7 @@ final appRouter = GoRouter(
     if (isSplash || isOnboarding) return null;
 
     // Not logged in → send to login (unless already there)
-    if (!loggedIn && !loggingIn) return '/login';
+    if (!loggedIn && !loggingIn) return "/login";
 
     // Logged in but on login page → send to home
     if (loggedIn && loggingIn) return '/home';

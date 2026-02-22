@@ -188,9 +188,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
           isUser: false,
           time: DateTime.now(),
           text: content.isEmpty ? (summaryText ?? 'Trip planned!') : content,
-          followUps: reply.responseData?['suggestions'] != null
-              ? (reply.responseData!['suggestions'] as List).cast<String>()
-              : null,
+          followUps: _generateFollowUps(content, text.trim()),
         ));
       });
       _scrollToBottom();
@@ -487,64 +485,43 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
     return '$h:$m';
   }
 
-  // Parse markdown images ![alt](IMAGE:name) and render as real images
+  /// Generate contextual follow-up suggestions based on AI response
+  List<String>? _generateFollowUps(String aiResponse, String userMessage) {
+    final lower = aiResponse.toLowerCase();
+    // If AI is asking about dates/time
+    if (lower.contains('when') || lower.contains('เมื่อไหร่') || lower.contains('ช่วงเวลา')) {
+      return ['Next month', '3 months from now', 'Not sure yet'];
+    }
+    // If AI is asking about budget
+    if (lower.contains('budget') || lower.contains('งบ') || lower.contains('ค่าใช้จ่าย')) {
+      return ['Budget-friendly', 'Mid-range', 'Luxury'];
+    }
+    // If AI mentions destinations/places
+    if (lower.contains('recommend') || lower.contains('แนะนำ') || lower.contains('สถานที่')) {
+      return ['Tell me more', 'Other options?', 'Create trip!'];
+    }
+    // If AI is asking about travel style
+    if (lower.contains('style') || lower.contains('สไตล์') || lower.contains('ชอบ')) {
+      return ['Adventure', 'Relaxation', 'Culture & Food'];
+    }
+    // If AI mentions itinerary or planning
+    if (lower.contains('itinerary') || lower.contains('plan') || lower.contains('วางแผน')) {
+      return ['Generate itinerary', 'Adjust dates', 'Add activities'];
+    }
+    // Default follow-ups
+    return ['Tell me more', 'Plan this trip!', 'Other destinations?'];
+  }
+
+  // Strip markdown images — just show the place name inline
   static final _mdImageRegex = RegExp(r'!\[([^\]]*)\]\(IMAGE:([^)]+)\)');
 
   Widget _buildRichText(String text) {
-    final matches = _mdImageRegex.allMatches(text).toList();
-    if (matches.isEmpty) {
-      return Text(text, style: TextStyle(color: _textP(context), fontSize: 15, height: 1.5));
-    }
-
-    final widgets = <Widget>[];
-    int lastEnd = 0;
-    for (final m in matches) {
-      if (m.start > lastEnd) {
-        final before = text.substring(lastEnd, m.start).trim();
-        if (before.isNotEmpty) {
-          widgets.add(Text(before, style: TextStyle(color: _textP(context), fontSize: 15, height: 1.5)));
-        }
-      }
-      final placeName = m.group(2) ?? m.group(1) ?? '';
-      final query = Uri.encodeComponent(placeName);
-      final imageUrl = 'https://images.unsplash.com/photo-1500835556837-99ac94a94552?w=600&q=80&fit=crop';
-      final searchUrl = 'https://source.unsplash.com/600x300/?$query,travel';
-      widgets.add(Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: CachedNetworkImage(
-            imageUrl: searchUrl,
-            height: 160,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            placeholder: (_, __) => Container(
-              height: 160,
-              decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
-              child: const Center(child: Icon(Icons.image_outlined, size: 32, color: Color(0xFFD1D5DB))),
-            ),
-            errorWidget: (_, __, ___) => CachedNetworkImage(
-              imageUrl: imageUrl,
-              height: 160,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-      ));
-      widgets.add(Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: Text(placeName, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _textS(context))),
-      ));
-      lastEnd = m.end;
-    }
-    if (lastEnd < text.length) {
-      final after = text.substring(lastEnd).trim();
-      if (after.isNotEmpty) {
-        widgets.add(Text(after, style: TextStyle(color: _textP(context), fontSize: 15, height: 1.5)));
-      }
-    }
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: widgets);
+    // Remove IMAGE references, keep place names
+    final cleaned = text.replaceAllMapped(_mdImageRegex, (m) {
+      final place = m.group(2) ?? m.group(1) ?? '';
+      return place.isNotEmpty ? '📍 $place' : '';
+    }).trim();
+    return Text(cleaned, style: TextStyle(color: _textP(context), fontSize: 15, height: 1.5));
   }
 
   Widget _buildMessage(_ChatMsg msg, {required bool showAvatar, required bool showTime, required bool showReactions}) {

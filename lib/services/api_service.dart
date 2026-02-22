@@ -7,7 +7,7 @@ class ApiService {
 
   ApiService() {
     _dio = Dio(BaseOptions(
-      baseUrl: 'https://pievxjynaqqiqicujjkl.supabase.co/functions/v1',
+      baseUrl: 'https://dvzqgsukcmdhwwxsynwg.supabase.co/functions/v1',
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 30),
     ));

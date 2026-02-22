@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 import '../services/alert_service.dart';
 import '../services/trip_service.dart';
-import '../models/models.dart';
+import '../models/models.dart' hide TripAlert;
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});

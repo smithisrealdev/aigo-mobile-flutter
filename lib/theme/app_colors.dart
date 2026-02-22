@@ -15,6 +15,8 @@ class AppColors {
   static const Color error = Color(0xFFEF4444);
   static const Color border = Color(0xFFE2E4E9);           // website border
   static const Color cardShadow = Color(0x0A000000);
+  static const Color cardDark = Color(0xFF2A2D35);
+  static const Color surfaceDark = Color(0xFF1E2028);
 
   static const LinearGradient blueGradient = LinearGradient(
     begin: Alignment.topLeft,

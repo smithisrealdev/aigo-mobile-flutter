@@ -202,7 +202,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
         _messages.add(_ChatMsg(
           isUser: false,
           time: DateTime.now(),
-          text: 'Sorry, something went wrong. Please try again.',
+          text: 'Error: $e',
         ));
       });
       _scrollToBottom();

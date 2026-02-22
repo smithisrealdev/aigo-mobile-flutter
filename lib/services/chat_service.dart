@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -252,13 +253,23 @@ class ChatService {
 
       // Parse SSE stream
       final stream = response.data!.stream;
-      final decoder = const Utf8Decoder();
       var textBuffer = '';
       var lastActivityTime = DateTime.now();
+      // Accumulate raw bytes to handle split UTF-8 sequences across chunks
+      final byteBuffer = BytesBuilder(copy: false);
 
       await for (final chunk in stream) {
         lastActivityTime = DateTime.now();
-        textBuffer += decoder.convert(chunk);
+        byteBuffer.add(chunk);
+        // Try decoding all accumulated bytes, allowing malformed at boundary
+        try {
+          final decoded = utf8.decode(byteBuffer.toBytes());
+          byteBuffer.clear();
+          textBuffer += decoded;
+        } on FormatException {
+          // Incomplete UTF-8 at end — wait for more chunks
+          continue;
+        }
 
         int newlineIndex;
         while ((newlineIndex = textBuffer.indexOf('\n')) != -1) {
@@ -326,6 +337,7 @@ class ChatService {
 
       onDone();
     } on DioException catch (e) {
+      debugPrint('Chat DioException: type=${e.type} status=${e.response?.statusCode} msg=${e.message} error=${e.error}');
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout) {
@@ -349,14 +361,14 @@ class ChatService {
       } else if (e.type == DioExceptionType.cancel) {
         // User cancelled — no error
       } else if (e.type == DioExceptionType.connectionError) {
-        onError(ChatErrorCodes.network, isRetrying: false);
+        onError('${ChatErrorCodes.network}: ${e.message}', isRetrying: false);
       } else {
-        onError(ChatErrorCodes.serverError, isRetrying: false);
+        onError('${ChatErrorCodes.serverError}: ${e.type} ${e.response?.statusCode} ${e.message}', isRetrying: false);
       }
       onDone();
-    } catch (e) {
-      debugPrint('Chat stream error: $e');
-      onError(ChatErrorCodes.serverError, isRetrying: false);
+    } catch (e, st) {
+      debugPrint('Chat stream error: $e\n$st');
+      onError('${ChatErrorCodes.serverError}: $e', isRetrying: false);
       onDone();
     }
   }

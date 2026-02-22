@@ -30,8 +30,12 @@ class SharingService {
 
   Future<ShareInfo> enableSharing(String tripId) async {
     try {
+      final userId = _client.auth.currentUser?.id;
       final result =
-          await _client.rpc('enable_trip_sharing', params: {'p_trip_id': tripId});
+          await _client.rpc('enable_trip_sharing', params: {
+            'p_trip_id': tripId,
+            'p_user_id': userId,
+          });
       final token = result is Map
           ? result['share_token'] as String?
           : result?.toString();
@@ -44,7 +48,11 @@ class SharingService {
 
   Future<void> disableSharing(String tripId) async {
     try {
-      await _client.rpc('disable_trip_sharing', params: {'p_trip_id': tripId});
+      final userId = _client.auth.currentUser?.id;
+      await _client.rpc('disable_trip_sharing', params: {
+        'p_trip_id': tripId,
+        'p_user_id': userId,
+      });
     } catch (e) {
       debugPrint('SharingService.disableSharing error: $e');
       rethrow;

@@ -24,7 +24,7 @@ class _ShareTripWidgetState extends ConsumerState<ShareTripWidget> {
     return shareAsync.when(
       loading: () =>
           const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      error: (e, _) => Text('Error: $e'),
+      error: (e, _) => const SizedBox.shrink(),
       data: (info) {
         return Container(
           padding: const EdgeInsets.all(16),
@@ -128,7 +128,7 @@ class _ShareTripWidgetState extends ConsumerState<ShareTripWidget> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Failed: $e')));
+            .showSnackBar(const SnackBar(content: Text('Unable to update sharing. Please try again.')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);

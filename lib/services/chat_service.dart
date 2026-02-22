@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -373,27 +372,25 @@ class ChatService {
       {'role': 'user', 'content': message},
     ];
     final buffer = StringBuffer();
-    final completer = Completer<ChatMessage>();
+    String? errorCode;
 
     await streamChat(
       messages: messages,
       onDelta: (delta) => buffer.write(delta),
-      onDone: () {
-        if (!completer.isCompleted) {
-          completer.complete(ChatMessage(
-            role: 'assistant',
-            content: buffer.toString(),
-          ));
-        }
-      },
-      onError: (errorCode, {bool isRetrying = false}) {
-        if (!isRetrying && !completer.isCompleted) {
-          completer.completeError(Exception(errorCode));
-        }
+      onDone: () {},
+      onError: (code, {bool isRetrying = false}) {
+        if (!isRetrying) errorCode = code;
       },
     );
 
-    return completer.future;
+    if (errorCode != null) {
+      throw Exception(errorCode);
+    }
+
+    return ChatMessage(
+      role: 'assistant',
+      content: buffer.toString(),
+    );
   }
 
   /// Submit feedback on an AI response.

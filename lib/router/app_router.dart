@@ -13,6 +13,8 @@ import '../screens/packing_list_screen.dart';
 import '../screens/travel_tips_screen.dart';
 import '../screens/budget_screen.dart';
 import '../screens/booking_screen.dart';
+import '../screens/flight_search_screen.dart';
+import '../screens/hotel_search_screen.dart';
 import '../screens/trip_summary_screen.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/profile_screen.dart';
@@ -69,6 +71,8 @@ final appRouter = GoRouter(
     GoRoute(path: '/travel-tips', builder: (_, __) => const TravelTipsScreen()),
     GoRoute(path: '/budget', builder: (_, __) => const BudgetScreen()),
     GoRoute(path: '/booking', builder: (_, __) => const BookingScreen()),
+    GoRoute(path: '/flight-search', builder: (_, __) => const FlightSearchScreen()),
+    GoRoute(path: '/hotel-search', builder: (_, __) => const HotelSearchScreen()),
     GoRoute(path: '/trip-summary', builder: (_, __) => const TripSummaryScreen()),
     GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
     GoRoute(path: '/saved-places', builder: (_, __) => const SavedPlacesScreen()),

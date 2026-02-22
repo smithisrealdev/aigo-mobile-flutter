@@ -35,6 +35,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   bool _regenerating = false;
   bool _replanning = false;
   String _activeSection = 'itinerary';
+  bool _insightExpanded = false; // PM fix #1: collapsible insight card
 
   Trip? get _trip => widget.trip;
 
@@ -142,7 +143,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       ref.invalidate(quota.aiQuotaProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result.success ? '✨ ${result.summary}' : result.summary)),
+          SnackBar(content: Text(result.success ? '${result.summary}' : result.summary)),
         );
         if (result.success) ref.invalidate(tripProvider(_trip!.id));
       }
@@ -217,14 +218,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         child: Column(
           children: [
             _buildHeroHeader(days, role),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Row(children: [
-                _viewToggleButton('List', Icons.list, !_showMap),
-                const SizedBox(width: 8),
-                _viewToggleButton('Map', Icons.map, _showMap),
-              ]),
-            ),
             Expanded(
               child: _showMap
                   ? TripMapView(activities: _mapActivities.isNotEmpty ? _mapActivities : const [
@@ -265,7 +258,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                               icon: _replanning
                                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                                   : const Icon(Icons.auto_fix_high, size: 16),
-                              label: Text(_replanning ? 'Replanning...' : '✨ Smart Replan Day ${_selectedDay + 1}'),
+                              label: Text(_replanning ? 'Replanning...' : 'Smart Replan Day ${_selectedDay + 1}'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: const Color(0xFF8B5CF6),
                                 side: const BorderSide(color: Color(0xFF8B5CF6)),
@@ -356,8 +349,14 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
   Widget _buildHeroHeader(List<Map<String, dynamic>> days, String role) {
     final perm = PermissionService.instance;
+    final coverImage = _trip?.coverImage;
     return Container(
-      decoration: const BoxDecoration(gradient: AppColors.blueGradient),
+      decoration: BoxDecoration(
+        gradient: coverImage == null ? AppColors.blueGradient : null,
+        image: coverImage != null
+            ? DecorationImage(image: NetworkImage(coverImage), fit: BoxFit.cover, colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.35), BlendMode.darken))
+            : null,
+      ),
       child: SafeArea(
         bottom: false,
         child: Column(
@@ -371,17 +370,10 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                   Expanded(child: Row(children: [
                     Flexible(child: Text(_tripTitle, style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white))),
                     const SizedBox(width: 8),
-                    // Role badge
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        role.toUpperCase(),
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5),
-                      ),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
+                      child: Text(role.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5)),
                     ),
                   ])),
                   IconButton(
@@ -427,31 +419,68 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 ),
               ),
             const SizedBox(height: 16),
-            // Day tabs
+            // PM fix #3: Day tabs + List/Map toggle on same row
             SizedBox(
               height: 44,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: days.length,
-                itemBuilder: (_, i) => GestureDetector(
-                  onTap: () => setState(() => _selectedDay = i),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: _selectedDay == i ? Colors.white : Colors.transparent,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Text(
-                      'Day ${i + 1}',
-                      style: TextStyle(
-                        color: _selectedDay == i ? AppColors.brandBlue : Colors.white.withValues(alpha: 0.85),
-                        fontWeight: FontWeight.w600, fontSize: 14,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(left: 20),
+                      itemCount: days.length,
+                      itemBuilder: (_, i) => GestureDetector(
+                        onTap: () => setState(() => _selectedDay = i),
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: _selectedDay == i ? Colors.white : Colors.transparent,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Text(
+                            'Day ${i + 1}',
+                            style: TextStyle(
+                              color: _selectedDay == i ? AppColors.brandBlue : Colors.white.withValues(alpha: 0.85),
+                              fontWeight: FontWeight.w600, fontSize: 14,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                  // List/Map toggle inline with day tabs
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: Container(
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        GestureDetector(
+                          onTap: () => setState(() => _showMap = false),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: !_showMap ? Colors.white : Colors.transparent,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Icon(Icons.list, size: 18, color: !_showMap ? AppColors.brandBlue : Colors.white70),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => setState(() => _showMap = true),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _showMap ? Colors.white : Colors.transparent,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Icon(Icons.map_outlined, size: 18, color: _showMap ? AppColors.brandBlue : Colors.white70),
+                          ),
+                        ),
+                      ]),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 20),
@@ -461,43 +490,26 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     );
   }
 
-  Widget _viewToggleButton(String label, IconData icon, bool active) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _showMap = label == 'Map'),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: active ? AppColors.brandBlue : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: active ? AppColors.brandBlue : AppColors.border),
-          ),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon, size: 16, color: active ? Colors.white : AppColors.textSecondary),
-            const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: active ? Colors.white : AppColors.textSecondary)),
-          ]),
-        ),
-      ),
-    );
-  }
-
   Widget _buildAiChipsRow() {
     return Row(children: [
-      _aiChip('✨ AI Generated', AppColors.brandBlue),
+      _aiChip('AI Generated', AppColors.brandBlue, Icons.auto_awesome),
       const SizedBox(width: 8),
-      _aiChip('👤 Tailored for you', AppColors.success),
+      _aiChip('Tailored for you', AppColors.success, Icons.person),
       const SizedBox(width: 8),
-      _aiChip('📶 Offline ready', const Color(0xFF6B7280)),
+      _aiChip('Offline ready', const Color(0xFF6B7280), Icons.cloud_done),
     ]);
   }
 
-  Widget _aiChip(String label, Color color) {
+  Widget _aiChip(String label, Color color, IconData icon) {
     return Container(
       height: 28, padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
       alignment: Alignment.center,
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 12, color: color),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+      ]),
     );
   }
 
@@ -507,52 +519,67 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(16)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('✨ Optimized for your travel style', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8, runSpacing: 8,
-          children: (prefs.map((t) => t.toString()).toList()).map((tag) {
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.4)), borderRadius: BorderRadius.circular(16)),
-              child: Text(tag, style: const TextStyle(fontSize: 12, color: AppColors.brandBlue, fontWeight: FontWeight.w500)),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 10),
-        const Text('Based on your preferences', style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.textSecondary)),
-        if (canEdit) ...[
-          const SizedBox(height: 12),
-          Row(children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _regenerating ? null : _handleRegenerate,
-                icon: _regenerating
-                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('🔄', style: TextStyle(fontSize: 14)),
-                label: Text(_regenerating ? 'Generating...' : 'Regenerate'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.brandBlue,
-                  side: const BorderSide(color: AppColors.brandBlue),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {},
-                icon: const Text('✨', style: TextStyle(fontSize: 14)),
-                label: const Text('Optimize'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.brandBlue, foregroundColor: Colors.white, elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-              ),
+        // PM fix #1: collapsible header
+        GestureDetector(
+          onTap: () => setState(() => _insightExpanded = !_insightExpanded),
+          child: Row(children: [
+            const Icon(Icons.auto_awesome, size: 16, color: AppColors.brandBlue),
+            const SizedBox(width: 6),
+            Expanded(child: Text('Optimized for your travel style', style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary))),
+            AnimatedRotation(
+              turns: _insightExpanded ? 0.5 : 0,
+              duration: const Duration(milliseconds: 200),
+              child: const Icon(Icons.expand_more, size: 20, color: AppColors.textSecondary),
             ),
           ]),
+        ),
+        if (_insightExpanded) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8, runSpacing: 8,
+            children: (prefs.map((t) => t.toString()).toList()).map((tag) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.4)), borderRadius: BorderRadius.circular(16)),
+                child: Text(tag, style: const TextStyle(fontSize: 12, color: AppColors.brandBlue, fontWeight: FontWeight.w500)),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 10),
+          const Text('Based on your preferences', style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.textSecondary)),
+          if (canEdit) ...[
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _regenerating ? null : _handleRegenerate,
+                  icon: _regenerating
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.refresh, size: 14),
+                  label: Text(_regenerating ? 'Generating...' : 'Regenerate', style: const TextStyle(fontSize: 13)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.brandBlue,
+                    side: const BorderSide(color: AppColors.brandBlue),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.auto_awesome, size: 14),
+                  label: const Text('Optimize', style: TextStyle(fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.brandBlue, foregroundColor: Colors.white, elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+            ]),
+          ],
         ],
       ]),
     );
@@ -567,7 +594,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     final spent = (_trip?.budgetSpent ?? 0) / (days.length > 0 ? days.length : 1);
     final total = (_trip?.budgetTotal ?? 0) / (days.length > 0 ? days.length : 1);
     final pct = total > 0 ? (spent / total).clamp(0.0, 1.0) : 0.0;
-    final barColor = pct < 0.6 ? AppColors.success : (pct < 0.85 ? AppColors.warning : AppColors.error);
+    // PM fix #4: blue gradient for under budget, red for over
+    final barColor = pct < 0.8 ? AppColors.brandBlue : AppColors.error;
 
     return Row(children: [
       Container(
@@ -626,7 +654,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     bool showSwapBadge = false, bool showDragHandle = true,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 4),
+      margin: const EdgeInsets.only(bottom: 10), // PM fix #6: more card spacing
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white, borderRadius: BorderRadius.circular(16),
@@ -643,11 +671,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             Text(time, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
             const Spacer(),
             if (showSwapBadge)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
-                child: const Text('Tap to Swap', style: TextStyle(fontSize: 10, color: AppColors.brandBlue, fontWeight: FontWeight.w600)),
-              ),
+              // PM fix #5: small icon instead of text
+              Icon(Icons.swap_horiz, size: 16, color: AppColors.brandBlue.withValues(alpha: 0.6)),
           ]),
           const SizedBox(height: 2),
           Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),

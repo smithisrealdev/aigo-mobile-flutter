@@ -5,11 +5,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/models.dart';
 import '../models/pending_change.dart';
+import 'auth_service.dart';
 import 'connectivity_service.dart';
 import 'offline_service.dart';
 
 // ──────────────────────────────────────────────
 // Trip service — CRUD via Supabase client (with offline fallback)
+// Matches website direct Supabase CRUD patterns
 // ──────────────────────────────────────────────
 
 class TripService {
@@ -22,7 +24,7 @@ class TripService {
   OfflineService get _cache => OfflineService.instance;
   bool get _online => ConnectivityService.instance.isOnline;
 
-  // ── Trips ──
+  // ── Trips (matches website .from('trips') patterns) ──
 
   Future<List<Trip>> listTrips({int limit = 50, int offset = 0}) async {
     try {
@@ -33,7 +35,6 @@ class TripService {
           .order('created_at', ascending: false)
           .range(offset, offset + limit - 1);
       final trips = (data as List).map((e) => Trip.fromJson(e)).toList();
-      // Update cache.
       _cache.cacheTrips(trips);
       return trips;
     } catch (e) {
@@ -79,13 +80,51 @@ class TripService {
 
   Future<Trip> updateTrip(String id, Map<String, dynamic> updates) async {
     updates['updated_at'] = DateTime.now().toIso8601String();
-    final data =
-        await _client.from('trips').update(updates).eq('id', id).select().single();
+    final data = await _client
+        .from('trips')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
     return Trip.fromJson(data);
   }
 
   Future<void> deleteTrip(String id) async {
     await _client.from('trips').delete().eq('id', id);
+  }
+
+  /// Save a generated trip from itinerary generation response.
+  /// Matches website's saveGeneratedTrip pattern.
+  Future<Trip> saveGeneratedTrip({
+    required String title,
+    required String destination,
+    required Map<String, dynamic> itineraryData,
+    String? startDate,
+    String? endDate,
+    double? budgetTotal,
+    String? budgetCurrency,
+    String? coverImage,
+  }) async {
+    final userId = _uid;
+    if (userId == null) throw Exception('Not authenticated');
+
+    final data = await _client
+        .from('trips')
+        .insert({
+          'user_id': userId,
+          'title': title,
+          'destination': destination,
+          'itinerary_data': itineraryData,
+          'status': 'completed',
+          if (startDate != null) 'start_date': startDate,
+          if (endDate != null) 'end_date': endDate,
+          if (budgetTotal != null) 'budget_total': budgetTotal,
+          if (budgetCurrency != null) 'budget_currency': budgetCurrency,
+          if (coverImage != null) 'cover_image': coverImage,
+        })
+        .select()
+        .single();
+    return Trip.fromJson(data);
   }
 
   // ── Manual Expenses ──
@@ -121,6 +160,17 @@ class TripService {
     final data = await _client
         .from('manual_expenses')
         .insert(expense.toInsertJson())
+        .select()
+        .single();
+    return ManualExpense.fromJson(data);
+  }
+
+  Future<ManualExpense> updateExpense(
+      String id, Map<String, dynamic> updates) async {
+    final data = await _client
+        .from('manual_expenses')
+        .update(updates)
+        .eq('id', id)
         .select()
         .single();
     return ManualExpense.fromJson(data);
@@ -246,6 +296,8 @@ class TripService {
 final tripServiceProvider = Provider((_) => TripService.instance);
 
 final tripsProvider = FutureProvider<List<Trip>>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return [];
   return TripService.instance.listTrips();
 });
 

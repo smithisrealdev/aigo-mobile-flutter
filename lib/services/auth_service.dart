@@ -7,7 +7,7 @@ import '../config/supabase_config.dart';
 import '../models/models.dart';
 
 // ──────────────────────────────────────────────
-// Auth service — thin wrapper around Supabase Auth
+// Auth service — matches AuthContext.tsx
 // ──────────────────────────────────────────────
 
 class AuthService {
@@ -23,20 +23,40 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
   bool get isAuthenticated => currentSession != null;
 
-  // ── Email / password ──
+  /// Get current access token, refreshing if needed.
+  Future<String?> getAccessToken() async {
+    final session = _auth.currentSession;
+    if (session == null) return null;
+
+    // Check if token is about to expire (within 60s)
+    final expiresAt = session.expiresAt;
+    if (expiresAt != null) {
+      final expiresDate =
+          DateTime.fromMillisecondsSinceEpoch(expiresAt * 1000);
+      if (expiresDate.difference(DateTime.now()).inSeconds < 60) {
+        final refreshed = await _auth.refreshSession();
+        return refreshed.session?.accessToken;
+      }
+    }
+    return session.accessToken;
+  }
+
+  // ── Email / password (matches AuthContext.tsx) ──
+
+  /// signUp passes full_name in data metadata, matching website.
   Future<AuthResponse> signUp({
     required String email,
     required String password,
-    String? fullName,
+    required String fullName,
   }) async {
-    final res = await _auth.signUp(
+    return _auth.signUp(
       email: email,
       password: password,
-      data: fullName != null ? {'full_name': fullName} : null,
+      data: {'full_name': fullName},
     );
-    return res;
   }
 
+  /// signIn with email/password, matching website.
   Future<AuthResponse> signIn({
     required String email,
     required String password,
@@ -46,12 +66,8 @@ class AuthService {
 
   // ── Google OAuth ──
   Future<AuthResponse> signInWithGoogle() async {
-    /// On mobile we use the native Google Sign-In flow, then pass the
-    /// id_token to Supabase for verification.
-    const webClientId =
-        ''; // TODO: set your Google OAuth web client ID here
-    const iosClientId =
-        ''; // TODO: set your iOS client ID here
+    const webClientId = '';
+    const iosClientId = '';
 
     final googleSignIn = GoogleSignIn(
       clientId: iosClientId.isNotEmpty ? iosClientId : null,
@@ -91,11 +107,14 @@ class AuthService {
   Future<void> updateProfile({String? fullName, String? homeCurrency}) async {
     final uid = currentUser?.id;
     if (uid == null) return;
-    await _client.from('profiles').update({
-      if (fullName != null) 'full_name': fullName,
-      if (homeCurrency != null) 'home_currency': homeCurrency,
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', uid);
+    await _client
+        .from('profiles')
+        .update({
+          if (fullName != null) 'full_name': fullName,
+          if (homeCurrency != null) 'home_currency': homeCurrency,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', uid);
   }
 
   // ── Sign out ──
@@ -119,9 +138,21 @@ final currentUserProvider = Provider<User?>((ref) {
   return authState.whenOrNull(data: (state) => state.session?.user);
 });
 
+/// Current session.
+final currentSessionProvider = Provider<Session?>((ref) {
+  final authState = ref.watch(authStateProvider);
+  return authState.whenOrNull(data: (state) => state.session);
+});
+
 /// Whether the user is authenticated.
 final isAuthenticatedProvider = Provider<bool>((ref) {
   return ref.watch(currentUserProvider) != null;
+});
+
+/// Auth loading state.
+final authLoadingProvider = Provider<bool>((ref) {
+  final authState = ref.watch(authStateProvider);
+  return authState.isLoading;
 });
 
 /// User profile from `profiles` table.

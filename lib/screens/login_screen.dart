@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 import '../services/auth_service.dart';
+import '../config/supabase_config.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -36,6 +37,71 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
       duration: const Duration(seconds: 6),
     )..repeat();
+  }
+
+  Future<void> _showForgotPassword() async {
+    final resetEmailController = TextEditingController(text: _emailController.text);
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Reset Password', style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            Text('Enter your email and we\'ll send you a reset link.', style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textSecondary)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: resetEmailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                hintText: 'Email address',
+                prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () async {
+                  final email = resetEmailController.text.trim();
+                  if (email.isEmpty) return;
+                  try {
+                    await SupabaseConfig.client.auth.resetPasswordForEmail(email);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Check your email for reset link')),
+                      );
+                    }
+                  } catch (e) {
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.brandBlue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text('Send Reset Link', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    resetEmailController.dispose();
   }
 
   Future<void> _handleEmailAuth() async {
@@ -412,7 +478,7 @@ class _LoginScreenState extends State<LoginScreen>
             Text('Remember me', style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textSecondary)),
             const Spacer(),
             GestureDetector(
-              onTap: () {},
+              onTap: () => _showForgotPassword(),
               child: Text('Forgot password?', style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.brandBlue, fontWeight: FontWeight.w500)),
             ),
           ],

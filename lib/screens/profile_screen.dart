@@ -215,6 +215,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _buildAiQuotaCard(),
                 const SizedBox(height: 8),
 
+                // Subscription
+                _menuItem(Icons.workspace_premium_outlined, 'Subscription', onTap: () => context.push('/pricing')),
+                const SizedBox(height: 8),
+
+                // Account Settings
+                _menuItem(Icons.settings_outlined, 'Account Settings', onTap: () => context.push('/account-settings')),
+                const SizedBox(height: 8),
+
                 // Saved Places
                 _menuItem(Icons.bookmark_outline, 'Saved Places', onTap: () => context.push('/saved-places')),
                 const SizedBox(height: 8),

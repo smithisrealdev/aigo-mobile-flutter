@@ -2,10 +2,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_colors.dart';
 import '../services/trip_service.dart';
 import '../services/auth_service.dart';
+import '../config/supabase_config.dart';
 import '../models/models.dart';
 
 class TripsListScreen extends ConsumerStatefulWidget {
@@ -69,12 +71,168 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
     return const _Badge('Upcoming', AppColors.brandBlue);
   }
 
+  void _showCreateTripSheet(BuildContext context) {
+    final destController = TextEditingController();
+    final budgetController = TextEditingController();
+    String currency = 'USD';
+    String style = 'balanced';
+    DateTime? startDate;
+    DateTime? endDate;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 16),
+                Text('Create New Trip', style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: destController,
+                  decoration: InputDecoration(
+                    labelText: 'Destination',
+                    prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () async {
+                          final d = await showDatePicker(context: ctx, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 730)));
+                          if (d != null) setSheetState(() => startDate = d);
+                        },
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: 'Start Date',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: Text(startDate != null ? '${startDate!.month}/${startDate!.day}/${startDate!.year}' : 'Select', style: GoogleFonts.dmSans(fontSize: 13)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () async {
+                          final d = await showDatePicker(context: ctx, firstDate: startDate ?? DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 730)));
+                          if (d != null) setSheetState(() => endDate = d);
+                        },
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: 'End Date',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: Text(endDate != null ? '${endDate!.month}/${endDate!.day}/${endDate!.year}' : 'Select', style: GoogleFonts.dmSans(fontSize: 13)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: budgetController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Budget',
+                          prefixIcon: const Icon(Icons.account_balance_wallet_outlined, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 100,
+                      child: DropdownButtonFormField<String>(
+                        value: currency,
+                        items: ['USD', 'EUR', 'GBP', 'THB', 'JPY'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                        onChanged: (v) => currency = v ?? 'USD',
+                        decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: style,
+                  items: ['budget', 'balanced', 'comfort', 'luxury'].map((s) => DropdownMenuItem(value: s, child: Text(s[0].toUpperCase() + s.substring(1)))).toList(),
+                  onChanged: (v) => style = v ?? 'balanced',
+                  decoration: InputDecoration(
+                    labelText: 'Travel Style',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final dest = destController.text.trim();
+                      if (dest.isEmpty) return;
+                      final uid = SupabaseConfig.client.auth.currentUser?.id;
+                      if (uid == null) return;
+                      final trip = Trip(
+                        id: '',
+                        userId: uid,
+                        title: dest,
+                        destination: dest,
+                        status: 'draft',
+                        startDate: startDate?.toIso8601String(),
+                        endDate: endDate?.toIso8601String(),
+                        budgetTotal: double.tryParse(budgetController.text),
+                        budgetCurrency: currency,
+                      );
+                      try {
+                        await TripService.instance.createTrip(trip);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        ref.invalidate(tripsProvider);
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.brandBlue,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text('Create Trip', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tripsAsync = ref.watch(tripsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showCreateTripSheet(context),
+        backgroundColor: AppColors.brandBlue,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
       body: Column(
         children: [
           // Brand blue header
@@ -387,7 +545,7 @@ class _TripCard extends StatelessWidget {
                 top: 12,
                 right: 12,
                 child: GestureDetector(
-                  onTap: () => context.push('/trip-summary', extra: trip),
+                  onTap: () {},
                   child: Container(
                     width: 32, height: 32,
                     decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),

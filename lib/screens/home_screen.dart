@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
@@ -29,6 +30,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   final TextEditingController _tripController = TextEditingController();
   bool _isInputActive = false;
+  bool _emailBannerDismissed = false;
 
   static const _prompts = [
     'Weekend getaway in Paris',
@@ -116,6 +118,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         children: [
           // ── Compact Header with embedded search ──
           _buildHeader(context),
+
+          // ── Email verification banner ──
+          _buildEmailVerificationBanner(),
 
           // ── Scrollable body ──
           Expanded(
@@ -513,6 +518,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   String _monthDay(DateTime d) {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return '${months[d.month - 1]} ${d.day}';
+  }
+
+  Widget _buildEmailVerificationBanner() {
+    if (_emailBannerDismissed) return const SizedBox.shrink();
+    final user = SupabaseConfig.client.auth.currentUser;
+    if (user == null || user.emailConfirmedAt != null) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, size: 18, color: AppColors.warning),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text('Please verify your email', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await SupabaseConfig.client.auth.resend(type: OtpType.email, email: user.email!);
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Verification email sent')));
+              } catch (e) {
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+              }
+            },
+            style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(50, 30)),
+            child: const Text('Resend', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _emailBannerDismissed = true),
+            child: const Icon(Icons.close, size: 16, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
   }
 
   // ── Header: compact blue with embedded search ──

@@ -151,24 +151,32 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   int get _totalPlaces => _allActivities.length;
 
   List<MapActivity> get _mapActivities {
-    return _currentActivities.where((a) {
-      final coords = a['coordinates'];
-      return (a['lat'] != null && a['lng'] != null) ||
-          (coords is Map && coords['lat'] != null && coords['lng'] != null);
-    }).map((a) {
-      final coords = a['coordinates'] as Map<String, dynamic>?;
-      final lat = (a['lat'] as num?)?.toDouble() ??
-          (coords?['lat'] as num?)?.toDouble() ??
-          0.0;
-      final lng = (a['lng'] as num?)?.toDouble() ??
-          (coords?['lng'] as num?)?.toDouble() ??
-          0.0;
-      return MapActivity(
+    final result = <MapActivity>[];
+    for (var dayIdx = 0; dayIdx < _days.length; dayIdx++) {
+      final day = _days[dayIdx];
+      final acts = day['activities'] ?? day['places'] ?? [];
+      if (acts is! List) continue;
+      var numInDay = 0;
+      for (final a in acts) {
+        if (a is! Map<String, dynamic>) continue;
+        final coords = a['coordinates'] as Map<String, dynamic>?;
+        final lat = (a['lat'] as num?)?.toDouble() ??
+            (coords?['lat'] as num?)?.toDouble();
+        final lng = (a['lng'] as num?)?.toDouble() ??
+            (coords?['lng'] as num?)?.toDouble();
+        if (lat == null || lng == null) continue;
+        numInDay++;
+        result.add(MapActivity(
           name: a['name'] ?? a['title'] ?? '',
           time: a['time'] ?? '',
           lat: lat,
-          lng: lng);
-    }).toList();
+          lng: lng,
+          dayIndex: dayIdx,
+          numberInDay: numInDay,
+        ));
+      }
+    }
+    return result;
   }
 
   String get _tripTitle => _trip?.title ?? 'Trip Itinerary';

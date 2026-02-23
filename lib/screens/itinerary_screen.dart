@@ -680,16 +680,16 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   SliverAppBar _buildHeroAppBar(PermissionService perm, String role) {
     final images = _heroImages;
     return SliverAppBar(
-      expandedHeight: 300,
+      expandedHeight: 320,
       pinned: true,
       automaticallyImplyLeading: false,
       backgroundColor: Colors.white,
       flexibleSpace: FlexibleSpaceBar(
         collapseMode: CollapseMode.parallax,
         background: Stack(children: [
-          // Photo carousel — occupies top portion
+          // Photo carousel — full height, card overlaps bottom
           SizedBox(
-            height: 260,
+            height: 280,
             width: double.infinity,
             child: PageView.builder(
               itemCount: images.length,
@@ -698,7 +698,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 imageUrl: images[i],
                 fit: BoxFit.cover,
                 width: double.infinity,
-                height: 260,
+                height: 280,
                 errorWidget: (_, __, ___) =>
                     Container(color: AppColors.brandBlue),
               ),
@@ -707,7 +707,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           // Dot indicators on photo
           if (images.length > 1)
             Positioned(
-              bottom: 60,
+              bottom: 65,
               left: 0,
               right: 0,
               child: Row(
@@ -755,37 +755,38 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             right: 0,
             bottom: 0,
             child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-              decoration: const BoxDecoration(
+              padding: const EdgeInsets.fromLTRB(20, 20, 16, 12),
+              decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -2))],
               ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
                     child: Text(
                       _tripTitle,
                       style: GoogleFonts.dmSans(
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary,
-                        height: 1.2,
+                        height: 1.25,
                       ),
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   OutlinedButton.icon(
                     onPressed: () {},
-                    icon: const Icon(Icons.person_add_alt, size: 16),
+                    icon: const Icon(Icons.person_add_alt, size: 14),
                     label: Text('Follow', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.textPrimary,
                       side: const BorderSide(color: Color(0xFFE5E7EB)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
@@ -831,19 +832,20 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             iconColor: AppColors.textSecondary,
           ),
         const SizedBox(width: 8),
-        // Days badge (filled blue)
+        // Days badge (outline style)
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.brandBlue,
+            color: AppColors.brandBlue.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.3)),
           ),
           child: Text(
             '$_dayCount ${_dayCount == 1 ? 'day' : 'days'}',
             style: GoogleFonts.dmSans(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Colors.white,
+              color: AppColors.brandBlue,
             ),
           ),
         ),
@@ -1905,13 +1907,14 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   Widget _circleBtn(IconData icon, VoidCallback onTap) => GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 36,
-          height: 36,
+          width: 38,
+          height: 38,
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.white.withValues(alpha: 0.85),
             shape: BoxShape.circle,
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8)],
           ),
-          child: Icon(icon, color: Colors.white, size: 18),
+          child: Icon(icon, color: AppColors.textPrimary, size: 18),
         ),
       );
 

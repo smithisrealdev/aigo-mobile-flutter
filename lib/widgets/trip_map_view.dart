@@ -149,7 +149,7 @@ class _TripMapViewState extends State<TripMapView>
       southwest: LatLng(minLat, minLng),
       northeast: LatLng(maxLat, maxLng),
     );
-    controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 60));
+    controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
   }
 
   Future<void> _buildMarkers() async {
@@ -242,8 +242,11 @@ class _TripMapViewState extends State<TripMapView>
         polylines.add(Polyline(
           polylineId: PolylineId('route_${entry.key}_$i'),
           points: routePoints,
-          color: color.withValues(alpha: 0.35),
-          width: 3,
+          color: color.withValues(alpha: 0.5),
+          width: 4,
+          patterns: routePoints.length <= 2
+              ? [PatternItem.dash(8), PatternItem.gap(6)]
+              : [], // solid for real routes, dashed for fallback straight lines
         ));
       }
     }
@@ -257,17 +260,20 @@ class _TripMapViewState extends State<TripMapView>
       final url = Uri.parse(
           'https://maps.googleapis.com/maps/api/directions/json'
           '?origin=$lat1,$lng1&destination=$lat2,$lng2&key=$_googleMapsKey');
-      final resp = await http.get(url).timeout(const Duration(seconds: 8));
+      final resp = await http.get(url).timeout(const Duration(seconds: 15));
       final data = jsonDecode(resp.body);
       final routes = data['routes'] as List?;
       if (routes != null && routes.isNotEmpty) {
         final encoded =
             routes[0]['overview_polyline']?['points'] as String?;
         if (encoded != null && encoded.isNotEmpty) {
+          debugPrint('Directions OK: ${encoded.length} chars');
           return _decodePolyline(encoded);
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Directions API error: $e');
+    }
     return [];
   }
 
@@ -318,7 +324,7 @@ class _TripMapViewState extends State<TripMapView>
     final image = await recorder.endRecording().toImage(w.toInt(), h.toInt());
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
     return BitmapDescriptor.bytes(bytes!.buffer.asUint8List(),
-        width: 40, height: 54);
+        width: 32, height: 43);
   }
 
   Path _teardropPath(double cx, double w, double h, double inset) {

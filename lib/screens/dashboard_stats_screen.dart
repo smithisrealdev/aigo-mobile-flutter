@@ -17,9 +17,9 @@ class DashboardStatsScreen extends ConsumerWidget {
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
-            child: BrandDecoCircles(
-              height: 160,
-              child: SafeArea(
+            child: Stack(children: [
+              const BrandDecoCircles(height: 160),
+              SafeArea(
                 bottom: false,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -35,7 +35,7 @@ class DashboardStatsScreen extends ConsumerWidget {
                   ]),
                 ),
               ),
-            ),
+            ]),
           ),
           SliverPadding(
             padding: const EdgeInsets.all(20),
@@ -47,7 +47,7 @@ class DashboardStatsScreen extends ConsumerWidget {
               data: (trips) {
                 final totalTrips = trips.length;
                 final destinations = trips
-                    .map((t) => t['destination']?.toString() ?? '')
+                    .map((t) => t.destination)
                     .where((d) => d.isNotEmpty)
                     .toSet();
                 final countries = destinations
@@ -56,19 +56,17 @@ class DashboardStatsScreen extends ConsumerWidget {
 
                 double totalBudget = 0;
                 for (final t in trips) {
-                  final b = t['budget_total'];
-                  if (b is num) totalBudget += b.toDouble();
+                  if (t.budgetTotal != null) totalBudget += t.budgetTotal!;
                 }
 
                 final categories = <String, int>{};
                 for (final t in trips) {
-                  final cat = (t['category'] ?? 'general').toString();
+                  final cat = t.category ?? 'general';
                   categories[cat] = (categories[cat] ?? 0) + 1;
                 }
 
                 return SliverList(
                   delegate: SliverChildListDelegate([
-                    // Summary cards row
                     Row(children: [
                       Expanded(child: _statCard('Trips', '$totalTrips',
                           Icons.flight_takeoff, AppColors.brandBlue, isDark)),
@@ -86,8 +84,6 @@ class DashboardStatsScreen extends ConsumerWidget {
                           Icons.savings, AppColors.warning, isDark)),
                     ]),
                     const SizedBox(height: 24),
-
-                    // Travel style breakdown
                     Text('Travel Style',
                         style: GoogleFonts.dmSans(
                             fontSize: 18, fontWeight: FontWeight.w700,
@@ -95,18 +91,14 @@ class DashboardStatsScreen extends ConsumerWidget {
                     const SizedBox(height: 12),
                     ...categories.entries.map((e) => _categoryBar(
                         e.key, e.value, totalTrips, isDark)),
-
                     const SizedBox(height: 24),
-
-                    // Recent destinations
                     Text('Destinations Visited',
                         style: GoogleFonts.dmSans(
                             fontSize: 18, fontWeight: FontWeight.w700,
                             color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary)),
                     const SizedBox(height: 12),
                     Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                      spacing: 8, runSpacing: 8,
                       children: destinations.map((d) => Chip(
                         avatar: const Icon(Icons.place, size: 16, color: AppColors.brandBlue),
                         label: Text(d, style: const TextStyle(fontSize: 12)),

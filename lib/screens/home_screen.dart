@@ -152,10 +152,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    _buildStyleTags(),
-
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
 
                     // ── Quick Actions ──
                     const Text(
@@ -233,23 +230,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
                     const SizedBox(height: 20),
 
-                    // ── Budget Overview ──
-                    const Text(
-                      'Your Budget',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
+                    // ── Budget Overview (only if trips exist) ──
                     tripsAsync.when(
-                      data: (trips) => _buildBudgetReal(context, trips),
-                      loading: () => _buildBudgetSkeleton(),
-                      error: (_, __) => _buildBudget(context),
+                      data: (trips) => trips.isEmpty
+                          ? const SizedBox.shrink()
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Your Budget',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                _buildBudgetReal(context, trips),
+                                const SizedBox(height: 24),
+                              ],
+                            ),
+                      loading: () => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Your Budget', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                          const SizedBox(height: 10),
+                          _buildBudgetSkeleton(),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
                     ),
-
-                    const SizedBox(height: 24),
 
                     // ── AI Picks for You ──
                     _buildAiPicksHeader(context),
@@ -558,8 +569,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 SvgPicture.asset('assets/images/logo_white.svg', height: 28),
                 const Spacer(),
                 // Notification bell
-                Stack(
-                  children: [
                     IconButton(
                       icon: const Icon(Icons.notifications_outlined,
                           color: Colors.white, size: 22),
@@ -570,20 +579,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         minHeight: 36,
                       ),
                     ),
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFEF4444),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
                 const SizedBox(width: 4),
                 GestureDetector(
                   onTap: () => context.go('/profile'),
@@ -698,33 +693,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  // ── Style Tags with label ──
-  Widget _buildStyleTags() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Your interests',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 8,
-          runSpacing: 6,
-          children: [
-            _styleTag(Icons.park_outlined, 'Nature'),
-            _styleTag(Icons.account_balance_outlined, 'Culture'),
-            _styleTag(Icons.restaurant_outlined, 'Local Food'),
-          ],
-        ),
-      ],
-    );
-  }
-
   // ── Budget Card (fallback) ──
   Widget _buildBudget(BuildContext context) {
     return GestureDetector(
@@ -833,7 +801,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=400&h=300&fit=crop',
             title: 'Hidden Kyoto',
             subtitle: 'Nature & temples',
-            match: '95% match',
+            badge: 'Popular',
             onTap: () => context.push('/place-detail'),
           ),
           const SizedBox(width: 12),
@@ -842,7 +810,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400&h=300&fit=crop',
             title: 'Ubud Culture',
             subtitle: 'Rice fields & art',
-            match: '92% match',
+            badge: 'Trending',
           ),
           const SizedBox(width: 12),
           _AiPickCard(
@@ -850,7 +818,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 'https://images.unsplash.com/photo-1506665531195-3566af2b4dfa?w=400&h=300&fit=crop',
             title: 'Chiang Mai Slow',
             subtitle: 'Local food & nature',
-            match: '89% match',
+            badge: 'Popular',
           ),
         ],
       ),
@@ -862,33 +830,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (query.isNotEmpty) {
       context.push('/ai-chat', extra: query);
     }
-  }
-
-  static Widget _styleTag(IconData icon, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.brandBlue.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-            color: AppColors.brandBlue.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: AppColors.brandBlue),
-          const SizedBox(width: 5),
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: AppColors.brandBlue,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildTailoredForYou() {
@@ -920,7 +861,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ...items.map((item) => Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: Row(children: [
-                      Text(item.emoji, style: const TextStyle(fontSize: 16)),
+                      Icon(_emojiToIcon(item.emoji), size: 18, color: AppColors.brandBlue),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(
@@ -949,7 +890,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(children: [
-                  const Text('💡', style: TextStyle(fontSize: 14)),
+                  const Icon(Icons.lightbulb_outline, size: 16, color: AppColors.brandBlue),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(result.structured!.tip!,
@@ -964,20 +905,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       },
     );
   }
+  static IconData _emojiToIcon(String emoji) {
+    if (emoji.contains('🍜') || emoji.contains('🍽') || emoji.contains('🍕')) return Icons.restaurant;
+    if (emoji.contains('🌿') || emoji.contains('🌳') || emoji.contains('🏔')) return Icons.park;
+    if (emoji.contains('🏛') || emoji.contains('🎭')) return Icons.account_balance;
+    if (emoji.contains('🛍')) return Icons.shopping_bag;
+    if (emoji.contains('🧗') || emoji.contains('🏄')) return Icons.hiking;
+    if (emoji.contains('✈') || emoji.contains('🌍')) return Icons.flight;
+    if (emoji.contains('💰') || emoji.contains('💵')) return Icons.savings;
+    if (emoji.contains('☀') || emoji.contains('🌤')) return Icons.wb_sunny;
+    return Icons.place;
+  }
 }
 
 class _AiPickCard extends StatelessWidget {
   final String imageUrl;
   final String title;
   final String subtitle;
-  final String match;
+  final String badge;
   final VoidCallback? onTap;
 
   const _AiPickCard({
     required this.imageUrl,
     required this.title,
     required this.subtitle,
-    required this.match,
+    required this.badge,
     this.onTap,
   });
 
@@ -1031,7 +983,7 @@ class _AiPickCard extends StatelessWidget {
                         size: 10, color: Colors.white),
                     const SizedBox(width: 3),
                     Text(
-                      match,
+                      badge,
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,

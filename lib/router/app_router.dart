@@ -31,6 +31,7 @@ import '../screens/expense_splitter_screen.dart';
 import '../screens/budget_categories_screen.dart';
 import '../screens/activity_feed_screen.dart';
 import '../screens/referral_screen.dart';
+import '../screens/reviews_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../models/models.dart';
 
@@ -97,6 +98,14 @@ final appRouter = GoRouter(
     GoRoute(path: '/budget-categories', builder: (_, __) => const BudgetCategoriesScreen()),
     GoRoute(path: '/activity-feed', builder: (_, __) => const ActivityFeedScreen()),
     GoRoute(path: '/referral', builder: (_, __) => const ReferralScreen()),
+    GoRoute(path: '/reviews', builder: (_, state) {
+      final extra = state.extra as Map<String, String?>? ?? {};
+      return ReviewsScreen(
+        tripId: extra['tripId'],
+        placeId: extra['placeId'],
+        title: extra['title'],
+      );
+    }),
     GoRoute(path: '/place-detail', builder: (_, state) {
       final extra = state.extra;
       if (extra is Map<String, String?>) {

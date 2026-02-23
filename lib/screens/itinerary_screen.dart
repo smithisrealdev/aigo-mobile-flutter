@@ -18,6 +18,10 @@ import '../widgets/trip_reservations_widget.dart';
 import '../widgets/trip_members_widget.dart';
 import '../widgets/share_trip_widget.dart';
 import '../widgets/trip_alerts_widget.dart';
+import '../models/review_model.dart';
+import '../services/review_service.dart';
+import '../widgets/review_summary.dart';
+import '../widgets/review_list.dart';
 import '../widgets/activity_detail_sheet.dart';
 
 class ItineraryScreen extends ConsumerStatefulWidget {
@@ -643,7 +647,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                                 ('itinerary', 'Itinerary'),
                                 ('checklist', 'Checklist'),
                                 ('reservations', 'Reservations'),
-                                ('alerts', 'Alerts')
+                                ('alerts', 'Alerts'),
+                                ('reviews', 'Reviews')
                               ])
                                 Expanded(
                                     child: GestureDetector(
@@ -735,6 +740,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         TripReservationsWidget(tripId: _trip!.id),
                       if (_activeSection == 'alerts' && _trip != null)
                         TripAlertsWidget(tripId: _trip!.id),
+                      if (_activeSection == 'reviews' && _trip != null)
+                        _TripReviewsSection(tripId: _trip!.id),
 
                       // Trip-level info removed from Itinerary tab
                       // Budget → FAB Summary, Tips → FAB Travel Tips
@@ -2168,4 +2175,62 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                     child:
                         const Icon(Icons.add, color: Colors.white, size: 28))),
           ]);
+}
+
+
+// ── Trip Reviews Section (embedded in itinerary tabs) ──
+class _TripReviewsSection extends StatefulWidget {
+  final String tripId;
+  const _TripReviewsSection({required this.tripId});
+
+  @override
+  State<_TripReviewsSection> createState() => _TripReviewsSectionState();
+}
+
+class _TripReviewsSectionState extends State<_TripReviewsSection> {
+  List<Review> _reviews = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final reviews =
+        await ReviewService.instance.getReviewsForTrip(widget.tripId);
+    if (mounted) setState(() { _reviews = reviews; _loading = false; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ReviewSummary(reviews: _reviews),
+        const SizedBox(height: 12),
+        ReviewList(reviews: _reviews, loading: _loading),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => context.push('/reviews', extra: {
+              'tripId': widget.tripId,
+              'title': 'Trip Reviews',
+            }),
+            icon: const Icon(Icons.rate_review_outlined, size: 18),
+            label: const Text('View All Reviews'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF2563EB),
+              side: const BorderSide(color: Color(0xFF2563EB)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

@@ -220,6 +220,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _menuItem(Icons.luggage_outlined, 'My Bookings', onTap: () => context.push('/booking')),
                 const SizedBox(height: 8),
 
+                // My Reviews
+                _menuItem(Icons.rate_review_outlined, 'My Reviews', onTap: () => context.push('/reviews', extra: <String, String?>{'title': 'My Reviews'})),
+                const SizedBox(height: 8),
+
                 // Payment History
                 _menuItem(Icons.receipt_long_outlined, 'Payment History', onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PaymentHistoryScreen()));

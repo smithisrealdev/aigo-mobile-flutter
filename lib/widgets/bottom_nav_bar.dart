@@ -27,6 +27,7 @@ class ScaffoldWithNav extends StatelessWidget {
     final idx = _currentIndex(context);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Stack(
         clipBehavior: Clip.none,
         children: [

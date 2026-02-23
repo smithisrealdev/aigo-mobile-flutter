@@ -33,7 +33,7 @@ class ItineraryScreen extends ConsumerStatefulWidget {
 
 class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     with TickerProviderStateMixin {
-  int _selectedDay = 0;
+  int _selectedDay = -1; // -1 = All days
   bool _fabExpanded = false;
   bool _isBookmarked = false;
   bool _showMap = false;
@@ -97,7 +97,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   }
 
   List<Map<String, dynamic>> get _currentActivities =>
-      _activitiesForDay(_selectedDay);
+      _selectedDay < 0 ? _allActivities : _activitiesForDay(_selectedDay);
 
   List<Map<String, dynamic>> get _allActivities {
     final all = <Map<String, dynamic>>[];
@@ -589,31 +589,36 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                                       child: ListView.builder(
                                   scrollDirection: Axis.horizontal,
                                   padding: const EdgeInsets.only(left: 16),
-                                  itemCount: days.length,
-                                  itemBuilder: (_, i) => GestureDetector(
-                                    onTap: () => _onDaySelected(i),
-                                    child: Container(
-                                      margin: const EdgeInsets.only(
-                                          right: 6, top: 6, bottom: 6),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 18),
-                                      alignment: Alignment.center,
-                                      decoration: BoxDecoration(
-                                          color: _selectedDay == i
-                                              ? Colors.white
-                                              : Colors.white
-                                                  .withValues(alpha: 0.15),
-                                          borderRadius:
-                                              BorderRadius.circular(24)),
-                                      child: Text('Day ${i + 1}',
-                                          style: TextStyle(
-                                              color: _selectedDay == i
-                                                  ? AppColors.brandBlue
-                                                  : Colors.white,
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 13)),
-                                    ),
-                                  ),
+                                  itemCount: days.length + 1, // +1 for "All"
+                                  itemBuilder: (_, i) {
+                                    final isAll = i == 0;
+                                    final dayIdx = i - 1; // -1 = All
+                                    final isSelected = _selectedDay == dayIdx;
+                                    return GestureDetector(
+                                      onTap: () => _onDaySelected(dayIdx),
+                                      child: Container(
+                                        margin: const EdgeInsets.only(
+                                            right: 6, top: 6, bottom: 6),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 18),
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? Colors.white
+                                                : Colors.white
+                                                    .withValues(alpha: 0.15),
+                                            borderRadius:
+                                                BorderRadius.circular(24)),
+                                        child: Text(isAll ? 'All' : 'Day $i',
+                                            style: TextStyle(
+                                                color: isSelected
+                                                    ? AppColors.brandBlue
+                                                    : Colors.white,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 13)),
+                                      ),
+                                    );
+                                  },
                                 ))),
                                 Container(
                                   margin: const EdgeInsets.only(right: 16),
@@ -1003,7 +1008,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
               decoration: BoxDecoration(
                   color: AppColors.brandBlue,
                   borderRadius: BorderRadius.circular(12)),
-              child: Text('Day ${_selectedDay + 1}',
+              child: Text(_selectedDay < 0 ? 'All' : 'Day ${_selectedDay + 1}',
                   style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -1347,6 +1352,42 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
   // ─── Day Header Card ───
   Widget _dayHeaderCard() {
+    if (_selectedDay < 0) {
+      // "All" mode — show summary
+      final totalActivities = _allActivities.length;
+      double totalCost = 0;
+      for (final a in _allActivities) {
+        final c = a['cost'] ?? a['estimated_cost'];
+        if (c is num) totalCost += c.toDouble();
+        else if (c is Map) { final amount = c['amount']; if (amount is num) totalCost += amount.toDouble(); }
+        else if (c is String) { final parsed = double.tryParse(c.replaceAll(RegExp(r'[^\d.]'), '')); if (parsed != null) totalCost += parsed; }
+      }
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))]),
+        child: Row(children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+            child: const Icon(Icons.calendar_view_month, size: 18, color: AppColors.brandBlue),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('All Days', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            Text('${_days.length} days · $totalActivities places', style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
+          ])),
+          if (totalCost > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+              child: Text('\$${totalCost.toStringAsFixed(0)}', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.success)),
+            ),
+        ]),
+      );
+    }
     final day =
         _selectedDay < _days.length ? _days[_selectedDay] : <String, dynamic>{};
     final title = day['title'] ?? day['name'] ?? 'Day ${_selectedDay + 1}';
@@ -1537,6 +1578,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             );
           },
           onReorder: (oldIndex, newIndex) {
+            if (_selectedDay < 0) return; // no reorder in All mode
             setState(() {
               if (newIndex > oldIndex) newIndex--;
               final day = _days[_selectedDay];

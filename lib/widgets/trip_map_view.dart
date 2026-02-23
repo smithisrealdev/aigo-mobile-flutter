@@ -185,7 +185,7 @@ class _TripMapViewState extends State<TripMapView>
         markerId: MarkerId('activity_${a.dayIndex}_${a.numberInDay}'),
         position: LatLng(a.lat, a.lng),
         icon: _iconCache[cacheKey]!,
-        anchor: const Offset(0.5, 0.5),
+        anchor: const Offset(0.5, 1.0),
         onTap: () {
           setState(() {
             if (_selected == a) {
@@ -277,33 +277,30 @@ class _TripMapViewState extends State<TripMapView>
     return [];
   }
 
-  /// Small circle pin — like Wanderlog/Google Maps style
-  /// Compact numbered circle with white border + shadow
+  /// Small teardrop pin — Google Maps style, colored, with white number
   Future<BitmapDescriptor> _createPin(String label, Color color) async {
-    const size = 80.0;
-    const r = 32.0;
-    final cx = size / 2;
-    final cy = size / 2;
+    const w = 64.0;
+    const h = 88.0;
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
+    final cx = w / 2;
 
-    // Drop shadow
-    canvas.drawCircle(
-      Offset(cx, cy + 2),
-      r + 2,
+    // Shadow
+    canvas.drawPath(
+      _pinPath(cx, w, h, 2),
       Paint()
-        ..color = Colors.black.withValues(alpha: 0.25)
+        ..color = Colors.black.withValues(alpha: 0.3)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
     );
 
     // White border
-    canvas.drawCircle(Offset(cx, cy), r + 3, Paint()..color = Colors.white);
+    canvas.drawPath(_pinPath(cx, w, h, 0), Paint()..color = Colors.white);
 
     // Colored fill
-    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = color);
+    canvas.drawPath(_pinPath(cx, w, h, 3), Paint()..color = color);
 
-    // Number
-    final fontSize = label.length > 1 ? 28.0 : 32.0;
+    // Number text
+    final fontSize = label.length > 1 ? 22.0 : 26.0;
     final tp = TextPainter(
       text: TextSpan(
         text: label,
@@ -315,13 +312,28 @@ class _TripMapViewState extends State<TripMapView>
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
+    // Position number in upper circle area of teardrop
+    tp.paint(canvas, Offset(cx - tp.width / 2, h * 0.27 - tp.height / 2));
 
-    final image =
-        await recorder.endRecording().toImage(size.toInt(), size.toInt());
+    final image = await recorder.endRecording().toImage(w.toInt(), h.toInt());
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
     return BitmapDescriptor.bytes(bytes!.buffer.asUint8List(),
-        width: 28, height: 28);
+        width: 24, height: 33);
+  }
+
+  /// Google Maps-style pin path: circle top + pointed bottom
+  Path _pinPath(double cx, double w, double h, double inset) {
+    final r = (w - inset * 2) / 2;
+    final cy = r + inset; // center of circle
+    final tipY = h - inset;
+    return Path()
+      ..addArc(
+        Rect.fromCircle(center: Offset(cx, cy), radius: r),
+        3.14 * 0.15, // start angle (just past top-left)
+        3.14 * 1.7,  // sweep most of circle
+      )
+      ..lineTo(cx, tipY) // point to bottom tip
+      ..close();
   }
 
   LatLng get _center {
@@ -362,6 +374,41 @@ class _TripMapViewState extends State<TripMapView>
         mapToolbarEnabled: false,
         mapType: MapType.normal,
       ),
+      // Fit all places button
+      Positioned(
+        bottom: _selected != null ? 160 : 16,
+        left: 0,
+        right: 0,
+        child: Center(
+          child: GestureDetector(
+            onTap: _fitBounds,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2)),
+                ],
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.zoom_out_map,
+                    size: 16, color: Colors.grey.shade700),
+                const SizedBox(width: 6),
+                Text('Fit all places',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700)),
+              ]),
+            ),
+          ),
+        ),
+      ),
       // Info card with slide-up animation
       if (_selected != null)
         AnimatedBuilder(
@@ -382,143 +429,173 @@ class _TripMapViewState extends State<TripMapView>
   Widget _buildInfoCard(MapActivity a) {
     final color = dayColors[a.dayIndex % dayColors.length];
     return Material(
-      elevation: 12,
+      elevation: 16,
       borderRadius: BorderRadius.circular(16),
-      shadowColor: Colors.black26,
+      shadowColor: Colors.black54,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFF1E1E2E),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Row(children: [
-          // Photo
-          ClipRRect(
-            borderRadius:
-                const BorderRadius.horizontal(left: Radius.circular(16)),
-            child: SizedBox(
-              width: 110,
-              height: 110,
-              child: a.imageUrl != null && a.imageUrl!.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: a.imageUrl!,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(
-                        color: color.withValues(alpha: 0.1),
-                        child: Icon(Icons.place, color: color, size: 32),
-                      ),
-                    )
-                  : Container(
-                      color: color.withValues(alpha: 0.08),
-                      child: Icon(Icons.place, color: color, size: 32),
-                    ),
-            ),
-          ),
-          // Info
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-              child: Column(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 8, 0),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Day + Category badges
-                  Row(children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text('DAY ${a.dayIndex + 1}',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800)),
-                    ),
-                    if (a.category != null && a.category!.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(4),
+                  // Day badge + name
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Name with day-colored number badge
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${a.numberInDay}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                a.name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
-                        child: Text(
-                          a.category!.substring(0, 1).toUpperCase() +
-                              a.category!.substring(1),
-                          style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade700),
-                        ),
-                      ),
-                    ],
-                  ]),
-                  const SizedBox(height: 6),
-                  // Name
-                  Text(a.name,
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w700),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 4),
-                  // Rating + time
-                  Row(children: [
-                    if (a.rating != null) ...[
-                      const Icon(Icons.star,
-                          size: 13, color: Color(0xFFF59E0B)),
-                      const SizedBox(width: 2),
-                      Text('${a.rating}',
-                          style: const TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.w600)),
-                      const SizedBox(width: 8),
-                    ],
-                    if (a.time.isNotEmpty) ...[
-                      Icon(Icons.schedule,
-                          size: 12, color: Colors.grey.shade500),
-                      const SizedBox(width: 3),
-                      Text(a.time,
-                          style: TextStyle(
-                              fontSize: 11, color: Colors.grey.shade600)),
-                    ],
-                  ]),
-                  // Cost
-                  if (a.cost != null &&
-                      a.cost!.isNotEmpty &&
-                      a.cost != 'Free') ...[
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(a.cost!,
-                          style: const TextStyle(
-                              color: Color(0xFF10B981),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 6),
+                        // Category + rating + time
+                        Row(children: [
+                          if (a.category != null &&
+                              a.category!.isNotEmpty) ...[
+                            Icon(Icons.place,
+                                size: 12, color: Colors.grey.shade400),
+                            const SizedBox(width: 3),
+                            Text(
+                              a.category!,
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey.shade400),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          if (a.rating != null) ...[
+                            const Icon(Icons.star,
+                                size: 12, color: Color(0xFFF59E0B)),
+                            const SizedBox(width: 2),
+                            Text('${a.rating}',
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white70,
+                                    fontWeight: FontWeight.w600)),
+                            const SizedBox(width: 8),
+                          ],
+                          if (a.time.isNotEmpty) ...[
+                            Icon(Icons.schedule,
+                                size: 12, color: Colors.grey.shade500),
+                            const SizedBox(width: 3),
+                            Text(a.time,
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade400)),
+                          ],
+                        ]),
+                      ],
                     ),
-                  ],
+                  ),
+                  // Photo thumbnail (right side)
+                  const SizedBox(width: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: SizedBox(
+                      width: 70,
+                      height: 70,
+                      child: a.imageUrl != null && a.imageUrl!.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: a.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, __, ___) => Container(
+                                color: color.withValues(alpha: 0.2),
+                                child: Icon(Icons.place,
+                                    color: color, size: 24),
+                              ),
+                            )
+                          : Container(
+                              color: color.withValues(alpha: 0.15),
+                              child:
+                                  Icon(Icons.place, color: color, size: 24),
+                            ),
+                    ),
+                  ),
+                  // Close button
+                  GestureDetector(
+                    onTap: () {
+                      setState(() => _selected = null);
+                      _cardAnimController.reverse();
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.only(left: 4),
+                      child:
+                          Icon(Icons.close, size: 16, color: Colors.white38),
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-          // Close
-          GestureDetector(
-            onTap: () {
-              setState(() => _selected = null);
-              _cardAnimController.reverse();
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Icon(Icons.close, size: 18, color: Colors.grey.shade400),
+            // Bottom row: cost + actions
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+              child: Row(children: [
+                if (a.cost != null &&
+                    a.cost!.isNotEmpty &&
+                    a.cost != 'Free')
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(a.cost!,
+                        style: const TextStyle(
+                            color: Color(0xFF10B981),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700)),
+                  ),
+                const Spacer(),
+                Text('Day ${a.dayIndex + 1}',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: color,
+                        fontWeight: FontWeight.w600)),
+              ]),
             ),
-          ),
-        ]),
+          ],
+        ),
       ),
     );
   }

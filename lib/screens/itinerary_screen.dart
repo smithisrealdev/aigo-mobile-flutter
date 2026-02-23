@@ -613,21 +613,18 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             // ── MAP (inline, toggleable) ──
             if (_showMap) ...[
               SliverToBoxAdapter(
-                child: Column(children: [
-                  _buildMapBar(role, days),
-                  SizedBox(
-                    height: 300,
-                    child: TripMapView(
-                      selectedDayIndex: _selectedDay,
-                      activities: _mapActivities.isNotEmpty
-                          ? _mapActivities
-                          : const [
-                              MapActivity(
-                                  name: '', time: '', lat: 35.6762, lng: 139.6503)
-                            ],
-                    ),
+                child: SizedBox(
+                  height: 300,
+                  child: TripMapView(
+                    selectedDayIndex: _selectedDay,
+                    activities: _mapActivities.isNotEmpty
+                        ? _mapActivities
+                        : const [
+                            MapActivity(
+                                name: '', time: '', lat: 35.6762, lng: 139.6503)
+                          ],
                   ),
-                ]),
+                ),
               ),
             ],
 

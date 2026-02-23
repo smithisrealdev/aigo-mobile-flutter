@@ -630,9 +630,37 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       _budgetCard(),
       const SizedBox(height: 16),
 
-      // 6.5 Checklist (inline)
+      // 6.5 Checklist (inline, wrapped in card)
       if (_trip != null) ...[
-        TripChecklistWidget(tripId: _trip!.id),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.brandBlue.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.checklist, size: 22, color: AppColors.brandBlue),
+                ),
+                const SizedBox(width: 14),
+                Expanded(child: Text('Checklist', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary))),
+                const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+              ]),
+              const SizedBox(height: 12),
+              TripChecklistWidget(tripId: _trip!.id),
+            ],
+          ),
+        ),
         const SizedBox(height: 16),
       ],
 

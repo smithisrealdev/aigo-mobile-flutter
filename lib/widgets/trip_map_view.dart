@@ -119,7 +119,6 @@ class _TripMapViewState extends State<TripMapView>
       ));
     }
     if (mounted) setState(() => _markers = m);
-    _fetchRoutes();
   }
 
   void _selectPin(MapActivity a) {
@@ -198,7 +197,7 @@ class _TripMapViewState extends State<TripMapView>
     final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
     // Display at 28×37 logical px (crisp on retina)
     return BitmapDescriptor.bytes(bytes!.buffer.asUint8List(),
-        width: 28, height: 37);
+        width: 36, height: 48);
   }
 
   // ─── Routes (Directions API) ─────────────────────────────
@@ -327,7 +326,7 @@ class _TripMapViewState extends State<TripMapView>
       GoogleMap(
         initialCameraPosition: CameraPosition(target: _center, zoom: 12),
         markers: _markers,
-        polylines: _polylines,
+        polylines: const {},
         onMapCreated: (c) {
           if (!_mapCtrl.isCompleted) _mapCtrl.complete(c);
           Future.delayed(const Duration(milliseconds: 500), _fitBounds);

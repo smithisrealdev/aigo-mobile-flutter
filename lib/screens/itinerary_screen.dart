@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -761,6 +762,9 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 fit: BoxFit.cover,
                 width: double.infinity,
                 height: 280,
+                fadeInDuration: const Duration(milliseconds: 300),
+                fadeOutDuration: const Duration(milliseconds: 150),
+                placeholder: (_, __) => Container(height: 280, color: const Color(0xFFF3F4F6)),
                 errorWidget: (_, __, ___) =>
                     Container(color: AppColors.brandBlue),
               ),
@@ -1415,10 +1419,49 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           final actNum = globalIndex + 1;
 
           // Activity card
-          widgets.add(GestureDetector(
-            onTap: () => showActivityDetailSheet(context,
-                activity: a, tripId: _trip?.id ?? ''),
-            child: _activityCard(a, actNum, dayIdx: dayIdx, canEdit: canEdit),
+          final actName = (a['name'] ?? a['place'] ?? 'Activity').toString();
+          widgets.add(Dismissible(
+            key: Key('activity_${dayIdx}_$i'),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.delete_outline, color: Colors.red),
+            ),
+            confirmDismiss: (direction) async {
+              HapticFeedback.mediumImpact();
+              return await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Remove Activity'),
+                  content: Text('Remove "$actName" from itinerary?'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove', style: TextStyle(color: Colors.red))),
+                  ],
+                ),
+              ) ?? false;
+            },
+            onDismissed: (_) {
+              setState(() {
+                final acts = _days[dayIdx]['activities'] ?? _days[dayIdx]['places'] ?? [];
+                if (acts is List && i < acts.length) {
+                  acts.removeAt(i);
+                }
+              });
+            },
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                showActivityDetailSheet(context,
+                    activity: a, tripId: _trip?.id ?? '');
+              },
+              child: _activityCard(a, actNum, dayIdx: dayIdx, canEdit: canEdit),
+            ),
           ));
 
           // Travel connector between activities
@@ -1578,6 +1621,9 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
               height: 200,
               width: double.infinity,
               fit: BoxFit.cover,
+              fadeInDuration: const Duration(milliseconds: 300),
+              fadeOutDuration: const Duration(milliseconds: 150),
+              placeholder: (_, __) => Container(height: 200, color: const Color(0xFFF3F4F6)),
               errorWidget: (_, __, ___) => Container(
                 height: 200,
                 color: catColor.withValues(alpha: 0.08),
@@ -2218,7 +2264,10 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         FloatingActionButton(
           heroTag: 'main',
           backgroundColor: AppColors.brandBlue,
-          onPressed: () => setState(() => _fabExpanded = !_fabExpanded),
+          onPressed: () {
+            HapticFeedback.mediumImpact();
+            setState(() => _fabExpanded = !_fabExpanded);
+          },
           child: AnimatedRotation(
             turns: _fabExpanded ? 0.125 : 0,
             duration: const Duration(milliseconds: 200),

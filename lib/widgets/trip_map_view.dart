@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:http/http.dart' as http;
@@ -61,6 +62,22 @@ class _TripMapViewState extends State<TripMapView>
   final Map<String, BitmapDescriptor> _iconCache = {};
   static final Map<String, List<LatLng>> _routeCache = {};
 
+  static const _mapStyle = '''
+[
+  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#e0f0ff"}]},
+  {"featureType":"landscape","elementType":"geometry","stylers":[{"color":"#f5f5f5"}]},
+  {"featureType":"road","elementType":"geometry","stylers":[{"color":"#ffffff"}]},
+  {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#e0e0e0"}]},
+  {"featureType":"poi","elementType":"labels","stylers":[{"visibility":"off"}]},
+  {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#e8f5e9"}]},
+  {"featureType":"transit","stylers":[{"visibility":"off"}]},
+  {"featureType":"administrative","elementType":"geometry.stroke","stylers":[{"color":"#c0c0c0"}]},
+  {"featureType":"road","elementType":"labels","stylers":[{"visibility":"simplified"}]},
+  {"featureType":"administrative.land_parcel","stylers":[{"visibility":"off"}]},
+  {"featureType":"administrative.neighborhood","stylers":[{"visibility":"off"}]}
+]
+''';
+
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
   MapActivity? _selected;
@@ -71,7 +88,7 @@ class _TripMapViewState extends State<TripMapView>
   void initState() {
     super.initState();
     _cardAnim = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 280));
+        vsync: this, duration: const Duration(milliseconds: 400));
     _rebuild();
   }
 
@@ -123,7 +140,8 @@ class _TripMapViewState extends State<TripMapView>
     if (mounted) setState(() => _markers = m);
   }
 
-  void _selectPin(MapActivity a) {
+  void _selectPin(MapActivity a) async {
+    HapticFeedback.selectionClick();
     setState(() {
       if (_selected == a) {
         _selected = null;
@@ -133,6 +151,12 @@ class _TripMapViewState extends State<TripMapView>
         _cardAnim.forward(from: 0);
       }
     });
+    if (_selected != null && _mapCtrl.isCompleted) {
+      final ctrl = await _mapCtrl.future;
+      ctrl.animateCamera(CameraUpdate.newLatLngZoom(
+        LatLng(a.lat, a.lng), 14,
+      ));
+    }
   }
 
   // ─── Pin icon: exact Google Maps marker shape ────────────
@@ -330,6 +354,7 @@ class _TripMapViewState extends State<TripMapView>
         markers: _markers,
         polylines: const {},
         onMapCreated: (c) {
+          c.setMapStyle(_mapStyle);
           if (!_mapCtrl.isCompleted) _mapCtrl.complete(c);
           Future.delayed(const Duration(milliseconds: 500), _fitBounds);
         },
@@ -351,7 +376,10 @@ class _TripMapViewState extends State<TripMapView>
         right: 0,
         child: Center(
           child: GestureDetector(
-            onTap: _fitBounds,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              _fitBounds();
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
@@ -386,7 +414,7 @@ class _TripMapViewState extends State<TripMapView>
           builder: (_, __) {
             final slide = Tween<double>(begin: 80, end: 0)
                 .animate(CurvedAnimation(
-                    parent: _cardAnim, curve: Curves.easeOutCubic))
+                    parent: _cardAnim, curve: Curves.easeOutBack))
                 .value;
             final opacity = _cardAnim.value.clamp(0.0, 1.0);
             return Positioned(

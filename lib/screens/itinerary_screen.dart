@@ -609,6 +609,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             _buildMapBar(role, days),
             Expanded(
                 child: TripMapView(
+                    selectedDayIndex: _selectedDay,
                     activities: _mapActivities.isNotEmpty
                         ? _mapActivities
                         : const [
@@ -645,8 +646,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             onTap: () => setState(() => _fabExpanded = false),
             child: Container(color: Colors.black.withValues(alpha: 0.4)),
           ),
-        // FAB speed dial
-        if (canEdit)
+        // FAB speed dial — hidden when map is showing
+        if (canEdit && !_showMap)
           Positioned(
             right: 16,
             bottom: 16 + MediaQuery.of(context).padding.bottom,
@@ -2015,7 +2016,16 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
   Widget _buildMapBar(String role, List<Map<String, dynamic>> days) =>
       Container(
-        color: AppColors.brandBlue,
+        decoration: BoxDecoration(
+          color: AppColors.brandBlue,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
         child: SafeArea(
           bottom: false,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -2046,28 +2056,59 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.only(left: 16),
-                    itemCount: days.length,
-                    itemBuilder: (_, i) => GestureDetector(
-                      onTap: () => _onDaySelected(i),
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: _selectedDay == i
-                              ? Colors.white
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(24),
+                    itemCount: days.length + 1, // +1 for "All"
+                    itemBuilder: (_, i) {
+                      if (i == 0) {
+                        // "All" tab
+                        final isActive = _selectedDay < 0;
+                        return GestureDetector(
+                          onTap: () => _onDaySelected(-1),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? Colors.white
+                                  : Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: Text('All',
+                                style: TextStyle(
+                                    color: isActive
+                                        ? AppColors.brandBlue
+                                        : Colors.white.withValues(alpha: 0.85),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14)),
+                          ),
+                        );
+                      }
+                      final dayIdx = i - 1;
+                      final isActive = _selectedDay == dayIdx;
+                      final dayColor =
+                          dayColors[dayIdx % dayColors.length];
+                      return GestureDetector(
+                        onTap: () => _onDaySelected(dayIdx),
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isActive
+                                ? dayColor
+                                : Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Text('Day ${dayIdx + 1}',
+                              style: TextStyle(
+                                  color: isActive
+                                      ? Colors.white
+                                      : Colors.white.withValues(alpha: 0.85),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14)),
                         ),
-                        child: Text('Day ${i + 1}',
-                            style: TextStyle(
-                                color: _selectedDay == i
-                                    ? AppColors.brandBlue
-                                    : Colors.white.withValues(alpha: 0.85),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14)),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
                 Container(

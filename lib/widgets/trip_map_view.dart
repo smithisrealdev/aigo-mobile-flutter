@@ -1,12 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:http/http.dart' as http;
 
 /// Day colors — vibrant, distinct
-const _dayColors = <Color>[
+const dayColors = <Color>[
   Color(0xFF2563EB), // Day 1 blue
   Color(0xFFE91E8C), // Day 2 hot pink
   Color(0xFF16A34A), // Day 3 green
@@ -17,37 +19,161 @@ const _dayColors = <Color>[
   Color(0xFFDB2777), // Day 8 fuchsia
 ];
 
+const _googleMapsKey = 'AIzaSyDvA2wmeqKw93M4v8b2Xm1uFWtIcCs46l0';
+
+/// Decode Google encoded polyline
+List<LatLng> _decodePolyline(String encoded) {
+  final points = <LatLng>[];
+  int index = 0, lat = 0, lng = 0;
+  while (index < encoded.length) {
+    int b, shift = 0, result = 0;
+    do {
+      b = encoded.codeUnitAt(index++) - 63;
+      result |= (b & 0x1F) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lat += (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.codeUnitAt(index++) - 63;
+      result |= (b & 0x1F) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lng += (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
+    points.add(LatLng(lat / 1E5, lng / 1E5));
+  }
+  return points;
+}
+
 class TripMapView extends StatefulWidget {
   final List<MapActivity> activities;
-  const TripMapView({super.key, required this.activities});
+  final int selectedDayIndex; // -1 = all days
+  const TripMapView({
+    super.key,
+    required this.activities,
+    this.selectedDayIndex = -1,
+  });
 
   @override
   State<TripMapView> createState() => _TripMapViewState();
 }
 
-class _TripMapViewState extends State<TripMapView> {
+class _TripMapViewState extends State<TripMapView>
+    with TickerProviderStateMixin {
   final Completer<GoogleMapController> _controller = Completer();
   final Map<String, BitmapDescriptor> _iconCache = {};
   Set<Marker> _markers = {};
   MapActivity? _selected;
 
+  // Directions cache: "lat1,lng1->lat2,lng2" => List<LatLng>
+  static final Map<String, List<LatLng>> _directionsCache = {};
+  Set<Polyline> _routePolylines = {};
+
+  // Info card animation
+  late AnimationController _cardAnimController;
+  late Animation<double> _cardSlideAnim;
+  late Animation<double> _cardFadeAnim;
+
+  // Pin stagger animation
+  late AnimationController _pinStaggerController;
+  final Map<int, Animation<double>> _pinAnims = {};
+
   @override
   void initState() {
     super.initState();
+    _cardAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _cardSlideAnim = Tween<double>(begin: 120, end: 0).animate(
+      CurvedAnimation(parent: _cardAnimController, curve: Curves.easeOutCubic),
+    );
+    _cardFadeAnim = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _cardAnimController, curve: Curves.easeOut),
+    );
+
+    _pinStaggerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
     _buildMarkers();
+    _fetchDirections();
   }
 
   @override
   void didUpdateWidget(covariant TripMapView old) {
     super.didUpdateWidget(old);
-    if (old.activities != widget.activities) _buildMarkers();
+    if (old.activities != widget.activities ||
+        old.selectedDayIndex != widget.selectedDayIndex) {
+      _selected = null;
+      _cardAnimController.reset();
+      _buildMarkers();
+      _fetchDirections();
+      _fitBounds();
+      // Restart pin stagger
+      _pinStaggerController.reset();
+      _pinStaggerController.forward();
+    }
+  }
+
+  List<MapActivity> get _filteredActivities {
+    if (widget.selectedDayIndex < 0) return widget.activities;
+    return widget.activities
+        .where((a) => a.dayIndex == widget.selectedDayIndex)
+        .toList();
+  }
+
+  Future<void> _fitBounds() async {
+    if (!_controller.isCompleted) return;
+    final controller = await _controller.future;
+    final acts = _filteredActivities;
+    if (acts.isEmpty) return;
+    if (acts.length == 1) {
+      controller.animateCamera(CameraUpdate.newLatLngZoom(
+          LatLng(acts.first.lat, acts.first.lng), 15));
+      return;
+    }
+    double minLat = acts.first.lat,
+        maxLat = acts.first.lat,
+        minLng = acts.first.lng,
+        maxLng = acts.first.lng;
+    for (final a in acts) {
+      if (a.lat < minLat) minLat = a.lat;
+      if (a.lat > maxLat) maxLat = a.lat;
+      if (a.lng < minLng) minLng = a.lng;
+      if (a.lng > maxLng) maxLng = a.lng;
+    }
+    final bounds = LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+    controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 60));
   }
 
   Future<void> _buildMarkers() async {
+    final acts = _filteredActivities;
     final markers = <Marker>{};
-    for (var i = 0; i < widget.activities.length; i++) {
-      final a = widget.activities[i];
-      final color = _dayColors[a.dayIndex % _dayColors.length];
+
+    // Setup pin stagger animations
+    _pinAnims.clear();
+    for (var i = 0; i < acts.length; i++) {
+      final start = (i / acts.length.clamp(1, 100)) * 0.6;
+      final end = (start + 0.4).clamp(0.0, 1.0);
+      _pinAnims[i] = Tween<double>(begin: 0, end: 1).animate(
+        CurvedAnimation(
+          parent: _pinStaggerController,
+          curve: Interval(start, end, curve: Curves.easeOutBack),
+        ),
+      );
+    }
+    _pinStaggerController.reset();
+    _pinStaggerController.forward();
+
+    for (var i = 0; i < acts.length; i++) {
+      final a = acts[i];
+      final color = dayColors[a.dayIndex % dayColors.length];
       final cacheKey = '${a.dayIndex}_${a.numberInDay}';
 
       if (!_iconCache.containsKey(cacheKey)) {
@@ -56,62 +182,132 @@ class _TripMapViewState extends State<TripMapView> {
       }
 
       markers.add(Marker(
-        markerId: MarkerId('activity_$i'),
+        markerId: MarkerId('activity_${a.dayIndex}_${a.numberInDay}'),
         position: LatLng(a.lat, a.lng),
         icon: _iconCache[cacheKey]!,
         anchor: const Offset(0.5, 1.0),
-        onTap: () => setState(() => _selected = _selected == a ? null : a),
+        onTap: () {
+          setState(() {
+            if (_selected == a) {
+              _selected = null;
+              _cardAnimController.reverse();
+            } else {
+              _selected = a;
+              _cardAnimController.forward(from: 0);
+            }
+          });
+        },
       ));
     }
     if (mounted) setState(() => _markers = markers);
   }
 
-  /// Large teardrop pin — 160px canvas for crisp rendering
+  /// Fetch Google Directions for consecutive activities per day
+  Future<void> _fetchDirections() async {
+    final acts = _filteredActivities;
+    final byDay = <int, List<MapActivity>>{};
+    for (final a in acts) {
+      byDay.putIfAbsent(a.dayIndex, () => []).add(a);
+    }
+
+    final polylines = <Polyline>{};
+
+    for (final entry in byDay.entries) {
+      final dayActs = entry.value;
+      if (dayActs.length < 2) continue;
+      final color = dayColors[entry.key % dayColors.length];
+
+      for (var i = 0; i < dayActs.length - 1; i++) {
+        final from = dayActs[i];
+        final to = dayActs[i + 1];
+        final cacheKey =
+            '${from.lat},${from.lng}->${to.lat},${to.lng}';
+
+        List<LatLng> routePoints;
+        if (_directionsCache.containsKey(cacheKey)) {
+          routePoints = _directionsCache[cacheKey]!;
+        } else {
+          routePoints = await _fetchRoute(from.lat, from.lng, to.lat, to.lng);
+          _directionsCache[cacheKey] = routePoints;
+        }
+
+        if (routePoints.isEmpty) {
+          // Fallback: straight line
+          routePoints = [
+            LatLng(from.lat, from.lng),
+            LatLng(to.lat, to.lng),
+          ];
+        }
+
+        polylines.add(Polyline(
+          polylineId: PolylineId('route_${entry.key}_$i'),
+          points: routePoints,
+          color: color.withValues(alpha: 0.35),
+          width: 3,
+        ));
+      }
+    }
+
+    if (mounted) setState(() => _routePolylines = polylines);
+  }
+
+  Future<List<LatLng>> _fetchRoute(
+      double lat1, double lng1, double lat2, double lng2) async {
+    try {
+      final url = Uri.parse(
+          'https://maps.googleapis.com/maps/api/directions/json'
+          '?origin=$lat1,$lng1&destination=$lat2,$lng2&key=$_googleMapsKey');
+      final resp = await http.get(url).timeout(const Duration(seconds: 8));
+      final data = jsonDecode(resp.body);
+      final routes = data['routes'] as List?;
+      if (routes != null && routes.isNotEmpty) {
+        final encoded =
+            routes[0]['overview_polyline']?['points'] as String?;
+        if (encoded != null && encoded.isNotEmpty) {
+          return _decodePolyline(encoded);
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Teardrop pin with white border — 100x134 canvas, displayed at 40x54
   Future<BitmapDescriptor> _createPin(String label, Color color) async {
-    const w = 120.0;
-    const h = 160.0;
+    const w = 100.0;
+    const h = 134.0;
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
-
     final cx = w / 2;
 
     // Shadow
     final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.25)
+      ..color = Colors.black.withValues(alpha: 0.22)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-    final shadowPath = Path()
-      ..moveTo(cx, h - 2)
-      ..cubicTo(cx - 18, h - 30, 6, h * 0.45, 6, h * 0.33)
-      ..arcToPoint(Offset(w - 6, h * 0.33),
-          radius: Radius.circular((w - 12) / 2), clockwise: false)
-      ..cubicTo(w - 6, h * 0.45, cx + 18, h - 30, cx, h - 2)
-      ..close();
+    final shadowPath = _teardropPath(cx, w, h, 4);
     canvas.drawPath(shadowPath, shadowPaint);
 
+    // White border (draw slightly larger teardrop)
+    final borderPath = _teardropPath(cx, w, h, 6);
+    canvas.drawPath(borderPath, Paint()..color = Colors.white);
+
     // Main teardrop
-    final paint = Paint()..color = color;
-    final path = Path()
-      ..moveTo(cx, h - 8)
-      ..cubicTo(cx - 16, h - 34, 8, h * 0.44, 8, h * 0.32)
-      ..arcToPoint(Offset(w - 8, h * 0.32),
-          radius: Radius.circular((w - 16) / 2), clockwise: false)
-      ..cubicTo(w - 8, h * 0.44, cx + 16, h - 34, cx, h - 8)
-      ..close();
-    canvas.drawPath(path, paint);
+    final mainPath = _teardropPath(cx, w, h, 8);
+    canvas.drawPath(mainPath, Paint()..color = color);
 
     // White circle
-    const circleR = 26.0;
-    const circleY = 48.0;
+    const circleR = 22.0;
+    const circleY = 40.0;
     canvas.drawCircle(
         Offset(cx, circleY), circleR, Paint()..color = Colors.white);
 
-    // Number
+    // Number — fill the circle more
+    final fontSize = label.length > 1 ? 24.0 : 28.0;
     final tp = TextPainter(
       text: TextSpan(
         text: label,
         style: TextStyle(
           color: color,
-          fontSize: label.length > 1 ? 26 : 30,
+          fontSize: fontSize,
           fontWeight: FontWeight.w900,
         ),
       ),
@@ -122,35 +318,32 @@ class _TripMapViewState extends State<TripMapView> {
     final image = await recorder.endRecording().toImage(w.toInt(), h.toInt());
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
     return BitmapDescriptor.bytes(bytes!.buffer.asUint8List(),
-        width: 48, height: 64);
+        width: 40, height: 54);
   }
 
-  Set<Polyline> get _polylines {
-    // Per-day polylines with day color
-    final byDay = <int, List<LatLng>>{};
-    for (final a in widget.activities) {
-      byDay.putIfAbsent(a.dayIndex, () => []).add(LatLng(a.lat, a.lng));
-    }
-    return byDay.entries
-        .where((e) => e.value.length >= 2)
-        .map((e) => Polyline(
-              polylineId: PolylineId('day_${e.key}'),
-              points: e.value,
-              color:
-                  _dayColors[e.key % _dayColors.length].withValues(alpha: 0.6),
-              width: 3,
-              patterns: [PatternItem.dash(12), PatternItem.gap(8)],
-            ))
-        .toSet();
+  Path _teardropPath(double cx, double w, double h, double inset) {
+    return Path()
+      ..moveTo(cx, h - inset)
+      ..cubicTo(cx - 16, h - 30, inset, h * 0.44, inset, h * 0.32)
+      ..arcToPoint(Offset(w - inset, h * 0.32),
+          radius: Radius.circular((w - inset * 2) / 2), clockwise: false)
+      ..cubicTo(w - inset, h * 0.44, cx + 16, h - 30, cx, h - inset)
+      ..close();
   }
 
   LatLng get _center {
-    if (widget.activities.isEmpty) return const LatLng(13.7563, 100.5018);
-    final lat = widget.activities.map((a) => a.lat).reduce((a, b) => a + b) /
-        widget.activities.length;
-    final lng = widget.activities.map((a) => a.lng).reduce((a, b) => a + b) /
-        widget.activities.length;
+    final acts = _filteredActivities;
+    if (acts.isEmpty) return const LatLng(13.7563, 100.5018);
+    final lat = acts.map((a) => a.lat).reduce((a, b) => a + b) / acts.length;
+    final lng = acts.map((a) => a.lng).reduce((a, b) => a + b) / acts.length;
     return LatLng(lat, lng);
+  }
+
+  @override
+  void dispose() {
+    _cardAnimController.dispose();
+    _pinStaggerController.dispose();
+    super.dispose();
   }
 
   @override
@@ -159,204 +352,180 @@ class _TripMapViewState extends State<TripMapView> {
       GoogleMap(
         initialCameraPosition: CameraPosition(target: _center, zoom: 13),
         markers: _markers,
-        polylines: _polylines,
-        onMapCreated: (c) => _controller.complete(c),
-        onTap: (_) => setState(() => _selected = null),
+        polylines: _routePolylines,
+        onMapCreated: (c) {
+          if (!_controller.isCompleted) _controller.complete(c);
+          // Fit bounds after map created
+          Future.delayed(const Duration(milliseconds: 400), _fitBounds);
+        },
+        onTap: (_) {
+          if (_selected != null) {
+            setState(() => _selected = null);
+            _cardAnimController.reverse();
+          }
+        },
         myLocationButtonEnabled: false,
         zoomControlsEnabled: false,
         mapToolbarEnabled: false,
+        mapType: MapType.normal,
       ),
-      // Day legend
-      Positioned(
-        top: 12,
-        left: 12,
-        child: _dayLegend(),
-      ),
-      // Info card
-      if (_selected != null) _buildInfoCard(_selected!),
+      // Info card with slide-up animation
+      if (_selected != null)
+        AnimatedBuilder(
+          animation: _cardAnimController,
+          builder: (context, child) => Positioned(
+            bottom: 24 + _cardSlideAnim.value,
+            left: 16,
+            right: 16,
+            child: Opacity(
+              opacity: _cardFadeAnim.value,
+              child: _buildInfoCard(_selected!),
+            ),
+          ),
+        ),
     ]);
   }
 
-  Widget _dayLegend() {
-    final dayCount =
-        widget.activities.map((a) => a.dayIndex).toSet().toList()..sort();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12), blurRadius: 8)
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: dayCount.map((d) {
-          final c = _dayColors[d % _dayColors.length];
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(color: c, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 4),
-              Text('Day ${d + 1}',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: c)),
-            ]),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
   Widget _buildInfoCard(MapActivity a) {
-    final color = _dayColors[a.dayIndex % _dayColors.length];
-    return Positioned(
-      bottom: 24,
-      left: 16,
-      right: 16,
-      child: Material(
-        elevation: 12,
-        borderRadius: BorderRadius.circular(16),
-        shadowColor: Colors.black26,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(children: [
-            // Photo
-            ClipRRect(
-              borderRadius:
-                  const BorderRadius.horizontal(left: Radius.circular(16)),
-              child: SizedBox(
-                width: 110,
-                height: 110,
-                child: a.imageUrl != null && a.imageUrl!.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: a.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Container(
-                          color: color.withValues(alpha: 0.1),
-                          child: Icon(Icons.place, color: color, size: 32),
-                        ),
-                      )
-                    : Container(
-                        color: color.withValues(alpha: 0.08),
+    final color = dayColors[a.dayIndex % dayColors.length];
+    return Material(
+      elevation: 12,
+      borderRadius: BorderRadius.circular(16),
+      shadowColor: Colors.black26,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(children: [
+          // Photo
+          ClipRRect(
+            borderRadius:
+                const BorderRadius.horizontal(left: Radius.circular(16)),
+            child: SizedBox(
+              width: 110,
+              height: 110,
+              child: a.imageUrl != null && a.imageUrl!.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: a.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => Container(
+                        color: color.withValues(alpha: 0.1),
                         child: Icon(Icons.place, color: color, size: 32),
                       ),
-              ),
+                    )
+                  : Container(
+                      color: color.withValues(alpha: 0.08),
+                      child: Icon(Icons.place, color: color, size: 32),
+                    ),
             ),
-            // Info
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Day + Category badges
-                    Row(children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text('DAY ${a.dayIndex + 1}',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w800)),
+          ),
+          // Info
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Day + Category badges
+                  Row(children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                      if (a.category != null && a.category!.isNotEmpty) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            a.category!.substring(0, 1).toUpperCase() +
-                                a.category!.substring(1),
-                            style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade700),
-                          ),
-                        ),
-                      ],
-                    ]),
-                    const SizedBox(height: 6),
-                    // Name
-                    Text(a.name,
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w700),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 4),
-                    // Rating + time
-                    Row(children: [
-                      if (a.rating != null) ...[
-                        const Icon(Icons.star,
-                            size: 13, color: Color(0xFFF59E0B)),
-                        const SizedBox(width: 2),
-                        Text('${a.rating}',
-                            style: const TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.w600)),
-                        const SizedBox(width: 8),
-                      ],
-                      if (a.time.isNotEmpty) ...[
-                        Icon(Icons.schedule,
-                            size: 12, color: Colors.grey.shade500),
-                        const SizedBox(width: 3),
-                        Text(a.time,
-                            style: TextStyle(
-                                fontSize: 11, color: Colors.grey.shade600)),
-                      ],
-                    ]),
-                    // Cost
-                    if (a.cost != null &&
-                        a.cost!.isNotEmpty &&
-                        a.cost != 'Free') ...[
-                      const SizedBox(height: 4),
+                      child: Text('DAY ${a.dayIndex + 1}',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800)),
+                    ),
+                    if (a.category != null && a.category!.isNotEmpty) ...[
+                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                          color: Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Text(a.cost!,
-                            style: const TextStyle(
-                                color: Color(0xFF10B981),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700)),
+                        child: Text(
+                          a.category!.substring(0, 1).toUpperCase() +
+                              a.category!.substring(1),
+                          style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700),
+                        ),
                       ),
                     ],
+                  ]),
+                  const SizedBox(height: 6),
+                  // Name
+                  Text(a.name,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w700),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  // Rating + time
+                  Row(children: [
+                    if (a.rating != null) ...[
+                      const Icon(Icons.star,
+                          size: 13, color: Color(0xFFF59E0B)),
+                      const SizedBox(width: 2),
+                      Text('${a.rating}',
+                          style: const TextStyle(
+                              fontSize: 11, fontWeight: FontWeight.w600)),
+                      const SizedBox(width: 8),
+                    ],
+                    if (a.time.isNotEmpty) ...[
+                      Icon(Icons.schedule,
+                          size: 12, color: Colors.grey.shade500),
+                      const SizedBox(width: 3),
+                      Text(a.time,
+                          style: TextStyle(
+                              fontSize: 11, color: Colors.grey.shade600)),
+                    ],
+                  ]),
+                  // Cost
+                  if (a.cost != null &&
+                      a.cost!.isNotEmpty &&
+                      a.cost != 'Free') ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(a.cost!,
+                          style: const TextStyle(
+                              color: Color(0xFF10B981),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700)),
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
-            // Close
-            GestureDetector(
-              onTap: () => setState(() => _selected = null),
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Icon(Icons.close, size: 18, color: Colors.grey.shade400),
-              ),
+          ),
+          // Close
+          GestureDetector(
+            onTap: () {
+              setState(() => _selected = null);
+              _cardAnimController.reverse();
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Icon(Icons.close, size: 18, color: Colors.grey.shade400),
             ),
-          ]),
-        ),
+          ),
+        ]),
       ),
     );
   }

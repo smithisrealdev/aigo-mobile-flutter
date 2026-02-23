@@ -441,7 +441,11 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
     return Scaffold(
       backgroundColor: Colors.white,
-      floatingActionButton: null,
+      floatingActionButton: canEdit ? FloatingActionButton(
+        backgroundColor: AppColors.brandBlue,
+        onPressed: _showAddDestinationDialog,
+        child: const Icon(Icons.add, color: Colors.white, size: 28),
+      ) : null,
       body: Stack(children: [
         if (_showMap)
           Column(children: [
@@ -654,6 +658,13 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         // Inline action chips
                         if (_activeSection == 'itinerary') ...[
                           const SizedBox(height: 16),
+                          // Add Activity card
+                          if (canEdit) _addActivityCard(),
+                          if (canEdit) const SizedBox(height: 12),
+                          // Budget card
+                          _budgetCard(),
+                          const SizedBox(height: 12),
+                          // Action chips row
                           _buildInlineActions(canEdit),
                           const SizedBox(height: 16),
                         ],
@@ -2056,6 +2067,86 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             child: const Text('Add'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _addActivityCard() {
+    return GestureDetector(
+      onTap: _showAddDestinationDialog,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Row(children: [
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.brandBlue.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.add, size: 20, color: AppColors.brandBlue),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Text('Add Activity', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: AppColors.brandBlue, borderRadius: BorderRadius.circular(8)),
+                child: Text('+ New', style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white)),
+              ),
+            ]),
+            Text('Add a place to your itinerary', style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
+          ])),
+          const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+        ]),
+      ),
+    );
+  }
+
+  Widget _budgetCard() {
+    final budget = _trip?.budgetTotal ?? 0;
+    const currency = 'USD';
+    // TODO: calculate actual spending from expenses
+    const spent = 0.0;
+    final pct = budget > 0 ? (spent / budget).clamp(0.0, 1.0) : 0.0;
+
+    return GestureDetector(
+      onTap: () => context.push('/budget', extra: _trip),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.account_balance_wallet_outlined, size: 18, color: AppColors.brandBlue),
+            const SizedBox(width: 8),
+            Text('Budget', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            const Spacer(),
+            Text('$currency ${spent.toStringAsFixed(0)} / ${budget.toStringAsFixed(0)}',
+                style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          ]),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 6,
+              backgroundColor: const Color(0xFFE5E7EB),
+              valueColor: const AlwaysStoppedAnimation(AppColors.brandBlue),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text('Track spending by day and category', style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
+        ]),
       ),
     );
   }

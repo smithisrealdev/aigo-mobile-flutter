@@ -10,6 +10,7 @@ import '../services/auth_service.dart';
 import '../services/trip_service.dart';
 import '../services/expense_service.dart';
 import '../services/recommendation_service.dart';
+import '../services/ai_picks_service.dart';
 import '../config/supabase_config.dart';
 import '../models/models.dart';
 
@@ -31,6 +32,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   final TextEditingController _tripController = TextEditingController();
   bool _isInputActive = false;
   bool _emailBannerDismissed = false;
+  List<AiPick>? _aiPicks;
+  bool _aiPicksLoading = true;
 
   static const _prompts = [
     'Weekend getaway in Paris',
@@ -51,6 +54,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void initState() {
     super.initState();
     _ticker.start();
+    _loadAiPicks();
+  }
+
+  Future<void> _loadAiPicks() async {
+    try {
+      final picks = await AiPicksService.instance.getAiPicks();
+      if (mounted) setState(() { _aiPicks = picks; _aiPicksLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() { _aiPicksLoading = false; });
+    }
   }
 
   @override
@@ -128,6 +141,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               color: AppColors.brandBlue,
               onRefresh: () async {
                 ref.invalidate(tripsProvider);
+                AiPicksService.instance.clearCache();
+                _loadAiPicks();
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -270,7 +285,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                     ),
                     const SizedBox(height: 12),
-                    _buildAiPicks(context),
+                    _buildAiPicksDynamic(context),
 
                     const SizedBox(height: 24),
 
@@ -788,39 +803,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  // ── AI Picks Carousel ──
-  Widget _buildAiPicks(BuildContext context) {
+  // ── AI Picks Carousel (dynamic) ──
+  Widget _buildAiPicksDynamic(BuildContext context) {
+    if (_aiPicksLoading) {
+      return SizedBox(
+        height: 200,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          children: List.generate(3, (_) => Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Container(
+              width: 170, height: 200,
+              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(16)),
+            ),
+          )),
+        ),
+      );
+    }
+
+    final picks = _aiPicks ?? [];
+    if (picks.isEmpty) return const SizedBox.shrink();
+
     return SizedBox(
       height: 200,
-      child: ListView(
+      child: ListView.separated(
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,
-        children: [
-          _AiPickCard(
-            imageUrl:
-                'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=400&h=300&fit=crop',
-            title: 'Hidden Kyoto',
-            subtitle: 'Nature & temples',
-            badge: 'Popular',
-            onTap: () => context.push('/place-detail'),
-          ),
-          const SizedBox(width: 12),
-          _AiPickCard(
-            imageUrl:
-                'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400&h=300&fit=crop',
-            title: 'Ubud Culture',
-            subtitle: 'Rice fields & art',
-            badge: 'Trending',
-          ),
-          const SizedBox(width: 12),
-          _AiPickCard(
-            imageUrl:
-                'https://images.unsplash.com/photo-1506665531195-3566af2b4dfa?w=400&h=300&fit=crop',
-            title: 'Chiang Mai Slow',
-            subtitle: 'Local food & nature',
-            badge: 'Popular',
-          ),
-        ],
+        itemCount: picks.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (_, i) {
+          final p = picks[i];
+          return _AiPickCard(
+            imageUrl: p.imageUrl,
+            title: p.title,
+            subtitle: p.subtitle,
+            badge: p.matchReason,
+            onTap: () => context.push('/ai-chat', extra: 'Tell me about ${p.destination}'),
+          );
+        },
       ),
     );
   }

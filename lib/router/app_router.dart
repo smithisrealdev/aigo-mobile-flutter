@@ -27,6 +27,10 @@ import '../screens/pricing_screen.dart';
 import '../screens/account_settings_screen.dart';
 import '../screens/progress_screen.dart';
 import '../screens/shared_trip_screen.dart';
+import '../screens/expense_splitter_screen.dart';
+import '../screens/budget_categories_screen.dart';
+import '../screens/activity_feed_screen.dart';
+import '../screens/referral_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../models/models.dart';
 
@@ -88,6 +92,10 @@ final appRouter = GoRouter(
     GoRoute(path: '/progress', builder: (_, __) => const ProgressScreen()),
     GoRoute(path: '/dashboard-stats', builder: (_, __) => const DashboardStatsScreen()),
     GoRoute(path: '/shared-trip/:token', builder: (_, state) => SharedTripScreen(token: state.pathParameters['token']!)),
+    GoRoute(path: '/expense-splitter', builder: (_, __) => const ExpenseSplitterScreen()),
+    GoRoute(path: '/budget-categories', builder: (_, __) => const BudgetCategoriesScreen()),
+    GoRoute(path: '/activity-feed', builder: (_, __) => const ActivityFeedScreen()),
+    GoRoute(path: '/referral', builder: (_, __) => const ReferralScreen()),
     GoRoute(path: '/place-detail', builder: (_, state) {
       final extra = state.extra;
       if (extra is Map<String, String?>) {

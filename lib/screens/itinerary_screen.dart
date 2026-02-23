@@ -693,7 +693,11 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         _compactSummaryBar(),
                         const SizedBox(height: 12),
 
-                        // 2. Day header + activities FIRST
+                        // 2. Destination segment header (multi-dest)
+                        if (_destinationSegments.isNotEmpty)
+                          ..._buildDestinationSegmentHeader(),
+
+                        // 3. Day header + activities FIRST
                         _dayHeaderCard(),
                         const SizedBox(height: 8),
 
@@ -1962,6 +1966,118 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     );
   }
 
+  List<Widget> _buildDestinationSegmentHeader() {
+    final segments = _destinationSegments;
+    final dayNum = _selectedDay + 1;
+    final currentSeg = segments.cast<Map<String, dynamic>?>().firstWhere(
+      (s) => dayNum >= (s!['startDay'] as int) && dayNum <= (s['endDay'] as int),
+      orElse: () => null,
+    );
+    if (currentSeg == null) return [];
+    final name = currentSeg['name'] ?? '';
+    final startDay = currentSeg['startDay'] ?? 1;
+    final endDay = currentSeg['endDay'] ?? 1;
+    return [
+      Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.brandBlue.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.15)),
+        ),
+        child: Row(children: [
+          const Icon(Icons.location_on, size: 18, color: AppColors.brandBlue),
+          const SizedBox(width: 8),
+          Expanded(child: Text(name, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.brandBlue))),
+          Text('Days $startDay-$endDay', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+        ]),
+      ),
+    ];
+  }
+
+  // ─── Multi-Destination Support ───
+  List<Map<String, dynamic>> get _destinationSegments {
+    final data = _trip?.itineraryData;
+    final segments = data?['destinationSegments'] as List?;
+    if (segments != null && segments.isNotEmpty) {
+      return segments.map((s) => s is Map<String, dynamic> ? s : <String, dynamic>{}).toList();
+    }
+    return [];
+  }
+
+  void _showAddDestinationDialog() {
+    final nameCtrl = TextEditingController();
+    final daysCtrl = TextEditingController(text: '2');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Add Destination', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(
+            controller: nameCtrl,
+            decoration: InputDecoration(hintText: 'Destination name', prefixIcon: const Icon(Icons.location_on),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: daysCtrl,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(hintText: 'Number of days', prefixIcon: const Icon(Icons.calendar_today),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+          ),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.brandBlue,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            onPressed: () {
+              if (nameCtrl.text.trim().isEmpty) return;
+              final dayCount = int.tryParse(daysCtrl.text) ?? 2;
+              final currentDays = _days.length;
+              setState(() {
+                final data = _trip?.itineraryData ?? {};
+                final segments = List<Map<String, dynamic>>.from(data['destinationSegments'] ?? []);
+                if (segments.isEmpty) {
+                  segments.add({
+                    'name': _tripDestination,
+                    'startDay': 1,
+                    'endDay': currentDays,
+                  });
+                }
+                segments.add({
+                  'name': nameCtrl.text.trim(),
+                  'startDay': currentDays + 1,
+                  'endDay': currentDays + dayCount,
+                });
+                data['destinationSegments'] = segments;
+                final daysList = List<Map<String, dynamic>>.from(data['days'] ?? data['itinerary']?['days'] ?? []);
+                for (var i = 0; i < dayCount; i++) {
+                  daysList.add({
+                    'title': '${nameCtrl.text.trim()} - Day ${i + 1}',
+                    'date': '',
+                    'activities': [],
+                  });
+                }
+                if (data.containsKey('days')) {
+                  data['days'] = daysList;
+                } else if (data['itinerary'] != null) {
+                  (data['itinerary'] as Map<String, dynamic>)['days'] = daysList;
+                }
+              });
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('${nameCtrl.text.trim()} added with $dayCount days')));
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFab() => Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -1974,6 +2090,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 ('Regenerate', Icons.refresh),
                 ('Optimize', Icons.auto_awesome),
                 ('Smart Replan', Icons.route),
+                ('Add Destination', Icons.add_location_alt),
                 ('Travel Tips', Icons.lightbulb_outline),
                 ('Summary', Icons.summarize_outlined),
                 ('Share', Icons.share),
@@ -2032,6 +2149,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                                           extra: _trip);
                                     if (item.$1 == 'Budget')
                                       context.push('/budget', extra: _trip);
+                                    if (item.$1 == 'Add Destination')
+                                      _showAddDestinationDialog();
                                     if (item.$1 == 'Share')
                                       _showShareSheet();
                                   },

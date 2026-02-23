@@ -250,13 +250,13 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
         Container(
           decoration: const BoxDecoration(
             color: Colors.white,
-            border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
+            border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6), width: 1)),
           ),
           child: SafeArea(bottom: false, child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 6, 16, 12),
               child: Row(children: [
                 SvgPicture.asset('assets/images/logo_white.svg', height: 28,
-                    colorFilter: const ColorFilter.mode(AppColors.brandBlue, BlendMode.srcIn)),
+                    colorFilter: const ColorFilter.mode(const Color(0xFF111827), BlendMode.srcIn)),
                 const Spacer(),
                 IconButton(icon: const Icon(Icons.add_comment_outlined, color: AppColors.textSecondary, size: 22), onPressed: () {}, tooltip: 'New Chat'),
                 IconButton(icon: const Icon(Icons.history, color: AppColors.textSecondary, size: 22), onPressed: () {}, tooltip: 'History'),
@@ -305,7 +305,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
               GestureDetector(
                 onTap: () => _hasText ? _send(_controller.text) : _toggleVoice(),
                 child: AnimatedContainer(duration: const Duration(milliseconds: 200), width: 44, height: 44,
-                  decoration: BoxDecoration(gradient: _hasText ? AppColors.blueGradient : null, color: _hasText ? null : (_isRecording ? const Color(0xFFEF4444) : _surface(context)), shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: _hasText ? AppColors.brandBlue : (_isRecording ? const Color(0xFFEF4444) : _surface(context)), shape: BoxShape.circle),
                   child: Icon(_hasText ? Icons.arrow_upward_rounded : (_isRecording ? Icons.stop_rounded : Icons.mic_none_rounded), color: _hasText || _isRecording ? Colors.white : _textS(context), size: 22),
                 ),
               ),

@@ -436,7 +436,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     final coverImage = _trip?.coverImage ?? _heroImageUrl;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Colors.white,
       floatingActionButton: canEdit ? _buildFab() : null,
       body: Stack(children: [
         if (_showMap)

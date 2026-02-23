@@ -40,7 +40,7 @@ class ReferralScreen extends ConsumerWidget {
           ),
           flexibleSpace: FlexibleSpaceBar(
             background: Container(
-              decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1))),
+              decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6), width: 1))),
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
@@ -49,7 +49,7 @@ class ReferralScreen extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Text('Refer & Earn',
-                          style: GoogleFonts.dmSans(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.brandBlue)),
+                          style: GoogleFonts.dmSans(fontSize: 24, fontWeight: FontWeight.w800, color: const Color(0xFF111827))),
                       const SizedBox(height: 4),
                       const Text('Share AiGo with friends and earn rewards',
                           style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),

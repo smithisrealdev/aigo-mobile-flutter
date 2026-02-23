@@ -68,7 +68,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
           return Column(
             children: [
               Container(
-                decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1))),
+                decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6), width: 1))),
                 child: SafeArea(
                   bottom: false,
                   child: Padding(
@@ -78,7 +78,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                         Row(children: [
                           GestureDetector(onTap: () => Navigator.maybePop(context), child: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary, size: 20)),
                           const SizedBox(width: 12),
-                          Text('Budget', style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.brandBlue)),
+                          Text('Budget', style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF111827))),
                         ]),
                         const SizedBox(height: 24),
                         SizedBox(

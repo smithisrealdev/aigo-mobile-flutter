@@ -58,7 +58,7 @@ class _ProgressScreenState extends State<ProgressScreen> with TickerProviderStat
             padding: EdgeInsets.fromLTRB(20, pad.top + 12, 20, 24),
             decoration: const BoxDecoration(
               color: Colors.white,
-              border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
+              border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6), width: 1)),
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(24),
                 bottomRight: Radius.circular(24),
@@ -66,7 +66,7 @@ class _ProgressScreenState extends State<ProgressScreen> with TickerProviderStat
             ),
             child: Column(
               children: [
-                Text('Generating Itinerary', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.brandBlue)),
+                Text('Generating Itinerary', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF111827))),
                 const SizedBox(height: 4),
                 Text('AI is planning your perfect trip', style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textSecondary)),
                 const SizedBox(height: 16),

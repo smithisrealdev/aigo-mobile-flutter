@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -191,19 +190,16 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
-      ),
+      color: Colors.white,
       child: SafeArea(
           bottom: false,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                const Expanded(child: Text('Discover Your Next Journey', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.brandBlue))),
-                IconButton(icon: const Icon(Icons.search, color: AppColors.textSecondary), onPressed: () => context.push('/search-results'), tooltip: 'Search'),
-                IconButton(icon: const Icon(Icons.bookmark_outline, color: AppColors.textSecondary), onPressed: () => context.push('/saved-places'), tooltip: 'Saved'),
+                const Expanded(child: Text('Discover Your Next Journey', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF111827)))),
+                IconButton(icon: const Icon(Icons.search, color: Color(0xFF9CA3AF)), onPressed: () => context.push('/search-results'), tooltip: 'Search'),
+                IconButton(icon: const Icon(Icons.bookmark_outline, color: Color(0xFF9CA3AF)), onPressed: () => context.push('/saved-places'), tooltip: 'Saved'),
               ]),
               const SizedBox(height: 4),
               const Text('Go places and see the world', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
@@ -219,8 +215,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       child: Container(
         height: 48,
         decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 2))],
+          color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(24),
         ),
         child: TextField(
           controller: _searchController,
@@ -256,7 +251,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 decoration: BoxDecoration(
                   color: selected ? AppColors.brandBlue : Colors.white,
                   borderRadius: BorderRadius.circular(24),
-                  border: selected ? null : Border.all(color: AppColors.border),
+                  border: selected ? null : Border.all(color: const Color(0xFFD1D5DB)),
                 ),
                 alignment: Alignment.center,
                 child: Text(_filters[i], style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: selected ? Colors.white : AppColors.textSecondary)),
@@ -398,8 +393,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         width: 160,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          color: AppColors.cardDark,
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))],
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -411,17 +406,17 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 height: 100,
                 width: 160,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => Container(height: 100, color: AppColors.surfaceDark),
-                errorWidget: (_, __, ___) => Container(height: 100, color: AppColors.surfaceDark, child: const Icon(Icons.image, color: AppColors.textSecondary)),
+                placeholder: (_, __) => Container(height: 100, color: const Color(0xFFF3F4F6)),
+                errorWidget: (_, __, ___) => Container(height: 100, color: const Color(0xFFF3F4F6), child: const Icon(Icons.image, color: AppColors.textSecondary)),
               )
             else
-              Container(height: 100, color: AppColors.surfaceDark, child: const Icon(Icons.map, color: AppColors.textSecondary, size: 32)),
+              Container(height: 100, color: const Color(0xFFF3F4F6), child: const Icon(Icons.map, color: AppColors.textSecondary, size: 32)),
             Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(guide.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                  Text(guide.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF111827), fontWeight: FontWeight.w600, fontSize: 13)),
                   const SizedBox(height: 4),
                   Row(children: [
                     const Icon(Icons.location_on, size: 12, color: AppColors.textSecondary),
@@ -442,16 +437,16 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 28, 20, 0),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      decoration: BoxDecoration(color: AppColors.blueTint, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.blueBorder)),
+      decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(16)),
       child: Column(children: [
-        const Text("Can't find what you're looking for?", style: TextStyle(color: AppColors.brandBlue, fontSize: 16, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+        const Text("Can't find what you're looking for?", style: TextStyle(color: Color(0xFF111827), fontSize: 16, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
         const SizedBox(height: 14),
-        OutlinedButton(
+        ElevatedButton(
           onPressed: () => context.push('/ai-chat'),
-          style: OutlinedButton.styleFrom(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.brandBlue,
             foregroundColor: Colors.white,
-            side: const BorderSide(color: Colors.white, width: 1.5),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
           ),
           child: const Text('Create Custom Trip', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -459,34 +454,4 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       ]),
     );
   }
-}
-
-class _ExploreHeaderDecoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final sw = size.width;
-    final sh = size.height;
-    final fill = Paint()..style = PaintingStyle.fill;
-
-    fill.color = Colors.white.withValues(alpha: 0.04);
-    canvas.drawCircle(Offset(sw * 0.85, sh * 0.15), 45, fill);
-    canvas.drawCircle(Offset(sw * 0.12, sh * 0.8), 30, fill);
-
-    fill.color = const Color(0xFFFFB347).withValues(alpha: 0.3);
-    canvas.drawCircle(Offset(sw * 0.9, sh * 0.45), 4, fill);
-
-    canvas.save();
-    canvas.translate(sw * 0.08, sh * 0.3);
-    canvas.rotate(math.pi / 5);
-    fill.color = Colors.white.withValues(alpha: 0.07);
-    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-6, -6, 12, 12), const Radius.circular(3)), fill);
-    canvas.restore();
-
-    fill.color = Colors.white.withValues(alpha: 0.1);
-    canvas.drawCircle(Offset(sw * 0.72, sh * 0.18), 2.5, fill);
-    canvas.drawCircle(Offset(sw * 0.28, sh * 0.85), 2, fill);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
 }

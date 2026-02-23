@@ -89,7 +89,7 @@ class _HotelSearchScreenState extends State<HotelSearchScreen> {
       body: Column(
         children: [
           Container(
-            decoration: const BoxDecoration(gradient: AppColors.blueGradient),
+            decoration: const BoxDecoration(color: Colors.white),
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -194,7 +194,7 @@ class _HotelSearchScreenState extends State<HotelSearchScreen> {
       onTap: _searching ? null : onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(gradient: AppColors.blueGradient, borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(color: AppColors.brandBlue, borderRadius: BorderRadius.circular(12)),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(icon, color: Colors.white, size: 18),
           const SizedBox(width: 8),

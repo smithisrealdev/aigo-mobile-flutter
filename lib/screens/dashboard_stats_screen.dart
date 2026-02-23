@@ -19,7 +19,7 @@ class DashboardStatsScreen extends ConsumerWidget {
             child: Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
-                border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
+                border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6), width: 1)),
               ),
               child: SafeArea(
                 bottom: false,
@@ -33,7 +33,7 @@ class DashboardStatsScreen extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Text('Travel Stats',
                         style: GoogleFonts.dmSans(
-                            fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.brandBlue)),
+                            fontSize: 22, fontWeight: FontWeight.w800, color: const Color(0xFF111827))),
                   ]),
                 ),
               ),

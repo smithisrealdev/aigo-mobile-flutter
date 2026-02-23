@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -96,7 +95,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     });
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Colors.white,
       body: Column(
         children: [
           // ── Blue header with avatar overlap ──
@@ -110,11 +109,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   child: DecoratedBox(
                     decoration: const BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(32),
-                        bottomRight: Radius.circular(32),
-                      ),
-                      border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
                     ),
                   ),
                 ),
@@ -123,10 +117,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Profile', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.brandBlue)),
+                      Text('Profile', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF111827))),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(color: AppColors.blueTint, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.blueBorder)),
+                        decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(16)),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
                           const Icon(Icons.edit_outlined, size: 14, color: AppColors.brandBlue),
                           const SizedBox(width: 4),
@@ -145,12 +139,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.blueBorder, width: 3),
+                              border: Border.all(color: const Color(0xFFE5E7EB), width: 3),
                             ),
                             child: CircleAvatar(
                               radius: 38,
-                              backgroundColor: AppColors.blueTint,
-                              child: const Icon(Icons.person, size: 38, color: AppColors.brandBlue),
+                              backgroundColor: const Color(0xFFF3F4F6),
+                              child: const Icon(Icons.person, size: 38, color: Color(0xFF9CA3AF)),
                             ),
                           ),
                           Positioned(
@@ -533,44 +527,4 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       },
     );
   }
-}
-
-class _ProfileDecoPainter extends CustomPainter {
-  static const _orange = Color(0xFFFFB347);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final sw = size.width;
-    final sh = size.height;
-    final fill = Paint()..style = PaintingStyle.fill;
-
-    fill.color = Colors.white.withValues(alpha: 0.04);
-    canvas.drawCircle(Offset(sw * 0.85, sh * 0.2), 50, fill);
-    canvas.drawCircle(Offset(sw * 0.1, sh * 0.7), 35, fill);
-
-    fill.color = _orange.withValues(alpha: 0.35);
-    canvas.drawCircle(Offset(sw * 0.92, sh * 0.35), 4, fill);
-
-    canvas.save();
-    canvas.translate(sw * 0.08, sh * 0.3);
-    canvas.rotate(math.pi / 5);
-    fill.color = Colors.white.withValues(alpha: 0.07);
-    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-7, -7, 14, 14), const Radius.circular(3)), fill);
-    canvas.restore();
-
-    fill.color = Colors.white.withValues(alpha: 0.1);
-    canvas.drawCircle(Offset(sw * 0.7, sh * 0.2), 2.5, fill);
-    canvas.drawCircle(Offset(sw * 0.3, sh * 0.85), 2, fill);
-
-    fill.color = Colors.white.withValues(alpha: 0.1);
-    for (var i = 0; i < 4; i++) {
-      final angle = -0.4 + i * 0.2;
-      final x = sw * 0.78 + 30 * math.cos(angle);
-      final y = sh * 0.15 + 30 * math.sin(angle);
-      canvas.drawCircle(Offset(x, y), 1.5, fill);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
 }

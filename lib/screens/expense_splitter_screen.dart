@@ -136,7 +136,7 @@ class _ExpenseSplitterScreenState extends ConsumerState<ExpenseSplitterScreen> {
           ),
           flexibleSpace: FlexibleSpaceBar(
             background: Container(
-              decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1))),
+              decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6), width: 1))),
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
@@ -146,7 +146,7 @@ class _ExpenseSplitterScreenState extends ConsumerState<ExpenseSplitterScreen> {
                     children: [
                       Text('Expense Splitter',
                           style: GoogleFonts.dmSans(
-                              fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.brandBlue)),
+                              fontSize: 24, fontWeight: FontWeight.w800, color: const Color(0xFF111827))),
                       const SizedBox(height: 4),
                       Text('${people.length} travelers  ·  ${expenses.length} expenses  ·  \$${totalSpent.toStringAsFixed(2)}',
                           style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),

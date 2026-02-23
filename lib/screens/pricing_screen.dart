@@ -40,7 +40,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
             padding: EdgeInsets.fromLTRB(20, pad.top + 12, 20, 20),
             decoration: const BoxDecoration(
               color: Colors.white,
-              border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
+              border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6), width: 1)),
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(24),
                 bottomRight: Radius.circular(24),
@@ -55,7 +55,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
                       child: const Icon(Icons.arrow_back, color: Colors.white),
                     ),
                     const SizedBox(width: 12),
-                    Text('Subscription', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.brandBlue)),
+                    Text('Subscription', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF111827))),
                   ],
                 ),
                 const SizedBox(height: 16),

@@ -109,7 +109,7 @@ class _BookingScreenState extends State<BookingScreen> {
       body: Column(
         children: [
           Container(
-            decoration: const BoxDecoration(gradient: AppColors.blueGradient),
+            decoration: const BoxDecoration(color: Colors.white),
             child: SafeArea(
               bottom: false,
               child: Padding(

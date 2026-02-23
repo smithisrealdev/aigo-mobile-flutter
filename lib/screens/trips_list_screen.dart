@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -237,10 +236,7 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
         children: [
           // White header
           Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
-            ),
+            color: Colors.white,
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -252,7 +248,7 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: const [
-                              Text('My Trips', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.brandBlue)),
+                              Text('My Trips', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF111827))),
                               Text('Go places and see the world', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                             ],
                           ),
@@ -299,7 +295,7 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
                       decoration: BoxDecoration(
                         color: active ? AppColors.brandBlue : Colors.white,
                         borderRadius: BorderRadius.circular(24),
-                        border: active ? null : Border.all(color: AppColors.border),
+                        border: active ? null : Border.all(color: const Color(0xFFD1D5DB)),
                       ),
                       child: Text(
                         _filters[i],
@@ -493,7 +489,7 @@ class _TripCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))],
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -562,34 +558,4 @@ class _TripCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _TripsHeaderDecoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final sw = size.width;
-    final sh = size.height;
-    final fill = Paint()..style = PaintingStyle.fill;
-
-    fill.color = Colors.white.withValues(alpha: 0.04);
-    canvas.drawCircle(Offset(sw * 0.88, sh * 0.2), 40, fill);
-    canvas.drawCircle(Offset(sw * 0.1, sh * 0.8), 30, fill);
-
-    fill.color = const Color(0xFFFFB347).withValues(alpha: 0.3);
-    canvas.drawCircle(Offset(sw * 0.92, sh * 0.5), 3.5, fill);
-
-    canvas.save();
-    canvas.translate(sw * 0.07, sh * 0.4);
-    canvas.rotate(math.pi / 5);
-    fill.color = Colors.white.withValues(alpha: 0.06);
-    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-5, -5, 10, 10), const Radius.circular(2)), fill);
-    canvas.restore();
-
-    fill.color = Colors.white.withValues(alpha: 0.1);
-    canvas.drawCircle(Offset(sw * 0.75, sh * 0.25), 2, fill);
-    canvas.drawCircle(Offset(sw * 0.25, sh * 0.75), 1.5, fill);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
 }

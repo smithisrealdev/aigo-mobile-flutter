@@ -62,7 +62,7 @@ class _SavedPlacesScreenState extends ConsumerState<SavedPlacesScreen>
         children: [
           // Header
           Container(
-            decoration: const BoxDecoration(gradient: AppColors.blueGradient),
+            decoration: const BoxDecoration(color: Colors.white),
             child: SafeArea(
               bottom: false,
               child: Column(

@@ -57,7 +57,7 @@ class BudgetCategoriesScreen extends ConsumerWidget {
           ),
           flexibleSpace: FlexibleSpaceBar(
             background: Container(
-              decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1))),
+              decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6), width: 1))),
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
@@ -66,7 +66,7 @@ class BudgetCategoriesScreen extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Text('Budget Categories',
-                          style: GoogleFonts.dmSans(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.brandBlue)),
+                          style: GoogleFonts.dmSans(fontSize: 24, fontWeight: FontWeight.w800, color: const Color(0xFF111827))),
                       const SizedBox(height: 8),
                       Row(children: [
                         _summaryChip('\$${totalSpent.toStringAsFixed(0)} spent'),

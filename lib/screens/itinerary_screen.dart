@@ -680,83 +680,54 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   SliverAppBar _buildHeroAppBar(PermissionService perm, String role) {
     final images = _heroImages;
     return SliverAppBar(
-      expandedHeight: 250,
+      expandedHeight: 300,
       pinned: true,
       automaticallyImplyLeading: false,
-      backgroundColor: AppColors.brandBlue,
+      backgroundColor: Colors.white,
       flexibleSpace: FlexibleSpaceBar(
         collapseMode: CollapseMode.parallax,
         background: Stack(children: [
-          // Photo carousel
-          PageView.builder(
-            itemCount: images.length,
-            onPageChanged: (i) => setState(() => _heroDotIndex = i),
-            itemBuilder: (_, i) => CachedNetworkImage(
-              imageUrl: images[i],
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: 250,
-              errorWidget: (_, __, ___) =>
-                  Container(color: AppColors.brandBlue),
-            ),
-          ),
-          // Bottom gradient
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.05),
-                    Colors.black.withValues(alpha: 0.65),
-                  ],
-                ),
+          // Photo carousel — occupies top portion
+          SizedBox(
+            height: 260,
+            width: double.infinity,
+            child: PageView.builder(
+              itemCount: images.length,
+              onPageChanged: (i) => setState(() => _heroDotIndex = i),
+              itemBuilder: (_, i) => CachedNetworkImage(
+                imageUrl: images[i],
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: 260,
+                errorWidget: (_, __, ___) =>
+                    Container(color: AppColors.brandBlue),
               ),
             ),
           ),
-          // Title overlay bottom-left
-          Positioned(
-            left: 20,
-            right: 80,
-            bottom: 20,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _tripTitle,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    height: 1.2,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (images.length > 1) ...[
-                  const SizedBox(height: 10),
-                  // Dot indicators
-                  Row(
-                    children: List.generate(
-                      images.length,
-                      (i) => Container(
-                        width: i == _heroDotIndex ? 20 : 6,
-                        height: 6,
-                        margin: const EdgeInsets.only(right: 4),
-                        decoration: BoxDecoration(
-                          color: i == _heroDotIndex
-                              ? Colors.white
-                              : Colors.white.withValues(alpha: 0.4),
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      ),
+          // Dot indicators on photo
+          if (images.length > 1)
+            Positioned(
+              bottom: 60,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  images.length,
+                  (i) => Container(
+                    width: i == _heroDotIndex ? 20 : 6,
+                    height: 6,
+                    margin: const EdgeInsets.only(right: 4),
+                    decoration: BoxDecoration(
+                      color: i == _heroDotIndex
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(3),
                     ),
                   ),
-                ],
-              ],
+                ),
+              ),
             ),
-          ),
           // Top bar: back + follow/share
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
@@ -777,6 +748,56 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 _circleBtn(Icons.ios_share, _showShareSheet),
               ],
             ]),
+          ),
+          // White content card overlapping photo
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      _tripTitle,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        height: 1.2,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.person_add_alt, size: 16),
+                    label: Text('Follow', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textPrimary,
+                      side: const BorderSide(color: Color(0xFFE5E7EB)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: _showShareSheet,
+                    child: const Icon(Icons.share, size: 20, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
           ),
         ]),
       ),

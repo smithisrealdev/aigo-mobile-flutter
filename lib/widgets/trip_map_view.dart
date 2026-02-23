@@ -185,7 +185,7 @@ class _TripMapViewState extends State<TripMapView>
         markerId: MarkerId('activity_${a.dayIndex}_${a.numberInDay}'),
         position: LatLng(a.lat, a.lng),
         icon: _iconCache[cacheKey]!,
-        anchor: const Offset(0.5, 1.0),
+        anchor: const Offset(0.5, 0.5),
         onTap: () {
           setState(() {
             if (_selected == a) {
@@ -242,8 +242,8 @@ class _TripMapViewState extends State<TripMapView>
         polylines.add(Polyline(
           polylineId: PolylineId('route_${entry.key}_$i'),
           points: routePoints,
-          color: color.withValues(alpha: 0.5),
-          width: 4,
+          color: color.withValues(alpha: 0.4),
+          width: 3,
           patterns: routePoints.length <= 2
               ? [PatternItem.dash(8), PatternItem.gap(6)]
               : [], // solid for real routes, dashed for fallback straight lines
@@ -277,64 +277,51 @@ class _TripMapViewState extends State<TripMapView>
     return [];
   }
 
-  /// Teardrop pin with white border — 100x134 canvas, displayed at 40x54
+  /// Small circle pin — like Wanderlog/Google Maps style
+  /// Compact numbered circle with white border + shadow
   Future<BitmapDescriptor> _createPin(String label, Color color) async {
-    const w = 100.0;
-    const h = 134.0;
+    const size = 80.0;
+    const r = 32.0;
+    final cx = size / 2;
+    final cy = size / 2;
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
-    final cx = w / 2;
 
-    // Shadow
-    final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.22)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-    final shadowPath = _teardropPath(cx, w, h, 4);
-    canvas.drawPath(shadowPath, shadowPaint);
-
-    // White border (draw slightly larger teardrop)
-    final borderPath = _teardropPath(cx, w, h, 6);
-    canvas.drawPath(borderPath, Paint()..color = Colors.white);
-
-    // Main teardrop
-    final mainPath = _teardropPath(cx, w, h, 8);
-    canvas.drawPath(mainPath, Paint()..color = color);
-
-    // White circle
-    const circleR = 22.0;
-    const circleY = 40.0;
+    // Drop shadow
     canvas.drawCircle(
-        Offset(cx, circleY), circleR, Paint()..color = Colors.white);
+      Offset(cx, cy + 2),
+      r + 2,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.25)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+    );
 
-    // Number — fill the circle more
-    final fontSize = label.length > 1 ? 24.0 : 28.0;
+    // White border
+    canvas.drawCircle(Offset(cx, cy), r + 3, Paint()..color = Colors.white);
+
+    // Colored fill
+    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = color);
+
+    // Number
+    final fontSize = label.length > 1 ? 28.0 : 32.0;
     final tp = TextPainter(
       text: TextSpan(
         text: label,
         style: TextStyle(
-          color: color,
+          color: Colors.white,
           fontSize: fontSize,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w800,
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, Offset(cx - tp.width / 2, circleY - tp.height / 2));
+    tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
 
-    final image = await recorder.endRecording().toImage(w.toInt(), h.toInt());
+    final image =
+        await recorder.endRecording().toImage(size.toInt(), size.toInt());
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
     return BitmapDescriptor.bytes(bytes!.buffer.asUint8List(),
-        width: 32, height: 43);
-  }
-
-  Path _teardropPath(double cx, double w, double h, double inset) {
-    return Path()
-      ..moveTo(cx, h - inset)
-      ..cubicTo(cx - 16, h - 30, inset, h * 0.44, inset, h * 0.32)
-      ..arcToPoint(Offset(w - inset, h * 0.32),
-          radius: Radius.circular((w - inset * 2) / 2), clockwise: false)
-      ..cubicTo(w - inset, h * 0.44, cx + 16, h - 30, cx, h - inset)
-      ..close();
+        width: 28, height: 28);
   }
 
   LatLng get _center {

@@ -28,43 +28,67 @@ class ScaffoldWithNav extends StatelessWidget {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Scaffold(
       body: Stack(
+        clipBehavior: Clip.none,
         children: [
-          child,
+          // Main content with bottom padding so it doesn't hide behind nav
+          Padding(
+            padding: EdgeInsets.only(bottom: 80 + bottomPadding),
+            child: child,
+          ),
           // Floating nav bar
           Positioned(
             left: 12,
             right: 12,
             bottom: bottomPadding + 8,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.85),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.white.withOpacity(0.3)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 20,
-                        offset: const Offset(0, 4),
+            child: SizedBox(
+              height: 90, // extra height for FAB overflow
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.bottomCenter,
+                children: [
+                  // Glassmorphism bar
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                        child: Container(
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.85),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 20,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _NavItem(icon: Icons.home_rounded, label: 'Home', active: idx == 0, onTap: () => _onTap(context, 0)),
+                              _NavItem(icon: Icons.explore_outlined, label: 'Explore', active: idx == 1, onTap: () => _onTap(context, 1)),
+                              const SizedBox(width: 64), // space for FAB
+                              _NavItem(icon: Icons.luggage_rounded, label: 'Trips', active: idx == 3, onTap: () => _onTap(context, 3)),
+                              _NavItem(icon: Icons.person_outline_rounded, label: 'Profile', active: idx == 4, onTap: () => _onTap(context, 4)),
+                            ],
+                          ),
+                        ),
                       ),
-                    ],
+                    ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _NavItem(icon: Icons.home_rounded, label: 'Home', active: idx == 0, onTap: () => _onTap(context, 0)),
-                      _NavItem(icon: Icons.explore_outlined, label: 'Explore', active: idx == 1, onTap: () => _onTap(context, 1)),
-                      // Center AI Chat FAB
-                      _AiChatFab(active: idx == 2, onTap: () => _onTap(context, 2)),
-                      _NavItem(icon: Icons.luggage_rounded, label: 'Trips', active: idx == 3, onTap: () => _onTap(context, 3)),
-                      _NavItem(icon: Icons.person_outline_rounded, label: 'Profile', active: idx == 4, onTap: () => _onTap(context, 4)),
-                    ],
+                  // FAB on top — not clipped
+                  Positioned(
+                    bottom: 16,
+                    child: _AiChatFab(active: idx == 2, onTap: () => _onTap(context, 2)),
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -115,34 +139,29 @@ class _AiChatFab extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Transform.translate(
-            offset: const Offset(0, -14),
-            child: Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: AppColors.brandBlue,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.brandBlue.withOpacity(0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 26),
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.brandBlue,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.brandBlue.withOpacity(0.35),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
+            child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 26),
           ),
-          Transform.translate(
-            offset: const Offset(0, -10),
-            child: Text(
-              'AI Chat',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: active ? AppColors.brandBlue : const Color(0xFF9CA3AF),
-              ),
+          const SizedBox(height: 4),
+          Text(
+            'AI Chat',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: active ? AppColors.brandBlue : const Color(0xFF9CA3AF),
             ),
           ),
         ],

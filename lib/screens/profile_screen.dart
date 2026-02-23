@@ -98,84 +98,68 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          // ── Blue header with avatar overlap ──
-          SizedBox(
-            height: 200 + pad.top,
-            width: sw,
-            child: Stack(
-              clipBehavior: Clip.none,
+          // ── Fixed header ──
+          Container(
+            color: Colors.white,
+            padding: EdgeInsets.only(top: pad.top + 12, left: 20, right: 20, bottom: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 20, right: 20, top: pad.top + 12,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Profile', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF111827))),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(16)),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.edit_outlined, size: 14, color: AppColors.brandBlue),
-                          const SizedBox(width: 4),
-                          Text('Edit', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.brandBlue)),
-                        ]),
-                      ),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  left: 0, right: 0, top: pad.top + 60,
-                  child: Column(
-                    children: [
-                      Stack(
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: const Color(0xFFE5E7EB), width: 3),
-                            ),
-                            child: CircleAvatar(
-                              radius: 38,
-                              backgroundColor: const Color(0xFFF3F4F6),
-                              child: const Icon(Icons.person, size: 38, color: Color(0xFF9CA3AF)),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 0, right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(5),
-                              decoration: BoxDecoration(
-                                color: Colors.white, shape: BoxShape.circle,
-                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4)],
-                              ),
-                              child: const Icon(Icons.camera_alt, size: 13, color: AppColors.brandBlue),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(userName, style: GoogleFonts.dmSans(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                      const SizedBox(height: 2),
-                      Text(userEmail, style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textSecondary)),
-                    ],
-                  ),
+                Text('Profile', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF111827))),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(16)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.edit_outlined, size: 14, color: AppColors.brandBlue),
+                    const SizedBox(width: 4),
+                    Text('Edit', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.brandBlue)),
+                  ]),
                 ),
               ],
             ),
           ),
 
-          // ── Content ──
+          // ── Scrollable content ──
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
               children: [
+                // Avatar + name
+                Column(
+                  children: [
+                    Stack(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFFE5E7EB), width: 3),
+                          ),
+                          child: CircleAvatar(
+                            radius: 38,
+                            backgroundColor: const Color(0xFFF3F4F6),
+                            child: const Icon(Icons.person, size: 38, color: Color(0xFF9CA3AF)),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 0, right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: Colors.white, shape: BoxShape.circle,
+                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4)],
+                            ),
+                            child: const Icon(Icons.camera_alt, size: 13, color: AppColors.brandBlue),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(userName, style: GoogleFonts.dmSans(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    const SizedBox(height: 2),
+                    Text(userEmail, style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textSecondary)),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 // Stats row
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 14),

@@ -2171,7 +2171,6 @@ class _SectionTabDelegate extends SliverPersistentHeaderDelegate {
             ('checklist', 'Checklist'),
             ('reservations', 'Reservations'),
             ('alerts', 'Alerts'),
-            ('reviews', 'Reviews'),
           ])
             Expanded(
               child: GestureDetector(

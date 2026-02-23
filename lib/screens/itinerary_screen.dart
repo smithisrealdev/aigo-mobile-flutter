@@ -441,7 +441,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
     return Scaffold(
       backgroundColor: Colors.white,
-      floatingActionButton: canEdit ? _buildFab() : null,
+      floatingActionButton: null,
       body: Stack(children: [
         if (_showMap)
           Column(children: [
@@ -650,6 +650,13 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         else
                           ..._buildActivityCards(
                               _currentActivities, canEdit: false),
+
+                        // Inline action chips
+                        if (_activeSection == 'itinerary') ...[
+                          const SizedBox(height: 16),
+                          _buildInlineActions(canEdit),
+                          const SizedBox(height: 16),
+                        ],
                       ],
 
                       if (_activeSection == 'checklist' && _trip != null) ...[
@@ -686,12 +693,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                       const SizedBox(height: 80),
                     ]))),
               ]),
-        // FAB backdrop overlay
-        if (_fabExpanded)
-          GestureDetector(
-            onTap: () => setState(() => _fabExpanded = false),
-            child: Container(color: Colors.black.withValues(alpha: 0.3)),
-          ),
       ]),
     );
   }
@@ -2059,96 +2060,33 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     );
   }
 
-  Widget _buildFab() => Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            if (_fabExpanded) ...[
-              for (final item in [
-                ('Edit', Icons.edit),
-                ('Map', Icons.map_outlined),
-                ('AI Chat', Icons.chat_bubble_outline),
-                ('Regenerate', Icons.refresh),
-                ('Optimize', Icons.auto_awesome),
-                ('Smart Replan', Icons.route),
-                ('Add Destination', Icons.add_location_alt),
-                ('Travel Tips', Icons.lightbulb_outline),
-                ('Summary', Icons.summarize_outlined),
-                ('Share', Icons.share),
-                ('Budget', Icons.account_balance_wallet_outlined),
-                ('Packing List', Icons.backpack_outlined),
-              ].reversed)
-                Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                        color: Colors.black
-                                            .withValues(alpha: 0.08),
-                                        blurRadius: 8)
-                                  ]),
-                              child: Text(item.$1,
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600))),
-                          const SizedBox(width: 8),
-                          SizedBox(
-                              width: 44,
-                              height: 44,
-                              child: FloatingActionButton(
-                                  heroTag: item.$1,
-                                  backgroundColor: AppColors.brandBlue,
-                                  elevation: 3,
-                                  onPressed: () {
-                                    setState(() => _fabExpanded = false);
-                                    if (item.$1 == 'AI Chat')
-                                      context.push('/ai-chat');
-                                    if (item.$1 == 'Map')
-                                      setState(() => _showMap = true);
-                                    if (item.$1 == 'Regenerate')
-                                      _handleRegenerate();
-                                    if (item.$1 == 'Optimize')
-                                      _handleRegenerate();
-                                    if (item.$1 == 'Smart Replan')
-                                      _handleSmartReplan();
-                                    if (item.$1 == 'Travel Tips')
-                                      context.push('/travel-tips',
-                                          extra: _tripDestination);
-                                    if (item.$1 == 'Summary')
-                                      context.push('/trip-summary',
-                                          extra: _trip);
-                                    if (item.$1 == 'Packing List')
-                                      context.push('/packing-list',
-                                          extra: _trip);
-                                    if (item.$1 == 'Budget')
-                                      context.push('/budget', extra: _trip);
-                                    if (item.$1 == 'Add Destination')
-                                      _showAddDestinationDialog();
-                                    if (item.$1 == 'Share')
-                                      _showShareSheet();
-                                  },
-                                  child: Icon(item.$2,
-                                      color: Colors.white, size: 20))),
-                        ])),
-            ],
-            FloatingActionButton(
-                heroTag: 'main',
-                backgroundColor: AppColors.brandBlue,
-                onPressed: () => setState(() => _fabExpanded = !_fabExpanded),
-                child: AnimatedRotation(
-                    turns: _fabExpanded ? 0.125 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child:
-                        const Icon(Icons.add, color: Colors.white, size: 28))),
-          ]);
+  Widget _buildInlineActions(bool canEdit) {
+    final actions = <(String, IconData, VoidCallback)>[
+      if (canEdit) ('Add Activity', Icons.add_location_alt, _showAddDestinationDialog),
+      if (canEdit) ('Regenerate', Icons.refresh, _handleRegenerate),
+      if (canEdit) ('Optimize', Icons.auto_awesome, _handleRegenerate),
+      if (canEdit) ('Smart Replan', Icons.route, _handleSmartReplan),
+      ('Budget', Icons.account_balance_wallet_outlined, () => context.push('/budget', extra: _trip)),
+      ('Packing List', Icons.backpack_outlined, () => context.push('/packing-list', extra: _trip)),
+      ('Summary', Icons.summarize_outlined, () => context.push('/trip-summary', extra: _trip)),
+      ('Travel Tips', Icons.lightbulb_outline, () => context.push('/travel-tips', extra: _tripDestination)),
+      ('AI Chat', Icons.chat_bubble_outline, () => context.push('/ai-chat')),
+      ('Map', Icons.map_outlined, () => setState(() => _showMap = true)),
+      ('Share', Icons.share, _showShareSheet),
+    ];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: actions.map((a) => ActionChip(
+        avatar: Icon(a.$2, size: 16, color: AppColors.brandBlue),
+        label: Text(a.$1, style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
+        backgroundColor: AppColors.brandBlue.withValues(alpha: 0.08),
+        side: BorderSide(color: AppColors.brandBlue.withValues(alpha: 0.2)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        onPressed: a.$3,
+      )).toList(),
+    );
+  }
 }
 
 

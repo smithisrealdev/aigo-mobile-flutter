@@ -18,6 +18,7 @@ import '../screens/hotel_search_screen.dart';
 import '../screens/trip_summary_screen.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/profile_screen.dart';
+import '../screens/dashboard_stats_screen.dart';
 import '../screens/saved_places_screen.dart';
 import '../screens/map_view_screen.dart';
 import '../screens/search_results_screen.dart';
@@ -85,6 +86,7 @@ final appRouter = GoRouter(
     GoRoute(path: '/pricing', builder: (_, __) => const PricingScreen()),
     GoRoute(path: '/account-settings', builder: (_, __) => const AccountSettingsScreen()),
     GoRoute(path: '/progress', builder: (_, __) => const ProgressScreen()),
+    GoRoute(path: '/dashboard-stats', builder: (_, __) => const DashboardStatsScreen()),
     GoRoute(path: '/shared-trip/:token', builder: (_, state) => SharedTripScreen(token: state.pathParameters['token']!)),
     GoRoute(path: '/place-detail', builder: (_, state) {
       final extra = state.extra;

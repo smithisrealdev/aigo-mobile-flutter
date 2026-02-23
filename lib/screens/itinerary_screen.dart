@@ -699,9 +699,11 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
                         if (_currentActivities.isEmpty)
                           _emptyState()
+                        else if (canEdit)
+                          ..._buildReorderableActivities(_currentActivities)
                         else
                           ..._buildActivityCards(
-                              _currentActivities, canEdit: canEdit),
+                              _currentActivities, canEdit: false),
                       ],
 
                       if (_activeSection == 'checklist' && _trip != null) ...[
@@ -1501,6 +1503,63 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       );
 
   // ─── ACTIVITY CARDS (MAJOR UPGRADE) ───
+
+  List<Widget> _buildReorderableActivities(List<Map<String, dynamic>> activities) {
+    if (_collapsedDays.contains(_selectedDay)) return [];
+
+    return [
+      SizedBox(
+        height: activities.length * 160.0, // approximate height per card
+        child: ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: activities.length,
+          proxyDecorator: (child, index, animation) {
+            return AnimatedBuilder(
+              animation: animation,
+              builder: (_, __) => Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(16),
+                color: Colors.transparent,
+                child: child,
+              ),
+            );
+          },
+          onReorder: (oldIndex, newIndex) {
+            setState(() {
+              if (newIndex > oldIndex) newIndex--;
+              final day = _days[_selectedDay];
+              final acts = List<Map<String, dynamic>>.from(
+                  day['activities'] ?? day['places'] ?? []);
+              final item = acts.removeAt(oldIndex);
+              acts.insert(newIndex, item);
+              if (day.containsKey('activities')) {
+                day['activities'] = acts;
+              } else {
+                day['places'] = acts;
+              }
+            });
+          },
+          itemBuilder: (context, i) {
+            final a = activities[i];
+            return KeyedSubtree(
+              key: ValueKey('act_${_selectedDay}_$i'),
+              child: Column(
+                children: [
+                  GestureDetector(
+                    onTap: () => showActivityDetailSheet(context,
+                        activity: a, tripId: _trip?.id ?? ''),
+                    child: _activityCard(a, i, canEdit: true),
+                  ),
+                  if (i < activities.length - 1) _connector(),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    ];
+  }
 
   List<Widget> _buildActivityCards(List<Map<String, dynamic>> activities,
       {required bool canEdit}) {

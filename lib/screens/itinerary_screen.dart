@@ -604,43 +604,48 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       backgroundColor: Colors.white,
       floatingActionButton: null,
       body: Stack(children: [
-        if (_showMap)
-          Column(children: [
-            _buildMapBar(role, days),
-            Expanded(
-              child: TripMapView(
-                selectedDayIndex: _selectedDay,
-                activities: _mapActivities.isNotEmpty
-                    ? _mapActivities
-                    : const [
-                        MapActivity(
-                            name: '', time: '', lat: 35.6762, lng: 139.6503)
-                      ],
-              ),
-            ),
-          ])
-        else
-          CustomScrollView(
-            controller: _scrollController,
-            slivers: [
-              // ── 1. HERO COVER PHOTO ──
-              _buildHeroAppBar(perm, role),
+        CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            // ── 1. HERO COVER PHOTO ──
+            _buildHeroAppBar(perm, role),
 
-              // ── CONTENT (no section tabs) ──
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    if (role == 'viewer') _viewerBanner(),
-
-                    ..._buildItineraryContent(canEdit),
-
-                    const SizedBox(height: 80),
-                  ]),
-                ),
+            // ── MAP (inline, toggleable) ──
+            if (_showMap) ...[
+              SliverToBoxAdapter(
+                child: Column(children: [
+                  _buildMapBar(role, days),
+                  SizedBox(
+                    height: 300,
+                    child: TripMapView(
+                      selectedDayIndex: _selectedDay,
+                      activities: _mapActivities.isNotEmpty
+                          ? _mapActivities
+                          : const [
+                              MapActivity(
+                                  name: '', time: '', lat: 35.6762, lng: 139.6503)
+                            ],
+                    ),
+                  ),
+                ]),
               ),
             ],
-          ),
+
+            // ── CONTENT ──
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  if (role == 'viewer') _viewerBanner(),
+
+                  ..._buildItineraryContent(canEdit),
+
+                  const SizedBox(height: 80),
+                ]),
+              ),
+            ),
+          ],
+        ),
 
         // FAB backdrop
         if (_fabExpanded)
@@ -649,7 +654,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             child: Container(color: Colors.black.withValues(alpha: 0.4)),
           ),
         // FAB speed dial — hidden when map is showing
-        if (canEdit && !_showMap)
+        if (canEdit)
           Positioned(
             right: 16,
             bottom: 16 + MediaQuery.of(context).padding.bottom,

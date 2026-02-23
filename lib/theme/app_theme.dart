@@ -21,14 +21,15 @@ class AppTheme {
         displayColor: AppColors.textPrimary,
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.brandBlue,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.textPrimary,
         elevation: 0,
         centerTitle: false,
+        surfaceTintColor: Colors.transparent,
         titleTextStyle: GoogleFonts.dmSans(
           fontSize: 20,
           fontWeight: FontWeight.w700,
-          color: Colors.white,
+          color: AppColors.brandBlue,
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

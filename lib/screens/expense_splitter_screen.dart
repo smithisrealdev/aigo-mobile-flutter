@@ -131,12 +131,12 @@ class _ExpenseSplitterScreenState extends ConsumerState<ExpenseSplitterScreen> {
           pinned: true,
           backgroundColor: AppColors.brandBlue,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+            icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary, size: 20),
             onPressed: () => Navigator.maybePop(context),
           ),
           flexibleSpace: FlexibleSpaceBar(
             background: Container(
-              decoration: const BoxDecoration(gradient: AppColors.blueGradient),
+              decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1))),
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
@@ -146,10 +146,10 @@ class _ExpenseSplitterScreenState extends ConsumerState<ExpenseSplitterScreen> {
                     children: [
                       Text('Expense Splitter',
                           style: GoogleFonts.dmSans(
-                              fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
+                              fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.brandBlue)),
                       const SizedBox(height: 4),
                       Text('${people.length} travelers  ·  ${expenses.length} expenses  ·  \$${totalSpent.toStringAsFixed(2)}',
-                          style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                     ],
                   ),
                 ),

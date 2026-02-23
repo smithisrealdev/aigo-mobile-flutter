@@ -173,20 +173,16 @@ class _LoginScreenState extends State<LoginScreen>
             width: sw,
             child: Stack(
               children: [
-                // Gradient bg with rounded bottom
+                // White bg with rounded bottom
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF2B6FFF), Color(0xFF1A5EFF), Color(0xFF0044E6)],
-                        stops: [0.0, 0.4, 1.0],
-                      ),
+                      color: Colors.white,
                       borderRadius: BorderRadius.only(
                         bottomLeft: Radius.circular(36),
                         bottomRight: Radius.circular(36),
                       ),
+                      border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
                     ),
                   ),
                 ),
@@ -208,21 +204,22 @@ class _LoginScreenState extends State<LoginScreen>
                       SvgPicture.asset(
                         'assets/images/logo_white.svg',
                         height: _isSignIn ? 56 : 44,
+                        colorFilter: const ColorFilter.mode(AppColors.brandBlue, BlendMode.srcIn),
                       ),
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.14),
+                          color: AppColors.blueTint,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.auto_awesome, size: 13, color: Colors.white70),
+                            const Icon(Icons.auto_awesome, size: 13, color: AppColors.brandBlue),
                             const SizedBox(width: 5),
                             Text('Powered by AI', style: GoogleFonts.dmSans(
-                              fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white70,
+                              fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.brandBlue,
                             )),
                           ],
                         ),
@@ -230,7 +227,7 @@ class _LoginScreenState extends State<LoginScreen>
                       if (_isSignIn) ...[
                         const SizedBox(height: 6),
                         Text('Travels far and near', style: GoogleFonts.dmSans(
-                          fontSize: 13, color: Colors.white54, fontStyle: FontStyle.italic, letterSpacing: 0.3,
+                          fontSize: 13, color: AppColors.textSecondary, fontStyle: FontStyle.italic, letterSpacing: 0.3,
                         )),
                       ],
                     ],
@@ -611,7 +608,7 @@ class _LoginScreenState extends State<LoginScreen>
     return Container(
       height: 50,
       decoration: BoxDecoration(
-        gradient: AppColors.blueGradient,
+        color: AppColors.brandBlue,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -657,27 +654,27 @@ class _LoginDecoPainter extends CustomPainter {
     canvas.save();
     canvas.translate(-12, sh - 10);
     canvas.rotate(-gearValue * 2 * math.pi * 0.15);
-    _drawGear(canvas, 0, 0, 36, Colors.white.withValues(alpha: 0.1), Colors.white.withValues(alpha: 0.05));
+    _drawGear(canvas, 0, 0, 36, const Color(0xFFDBEAFE).withValues(alpha: 0.1), const Color(0xFFDBEAFE).withValues(alpha: 0.05));
     canvas.restore();
 
     // ── Small gear mid-right ──
     canvas.save();
     canvas.translate(sw - 36, sh * 0.48);
     canvas.rotate(gearValue * 2 * math.pi * 0.12);
-    _drawGear(canvas, 0, 0, 14, Colors.white.withValues(alpha: 0.08), Colors.white.withValues(alpha: 0.04));
+    _drawGear(canvas, 0, 0, 14, const Color(0xFFDBEAFE).withValues(alpha: 0.08), const Color(0xFFDBEAFE).withValues(alpha: 0.04));
     canvas.restore();
 
     // ── Floating squares ──
-    _drawSquare(canvas, sw * 0.14, sh * 0.3, 12, Colors.white.withValues(alpha: 0.1));
+    _drawSquare(canvas, sw * 0.14, sh * 0.3, 12, const Color(0xFFDBEAFE).withValues(alpha: 0.1));
     _drawSquare(canvas, sw * 0.82, sh * 0.65, 9, _orange.withValues(alpha: 0.25));
 
     // ── Subtle circles ──
-    fill.color = Colors.white.withValues(alpha: 0.04);
+    fill.color = const Color(0xFFDBEAFE).withValues(alpha: 0.04);
     canvas.drawCircle(Offset(sw * 0.78, sh * 0.25), 55, fill);
     canvas.drawCircle(Offset(sw * 0.2, sh * 0.7), 35, fill);
 
     // ── Dotted arc top ──
-    fill.color = Colors.white.withValues(alpha: 0.12);
+    fill.color = const Color(0xFFDBEAFE).withValues(alpha: 0.12);
     for (var i = 0; i < 5; i++) {
       final angle = -0.6 + i * 0.18;
       final x = sw * 0.68 + 40 * math.cos(angle);
@@ -686,7 +683,7 @@ class _LoginDecoPainter extends CustomPainter {
     }
 
     // ── White dots ──
-    fill.color = Colors.white.withValues(alpha: 0.15);
+    fill.color = const Color(0xFFDBEAFE).withValues(alpha: 0.15);
     canvas.drawCircle(Offset(sw * 0.25, sh * 0.22), 3, fill);
     canvas.drawCircle(Offset(sw * 0.7, sh * 0.72), 2.5, fill);
 
@@ -706,7 +703,7 @@ class _LoginDecoPainter extends CustomPainter {
     fill.color = darkColor;
     canvas.drawCircle(Offset(x, y), r * 0.28, fill);
     // Highlight
-    fill.color = Colors.white.withValues(alpha: 0.12);
+    fill.color = const Color(0xFFDBEAFE).withValues(alpha: 0.12);
     canvas.drawArc(
       Rect.fromCenter(center: Offset(x, y), width: r * 1.1, height: r * 1.1),
       -math.pi, math.pi * 0.4, true, fill,

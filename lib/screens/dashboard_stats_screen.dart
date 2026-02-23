@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 import '../services/trip_service.dart';
-import '../widgets/brand_deco_circles.dart';
 
 class DashboardStatsScreen extends ConsumerWidget {
   const DashboardStatsScreen({super.key});
@@ -17,25 +16,28 @@ class DashboardStatsScreen extends ConsumerWidget {
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
-            child: Stack(children: [
-              const BrandDecoCircles(height: 160),
-              SafeArea(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
+              ),
+              child: SafeArea(
                 bottom: false,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   child: Row(children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
                       onPressed: () => Navigator.pop(context),
                     ),
                     const SizedBox(width: 8),
                     Text('Travel Stats',
                         style: GoogleFonts.dmSans(
-                            fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+                            fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.brandBlue)),
                   ]),
                 ),
               ),
-            ]),
+            ),
           ),
           SliverPadding(
             padding: const EdgeInsets.all(20),

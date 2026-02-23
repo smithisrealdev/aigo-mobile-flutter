@@ -38,12 +38,12 @@ class ActivityFeedScreen extends ConsumerWidget {
           pinned: true,
           backgroundColor: AppColors.brandBlue,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+            icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary, size: 20),
             onPressed: () => Navigator.maybePop(context),
           ),
           flexibleSpace: FlexibleSpaceBar(
             background: Container(
-              decoration: const BoxDecoration(gradient: AppColors.blueGradient),
+              decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1))),
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
@@ -52,9 +52,9 @@ class ActivityFeedScreen extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Text('Activity Feed',
-                          style: GoogleFonts.dmSans(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
+                          style: GoogleFonts.dmSans(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.brandBlue)),
                       const SizedBox(height: 4),
-                      const Text('Your recent travel activity', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                      const Text('Your recent travel activity', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                     ],
                   ),
                 ),

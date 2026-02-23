@@ -39,12 +39,8 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
           Container(
             padding: EdgeInsets.fromLTRB(20, pad.top + 12, 20, 20),
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF2B6FFF), Color(0xFF1A5EFF), Color(0xFF0044E6)],
-                stops: [0.0, 0.4, 1.0],
-              ),
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(24),
                 bottomRight: Radius.circular(24),
@@ -59,7 +55,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
                       child: const Icon(Icons.arrow_back, color: Colors.white),
                     ),
                     const SizedBox(width: 12),
-                    Text('Subscription', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+                    Text('Subscription', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.brandBlue)),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -81,7 +77,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
                 if (_isYearly)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text('Save up to 20% with yearly billing', style: GoogleFonts.dmSans(fontSize: 12, color: Colors.white70)),
+                    child: Text('Save up to 20% with yearly billing', style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
                   ),
               ],
             ),

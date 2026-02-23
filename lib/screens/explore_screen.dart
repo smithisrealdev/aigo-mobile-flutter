@@ -192,31 +192,24 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [Color(0xFF2B6FFF), Color(0xFF1A5EFF), Color(0xFF0044E6)],
-          stops: [0.0, 0.4, 1.0],
-        ),
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
       ),
-      clipBehavior: Clip.hardEdge,
-      child: Stack(children: [
-        Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _ExploreHeaderDecoPainter()))),
-        SafeArea(
+      child: SafeArea(
           bottom: false,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                const Expanded(child: Text('Discover Your Next Journey', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white))),
-                IconButton(icon: const Icon(Icons.search, color: Colors.white), onPressed: () => context.push('/search-results'), tooltip: 'Search'),
-                IconButton(icon: const Icon(Icons.bookmark_outline, color: Colors.white), onPressed: () => context.push('/saved-places'), tooltip: 'Saved'),
+                const Expanded(child: Text('Discover Your Next Journey', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.brandBlue))),
+                IconButton(icon: const Icon(Icons.search, color: AppColors.textSecondary), onPressed: () => context.push('/search-results'), tooltip: 'Search'),
+                IconButton(icon: const Icon(Icons.bookmark_outline, color: AppColors.textSecondary), onPressed: () => context.push('/saved-places'), tooltip: 'Saved'),
               ]),
               const SizedBox(height: 4),
-              const Text('Go places and see the world', style: TextStyle(fontSize: 13, color: Colors.white70)),
+              const Text('Go places and see the world', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
             ]),
           ),
-        ),
-      ]),
+      ),
     );
   }
 
@@ -449,9 +442,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 28, 20, 0),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      decoration: BoxDecoration(gradient: AppColors.blueGradient, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: AppColors.blueTint, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.blueBorder)),
       child: Column(children: [
-        const Text("Can't find what you're looking for?", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+        const Text("Can't find what you're looking for?", style: TextStyle(color: AppColors.brandBlue, fontSize: 16, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
         const SizedBox(height: 14),
         OutlinedButton(
           onPressed: () => context.push('/ai-chat'),

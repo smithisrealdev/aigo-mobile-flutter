@@ -235,22 +235,15 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
       ),
       body: Column(
         children: [
-          // Brand blue header
+          // White header
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF2B6FFF), Color(0xFF1A5EFF), Color(0xFF0044E6)],
-                stops: [0.0, 0.4, 1.0],
-              ),
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
             ),
             child: SafeArea(
               bottom: false,
-              child: Stack(
-                children: [
-                  Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _TripsHeaderDecoPainter()))),
-                  Padding(
+              child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
                     child: Row(
                       children: [
@@ -259,8 +252,8 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: const [
-                              Text('My Trips', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
-                              Text('Go places and see the world', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                              Text('My Trips', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.brandBlue)),
+                              Text('Go places and see the world', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                             ],
                           ),
                         ),
@@ -271,8 +264,8 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
                             icon: const Icon(Icons.add, size: 16),
                             label: const Text('New Trip'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: AppColors.brandBlue,
+                              backgroundColor: AppColors.brandBlue,
+                              foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                               textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                               padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -282,8 +275,6 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
                         ),
                       ],
                     ),
-                  ),
-                ],
               ),
             ),
           ),

@@ -83,7 +83,7 @@ class _TravelTipsScreenState extends State<TravelTipsScreen> {
       body: Column(
         children: [
           Container(
-            decoration: const BoxDecoration(gradient: AppColors.blueGradient),
+            decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1))),
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -96,7 +96,7 @@ class _TravelTipsScreenState extends State<TravelTipsScreen> {
                         GestureDetector(
                           onTap: () => Navigator.maybePop(context),
                           child: const Icon(Icons.arrow_back_ios,
-                              color: Colors.white, size: 20),
+                              color: AppColors.textPrimary, size: 20),
                         ),
                         const SizedBox(width: 12),
                         Expanded(

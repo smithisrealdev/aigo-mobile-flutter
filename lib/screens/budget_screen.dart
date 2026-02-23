@@ -68,7 +68,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
           return Column(
             children: [
               Container(
-                decoration: const BoxDecoration(gradient: AppColors.blueGradient),
+                decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1))),
                 child: SafeArea(
                   bottom: false,
                   child: Padding(
@@ -76,9 +76,9 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                     child: Column(
                       children: [
                         Row(children: [
-                          GestureDetector(onTap: () => Navigator.maybePop(context), child: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20)),
+                          GestureDetector(onTap: () => Navigator.maybePop(context), child: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary, size: 20)),
                           const SizedBox(width: 12),
-                          Text('Budget', style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
+                          Text('Budget', style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.brandBlue)),
                         ]),
                         const SizedBox(height: 24),
                         SizedBox(
@@ -87,7 +87,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                             painter: _DonutPainter(pct),
                             child: Center(
                               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                                Text('฿${totalSpent.toStringAsFixed(0)}', style: GoogleFonts.dmSans(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
+                                Text('฿${totalSpent.toStringAsFixed(0)}', style: GoogleFonts.dmSans(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.brandBlue)),
                                 Text('of ฿${totalBudget.toStringAsFixed(0)}', style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.7))),
                               ]),
                             ),

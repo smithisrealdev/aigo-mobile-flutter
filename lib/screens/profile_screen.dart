@@ -109,33 +109,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF2B6FFF), Color(0xFF1A5EFF), Color(0xFF0044E6)],
-                        stops: [0.0, 0.4, 1.0],
-                      ),
+                      color: Colors.white,
                       borderRadius: BorderRadius.only(
                         bottomLeft: Radius.circular(32),
                         bottomRight: Radius.circular(32),
                       ),
+                      border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
                     ),
                   ),
                 ),
-                CustomPaint(size: Size(sw, 200 + pad.top), painter: _ProfileDecoPainter()),
                 Positioned(
                   left: 20, right: 20, top: pad.top + 12,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Profile', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+                      Text('Profile', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.brandBlue)),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(16)),
+                        decoration: BoxDecoration(color: AppColors.blueTint, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.blueBorder)),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.edit_outlined, size: 14, color: Colors.white70),
+                          const Icon(Icons.edit_outlined, size: 14, color: AppColors.brandBlue),
                           const SizedBox(width: 4),
-                          Text('Edit', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white70)),
+                          Text('Edit', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.brandBlue)),
                         ]),
                       ),
                     ],
@@ -150,13 +145,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 3),
-                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 12, offset: const Offset(0, 4))],
+                              border: Border.all(color: AppColors.blueBorder, width: 3),
                             ),
-                            child: const CircleAvatar(
+                            child: CircleAvatar(
                               radius: 38,
-                              backgroundColor: Color(0xFF4D82FF),
-                              child: Icon(Icons.person, size: 38, color: Colors.white),
+                              backgroundColor: AppColors.blueTint,
+                              child: const Icon(Icons.person, size: 38, color: AppColors.brandBlue),
                             ),
                           ),
                           Positioned(
@@ -173,9 +167,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      Text(userName, style: GoogleFonts.dmSans(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white)),
+                      Text(userName, style: GoogleFonts.dmSans(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                       const SizedBox(height: 2),
-                      Text(userEmail, style: GoogleFonts.dmSans(fontSize: 13, color: Colors.white60)),
+                      Text(userEmail, style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textSecondary)),
                     ],
                   ),
                 ),

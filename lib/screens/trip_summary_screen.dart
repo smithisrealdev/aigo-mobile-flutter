@@ -176,14 +176,14 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
                     errorWidget: (_, __, ___) => Container(
                       height: 260,
                       decoration:
-                          const BoxDecoration(gradient: AppColors.blueGradient),
+                          const BoxDecoration(color: AppColors.brandBlue),
                     ),
                   )
                 else
                   Container(
                     height: 260,
                     decoration:
-                        const BoxDecoration(gradient: AppColors.blueGradient),
+                        const BoxDecoration(color: AppColors.brandBlue),
                   ),
                 Container(
                   height: 260,
@@ -607,7 +607,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          gradient: AppColors.blueGradient,
+          color: AppColors.brandBlue,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(

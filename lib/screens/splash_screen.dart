@@ -150,6 +150,7 @@ class _SplashScreenState extends State<SplashScreen>
                         child: SvgPicture.asset(
                           'assets/images/logo_white.svg',
                           height: 90,
+                          colorFilter: const ColorFilter.mode(Color(0xFF2563EB), BlendMode.srcIn),
                         ),
                       ),
                     ),
@@ -215,7 +216,7 @@ class _TypewriterText extends StatelessWidget {
                 fontSize: 15,
                 fontWeight: FontWeight.w400,
                 fontStyle: FontStyle.italic,
-                color: Colors.white.withValues(alpha: 0.7 * charOpacity),
+                color: const Color(0xFF2563EB).withValues(alpha: 0.7 * charOpacity),
                 letterSpacing: 0.8,
               ),
             );
@@ -232,6 +233,7 @@ class _TypewriterText extends StatelessWidget {
 class _RadialBgPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
+    // Pure white background with subtle blue tint in center
     final center = Offset(size.width * 0.5, size.height * 0.45);
     final paint = Paint()
       ..shader = RadialGradient(
@@ -241,9 +243,9 @@ class _RadialBgPainter extends CustomPainter {
         ),
         radius: 0.9,
         colors: const [
-          Color(0xFF2B6FFF), // brighter center
-          Color(0xFF1A5EFF), // mid
-          Color(0xFF0044E6), // darker edges
+          Color(0xFFEFF6FF), // subtle blue tint center
+          Color(0xFFF8FBFF), // very faint
+          Color(0xFFFFFFFF), // white edges
         ],
         stops: const [0.0, 0.45, 1.0],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
@@ -305,7 +307,7 @@ class _SplashDecoPainter extends CustomPainter {
     // ── Particles (floating up slowly) ──
     for (final p in particles) {
       final y = ((p.startY - gearValue * p.speed * 8) % 1.2) * sh;
-      fill.color = Colors.white.withValues(alpha: p.opacity);
+      fill.color = const Color(0xFF2563EB).withValues(alpha: p.opacity);
       canvas.drawCircle(Offset(p.x * sw, y), p.size, fill);
     }
 
@@ -320,14 +322,14 @@ class _SplashDecoPainter extends CustomPainter {
     canvas.save();
     canvas.translate(-20, sh + 15);
     canvas.rotate(-gearValue * 2 * math.pi * 0.3);
-    _drawGear(canvas, 0, 0, 50, Colors.white.withValues(alpha: 0.15), Colors.white.withValues(alpha: 0.08));
+    _drawGear(canvas, 0, 0, 50, const Color(0xFF2563EB).withValues(alpha: 0.15), const Color(0xFF2563EB).withValues(alpha: 0.08));
     canvas.restore();
 
     // ── Small gear top-left ──
     canvas.save();
     canvas.translate(42, sh * 0.22);
     canvas.rotate(gearValue * 2 * math.pi * 0.2);
-    _drawGear(canvas, 0, 0, 18, Colors.white.withValues(alpha: 0.12), Colors.white.withValues(alpha: 0.06));
+    _drawGear(canvas, 0, 0, 18, const Color(0xFF2563EB).withValues(alpha: 0.12), const Color(0xFF2563EB).withValues(alpha: 0.06));
     canvas.restore();
 
     // ── Medium orange gear right side ──
@@ -341,24 +343,24 @@ class _SplashDecoPainter extends CustomPainter {
     canvas.save();
     canvas.translate(sw - 65, sh * 0.38);
     canvas.rotate(gearValue * 2 * math.pi * 0.15);
-    _drawGear(canvas, 0, 0, 14, Colors.white.withValues(alpha: 0.08), Colors.white.withValues(alpha: 0.04));
+    _drawGear(canvas, 0, 0, 14, const Color(0xFF2563EB).withValues(alpha: 0.08), const Color(0xFF2563EB).withValues(alpha: 0.04));
     canvas.restore();
 
     // ── Floating squares ──
     _drawSquare(canvas, sw * 0.14, sh * 0.14, 18, _blueLight.withValues(alpha: 0.3));
     _drawSquare(canvas, sw * 0.86, sh * 0.33, 14, _orange.withValues(alpha: 0.4));
-    _drawSquare(canvas, sw * 0.10, sh * 0.66, 11, Colors.white.withValues(alpha: 0.12));
+    _drawSquare(canvas, sw * 0.10, sh * 0.66, 11, const Color(0xFF2563EB).withValues(alpha: 0.12));
     _drawSquare(canvas, sw * 0.90, sh * 0.84, 16, _blueLight.withValues(alpha: 0.2));
     _drawSquare(canvas, sw * 0.55, sh * 0.12, 8, _orange.withValues(alpha: 0.2));
 
     // ── Subtle large circles ──
-    fill.color = Colors.white.withValues(alpha: 0.035);
+    fill.color = const Color(0xFF2563EB).withValues(alpha: 0.035);
     canvas.drawCircle(Offset(sw * 0.82, sh * 0.10), 90, fill);
     canvas.drawCircle(Offset(sw * 0.12, sh * 0.90), 80, fill);
     canvas.drawCircle(Offset(sw * 0.65, sh * 0.65), 50, fill);
 
     // ── Dotted arcs ──
-    fill.color = Colors.white.withValues(alpha: 0.15);
+    fill.color = const Color(0xFF2563EB).withValues(alpha: 0.15);
     for (var i = 0; i < 7; i++) {
       final angle = -0.8 + i * 0.14;
       final x = sw * 0.72 + 55 * math.cos(angle);
@@ -385,7 +387,7 @@ class _SplashDecoPainter extends CustomPainter {
     canvas.drawCircle(Offset(sw * 0.60, sh * 0.88), 4, fill);
 
     // ── White tiny dots ──
-    fill.color = Colors.white.withValues(alpha: 0.15);
+    fill.color = const Color(0xFF2563EB).withValues(alpha: 0.15);
     canvas.drawCircle(Offset(sw * 0.30, sh * 0.28), 3, fill);
     canvas.drawCircle(Offset(sw * 0.68, sh * 0.76), 2.5, fill);
     canvas.drawCircle(Offset(sw * 0.48, sh * 0.92), 2, fill);
@@ -399,7 +401,7 @@ class _SplashDecoPainter extends CustomPainter {
     _gearPath(canvas, x, y, r, fill);
     fill.color = darkColor;
     canvas.drawCircle(Offset(x, y), r * 0.28, fill);
-    fill.color = Colors.white.withValues(alpha: 0.15);
+    fill.color = const Color(0xFF2563EB).withValues(alpha: 0.15);
     canvas.drawArc(
       Rect.fromCenter(center: Offset(x, y), width: r * 1.2, height: r * 1.2),
       -math.pi, math.pi * 0.5, true, fill,
@@ -470,7 +472,7 @@ class _MiniGearPainter extends CustomPainter {
 
     final fill = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.white.withValues(alpha: 0.7);
+      ..color = const Color(0xFF2563EB).withValues(alpha: 0.7);
 
     const teeth = 8;
     final path = Path();

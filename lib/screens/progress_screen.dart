@@ -57,12 +57,8 @@ class _ProgressScreenState extends State<ProgressScreen> with TickerProviderStat
           Container(
             padding: EdgeInsets.fromLTRB(20, pad.top + 12, 20, 24),
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF2B6FFF), Color(0xFF1A5EFF), Color(0xFF0044E6)],
-                stops: [0.0, 0.4, 1.0],
-              ),
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(24),
                 bottomRight: Radius.circular(24),
@@ -70,9 +66,9 @@ class _ProgressScreenState extends State<ProgressScreen> with TickerProviderStat
             ),
             child: Column(
               children: [
-                Text('Generating Itinerary', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+                Text('Generating Itinerary', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.brandBlue)),
                 const SizedBox(height: 4),
-                Text('AI is planning your perfect trip', style: GoogleFonts.dmSans(fontSize: 13, color: Colors.white70)),
+                Text('AI is planning your perfect trip', style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textSecondary)),
                 const SizedBox(height: 16),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
@@ -84,7 +80,7 @@ class _ProgressScreenState extends State<ProgressScreen> with TickerProviderStat
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text('${(progress * 100).toInt()}% complete', style: GoogleFonts.dmSans(fontSize: 12, color: Colors.white70)),
+                Text('${(progress * 100).toInt()}% complete', style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
               ],
             ),
           ),

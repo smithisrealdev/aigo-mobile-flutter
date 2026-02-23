@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/supabase_config.dart';
 import '../theme/app_colors.dart';
-import '../widgets/brand_deco_circles.dart';
 import '../widgets/upgrade_dialog.dart';
 import '../services/chat_service.dart';
 import '../services/itinerary_service.dart';
@@ -249,20 +248,20 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
       body: Column(children: [
         // Header
         Container(
-          decoration: const BoxDecoration(gradient: AppColors.blueGradient),
-          clipBehavior: Clip.hardEdge,
-          child: Stack(children: [
-            const Positioned.fill(child: BrandDecoCircles()),
-            SafeArea(bottom: false, child: Padding(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
+          ),
+          child: SafeArea(bottom: false, child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 6, 16, 12),
               child: Row(children: [
-                SvgPicture.asset('assets/images/logo_white.svg', height: 28),
+                SvgPicture.asset('assets/images/logo_white.svg', height: 28,
+                    colorFilter: const ColorFilter.mode(AppColors.brandBlue, BlendMode.srcIn)),
                 const Spacer(),
-                IconButton(icon: const Icon(Icons.add_comment_outlined, color: Colors.white, size: 22), onPressed: () {}, tooltip: 'New Chat'),
-                IconButton(icon: const Icon(Icons.history, color: Colors.white, size: 22), onPressed: () {}, tooltip: 'History'),
+                IconButton(icon: const Icon(Icons.add_comment_outlined, color: AppColors.textSecondary, size: 22), onPressed: () {}, tooltip: 'New Chat'),
+                IconButton(icon: const Icon(Icons.history, color: AppColors.textSecondary, size: 22), onPressed: () {}, tooltip: 'History'),
               ]),
             )),
-          ]),
         ),
         // Context bar
         if (_messages.isNotEmpty)
@@ -470,7 +469,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
 
   Widget _buildTypingIndicator() {
     return Container(margin: const EdgeInsets.only(bottom: 12), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Container(width: 28, height: 28, decoration: BoxDecoration(gradient: AppColors.blueGradient, borderRadius: BorderRadius.circular(8)),
+      Container(width: 28, height: 28, decoration: BoxDecoration(color: AppColors.brandBlue, borderRadius: BorderRadius.circular(8)),
         child: Center(child: SvgPicture.asset('assets/images/logo_white.svg', height: 14))),
       const SizedBox(width: 10),
       Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -535,7 +534,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
         Align(alignment: Alignment.centerRight, child: Container(
           margin: const EdgeInsets.only(bottom: 12, left: 48),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(gradient: AppColors.blueGradient,
+          decoration: BoxDecoration(color: AppColors.brandBlue,
             borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20), bottomLeft: Radius.circular(20), bottomRight: Radius.circular(4)),
             boxShadow: [BoxShadow(color: AppColors.brandBlue.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))]),
           child: Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4)),
@@ -544,7 +543,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
         Container(margin: const EdgeInsets.only(bottom: 12), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // Avatar (grouped)
           if (showAvatar)
-            Container(width: 28, height: 28, decoration: BoxDecoration(gradient: AppColors.blueGradient, borderRadius: BorderRadius.circular(8)),
+            Container(width: 28, height: 28, decoration: BoxDecoration(color: AppColors.brandBlue, borderRadius: BorderRadius.circular(8)),
               child: Center(child: SvgPicture.asset('assets/images/logo_white.svg', height: 14)))
           else
             const SizedBox(width: 28),
@@ -616,7 +615,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
                       onTap: () => _send(msg.richCard!.actionLabel!),
                       borderRadius: BorderRadius.circular(12),
                       child: Container(padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(gradient: AppColors.blueGradient, borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(color: AppColors.brandBlue, borderRadius: BorderRadius.circular(12)),
                         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                           Text(msg.richCard!.actionLabel!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
                           const SizedBox(width: 4),

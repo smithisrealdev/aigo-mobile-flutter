@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -556,23 +556,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  // ── Header: compact blue with embedded search ──
+  // ── Header: clean white with embedded search ──
   Widget _buildHeader(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
-    return Stack(
-      children: [
-        Container(
+    return Container(
           decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF2B6FFF), Color(0xFF1A5EFF), Color(0xFF0044E6)],
-              stops: [0.0, 0.4, 1.0],
-            ),
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(24),
-              bottomRight: Radius.circular(24),
-            ),
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
           ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(20, topPadding + 10, 20, 16),
@@ -581,12 +571,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             // Logo row
             Row(
               children: [
-                SvgPicture.asset('assets/images/logo_white.svg', height: 28),
+                SvgPicture.asset('assets/images/logo_white.svg', height: 28,
+                    colorFilter: const ColorFilter.mode(AppColors.brandBlue, BlendMode.srcIn)),
                 const Spacer(),
                 // Notification bell
                     IconButton(
                       icon: const Icon(Icons.notifications_outlined,
-                          color: Colors.white, size: 22),
+                          color: AppColors.textSecondary, size: 22),
                       onPressed: () => context.push('/notifications'),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
@@ -597,10 +588,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 const SizedBox(width: 4),
                 GestureDetector(
                   onTap: () => context.go('/profile'),
-                  child: const CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Colors.white24,
-                    child: Icon(Icons.person, color: Colors.white, size: 20),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.blueBorder, width: 1.5),
+                    ),
+                    child: const Icon(Icons.person, color: AppColors.brandBlue, size: 20),
                   ),
                 ),
               ],
@@ -613,6 +608,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.blueBorder, width: 1.5),
                 ),
                 child: Row(
                   children: [
@@ -689,22 +685,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ],
           ),
         ),
-    ),
-        // Header decorations
-        Positioned.fill(
-          child: IgnorePointer(
-            child: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
-              ),
-              child: CustomPaint(
-                painter: _HomeHeaderDecoPainter(),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -1141,45 +1121,4 @@ class _QuickAction extends StatelessWidget {
   }
 }
 
-// ══════════════════════════════════
-// Home header decorations (subtle, non-animated)
-// ══════════════════════════════════
-class _HomeHeaderDecoPainter extends CustomPainter {
-  static const _orange = Color(0xFFFFB347);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final sw = size.width;
-    final sh = size.height;
-    final fill = Paint()..style = PaintingStyle.fill;
-
-    // Subtle circles
-    fill.color = Colors.white.withValues(alpha: 0.04);
-    canvas.drawCircle(Offset(sw * 0.88, sh * 0.15), 40, fill);
-    canvas.drawCircle(Offset(sw * 0.08, sh * 0.75), 30, fill);
-
-    // Orange accent dot
-    fill.color = _orange.withValues(alpha: 0.35);
-    canvas.drawCircle(Offset(sw * 0.93, sh * 0.4), 4, fill);
-
-    // Floating square
-    canvas.save();
-    canvas.translate(sw * 0.06, sh * 0.35);
-    canvas.rotate(math.pi / 5);
-    fill.color = Colors.white.withValues(alpha: 0.07);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(-6, -6, 12, 12), const Radius.circular(3)),
-      fill,
-    );
-    canvas.restore();
-
-    // Dots
-    fill.color = Colors.white.withValues(alpha: 0.1);
-    canvas.drawCircle(Offset(sw * 0.75, sh * 0.2), 2, fill);
-    canvas.drawCircle(Offset(sw * 0.2, sh * 0.85), 2, fill);
-    canvas.drawCircle(Offset(sw * 0.85, sh * 0.7), 1.5, fill);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
-}
+// Removed _HomeHeaderDecoPainter (pure white theme)

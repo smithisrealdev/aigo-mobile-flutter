@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
-import 'brand_deco_circles.dart';
 
 class AigoHeader extends StatelessWidget {
   final String? title;
@@ -15,12 +14,11 @@ class AigoHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(gradient: AppColors.blueGradient),
-      clipBehavior: Clip.hardEdge,
-      child: Stack(
-        children: [
-          const Positioned.fill(child: BrandDecoCircles()),
-          SafeArea(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
+      ),
+      child: SafeArea(
         bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -30,9 +28,10 @@ class AigoHeader extends StatelessWidget {
               child: Row(
                 children: [
                   if (showLogo) ...[
-                    SvgPicture.asset('assets/images/logo_white.svg', height: 32),
+                    SvgPicture.asset('assets/images/logo_white.svg', height: 32,
+                        colorFilter: const ColorFilter.mode(AppColors.brandBlue, BlendMode.srcIn)),
                   ] else if (title != null)
-                    Expanded(child: Text(title!, style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white))),
+                    Expanded(child: Text(title!, style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.brandBlue))),
                   const Spacer(),
                   if (actions != null) ...actions!,
                 ],
@@ -41,8 +40,6 @@ class AigoHeader extends StatelessWidget {
             if (bottom != null) bottom!,
           ],
         ),
-        ),
-        ],
       ),
     );
   }

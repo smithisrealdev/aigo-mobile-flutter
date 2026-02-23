@@ -170,12 +170,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           Container(
             padding: EdgeInsets.fromLTRB(20, pad.top + 12, 20, 20),
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF2B6FFF), Color(0xFF1A5EFF), Color(0xFF0044E6)],
-                stops: [0.0, 0.4, 1.0],
-              ),
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: AppColors.blueBorder, width: 1)),
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(24),
                 bottomRight: Radius.circular(24),
@@ -188,7 +184,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   child: const Icon(Icons.arrow_back, color: Colors.white),
                 ),
                 const SizedBox(width: 12),
-                Text('Account Settings', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+                Text('Account Settings', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.brandBlue)),
               ],
             ),
           ),

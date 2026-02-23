@@ -8,8 +8,10 @@ class AppColors {
   static const Color brandGrey = Color(0xFFE6E6E6);        // Light grey
   static const Color background = Color(0xFFFFFFFF);        // Pure white
   static const Color surface = Colors.white;
-  static const Color textPrimary = Color(0xFF1B2232);      // dark navy
-  static const Color textSecondary = Color(0xFF9CA3AF);    // lighter grey
+  static const Color textPrimary = Color(0xFF111827);      // Figma primary
+  static const Color textSecondary = Color(0xFF6B7280);    // Figma secondary
+  static const Color searchBackground = Color(0xFFF3F4F6); // Search bar bg
+  static const Color ratingGold = Color(0xFFF59E0B);       // Star rating
   static const Color success = Color(0xFF10B981);
   static const Color warning = Color(0xFFF59E0B);
   static const Color error = Color(0xFFEF4444);
@@ -22,7 +24,10 @@ class AppColors {
   static const Color blueBorder = Color(0xFFDBEAFE);       // Light blue border
   static const Color blueTint = Color(0xFFEFF6FF);          // Blue tint bg
   static const Color blueVeryLight = Color(0xFFF0F7FF);    // Very light blue
-  static const Color iconInactive = Color(0xFFCBD5E1);     // Inactive icon
+  static const Color iconInactive = Color(0xFF9CA3AF);     // Inactive icon
+  static const Color searchBg = Color(0xFFF3F4F6);         // Search bg alias
+  static const Color divider = Color(0xFFF3F4F6);          // Divider color
+  static const Color chipOutline = Color(0xFFD1D5DB);      // Chip outline
 
   // Dark mode colors
   static const Color backgroundDark = Color(0xFF0F1117);

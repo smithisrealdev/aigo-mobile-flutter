@@ -72,6 +72,7 @@ final appRouter = GoRouter(
         GoRoute(path: '/explore', builder: (_, __) => const ExploreScreen()),
         GoRoute(path: '/ai-chat', builder: (_, state) => AIChatScreen(initialMessage: state.extra as String?)),
         GoRoute(path: '/trips', builder: (_, __) => const TripsListScreen()),
+        GoRoute(path: '/saved', builder: (_, __) => const SavedPlacesScreen()),
         GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
       ],
     ),

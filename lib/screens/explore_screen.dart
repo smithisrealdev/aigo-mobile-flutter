@@ -287,7 +287,12 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         itemBuilder: (_, i) {
           final item = _featured[i];
           return GestureDetector(
-            onTap: () => context.push('/ai-chat', extra: 'Plan a trip: ${item['title']}'),
+            onTap: () {
+              final title = item['title'] ?? '';
+              // Extract destination from title (e.g. "Southeast Asia Explorer" → "Southeast Asia")
+              final dest = title.replaceAll(RegExp(r'\s*(Explorer|Adventure|Journey|Trip|Tour)$', caseSensitive: false), '').trim();
+              context.push('/destination-guide?destination=${Uri.encodeComponent(dest)}');
+            },
             child: Container(
               width: 260,
               decoration: BoxDecoration(
@@ -387,7 +392,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     return GestureDetector(
       onTap: () {
         PublicGuideService.instance.incrementViews(guide.id);
-        // Navigate to guide detail if route exists
+        context.push('/destination-guide?destination=${Uri.encodeComponent(guide.destination)}');
       },
       child: Container(
         width: 160,

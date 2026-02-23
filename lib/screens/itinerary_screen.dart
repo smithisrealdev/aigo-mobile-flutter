@@ -551,7 +551,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
     return Scaffold(
       backgroundColor: Colors.white,
-      floatingActionButton: _buildFab(canEdit),
+      floatingActionButton: null,
       body: Stack(children: [
         if (_showMap)
           Column(children: [
@@ -627,7 +627,14 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         if (_fabExpanded)
           GestureDetector(
             onTap: () => setState(() => _fabExpanded = false),
-            child: Container(color: Colors.black.withValues(alpha: 0.3)),
+            child: Container(color: Colors.black.withValues(alpha: 0.4)),
+          ),
+        // FAB speed dial
+        if (canEdit)
+          Positioned(
+            right: 16,
+            bottom: 16 + MediaQuery.of(context).padding.bottom,
+            child: _buildFab(canEdit),
           ),
       ]),
     );

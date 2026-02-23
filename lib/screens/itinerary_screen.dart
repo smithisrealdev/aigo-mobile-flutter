@@ -786,59 +786,105 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     final nextUp = activities.isNotEmpty ? activities.first : null;
     final nextName = (nextUp?['name'] ?? nextUp?['title'] ?? '').toString();
     final nextTime = (nextUp?['startTime'] ?? nextUp?['time'] ?? nextUp?['start_time'] ?? '').toString();
+    final placesCount = activities.length;
 
     return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2))
-          ]),
-      child: Row(children: [
-        // Mini circular progress
-        SizedBox(
-          width: 24,
-          height: 24,
-          child: Stack(alignment: Alignment.center, children: [
-            CircularProgressIndicator(
-              value: pct,
-              strokeWidth: 2.5,
-              backgroundColor: const Color(0xFFE5E7EB),
-              valueColor: const AlwaysStoppedAnimation(AppColors.brandBlue),
-            ),
-            Text('${(pct * 100).toInt()}',
-                style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-          ]),
-        ),
-        const SizedBox(width: 8),
-        Text('$visited/$total places · $_dayCount days',
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-        const Spacer(),
-        if (nextUp != null) ...[
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2))
+        ],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Top row: progress ring + stats + days badge
+        Row(children: [
+          SizedBox(
+            width: 48, height: 48,
+            child: Stack(alignment: Alignment.center, children: [
+              CircularProgressIndicator(
+                value: pct,
+                strokeWidth: 4,
+                backgroundColor: const Color(0xFFF3F4F6),
+                valueColor: const AlwaysStoppedAnimation(AppColors.brandBlue),
+              ),
+              Text('${(pct * 100).toInt()}%',
+                  style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            ]),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Progress', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            const SizedBox(height: 2),
+            Text('$visited/$total places', style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textSecondary)),
+          ])),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-                color: AppColors.brandBlue,
-                borderRadius: BorderRadius.circular(6)),
-            child: const Text('NEXT UP',
-                style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.3)),
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text('$_dayCount days',
+                style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
           ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(nextName,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                maxLines: 1, overflow: TextOverflow.ellipsis),
+        ]),
+        // Divider
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Container(height: 1, color: const Color(0xFFF3F4F6)),
+        ),
+        // Today's Plan section
+        Row(children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.brandBlue,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(_selectedDay < 0 ? 'All' : 'Day ${_selectedDay + 1}',
+                style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
           ),
-          if (nextTime.isNotEmpty) ...[
-            const SizedBox(width: 4),
-            Text(nextTime,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
-          ],
+          const SizedBox(width: 10),
+          Text("Today's Plan", style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          const Spacer(),
+          Text('$placesCount ${placesCount == 1 ? 'place' : 'places'}',
+              style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
+        ]),
+        if (nextUp != null) ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.brandBlue,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text('NEXT UP',
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(nextName,
+                    style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+              if (nextTime.isNotEmpty)
+                Text(nextTime,
+                    style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
+            ]),
+          ),
         ],
       ]),
     );
@@ -1307,23 +1353,25 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))]),
         child: Row(children: [
           Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-            child: const Icon(Icons.calendar_view_month, size: 18, color: AppColors.brandBlue),
+            width: 40, height: 40,
+            decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.1), shape: BoxShape.circle),
+            child: const Icon(Icons.calendar_view_month_rounded, size: 20, color: AppColors.brandBlue),
           ),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('All Days', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            Text('All Days', style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            const SizedBox(height: 2),
             Text('${_days.length} days · $totalActivities places', style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
           ])),
           if (totalCost > 0)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-              child: Text('\$${totalCost.toStringAsFixed(0)}', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.success)),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+              child: Text('\$${totalCost.toStringAsFixed(0)}', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF10B981))),
             ),
         ]),
       );
@@ -1363,6 +1411,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
             boxShadow: [
               BoxShadow(
                   color: Colors.black.withValues(alpha: 0.04),
@@ -1370,17 +1419,17 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                   offset: const Offset(0, 2))
             ]),
         child: Row(children: [
-          // Day number badge (pink circle)
+          // Day number badge (colored circle)
           Container(
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               decoration: const BoxDecoration(
                   color: Color(0xFFEC4899), shape: BoxShape.circle),
               child: Center(
                   child: Text('${_selectedDay + 1}',
-                      style: const TextStyle(
+                      style: GoogleFonts.dmSans(
                           color: Colors.white,
-                          fontSize: 14,
+                          fontSize: 15,
                           fontWeight: FontWeight.w800)))),
           const SizedBox(width: 12),
           Expanded(
@@ -1391,7 +1440,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                   Expanded(
                       child: Text(title.toString(),
                           style: GoogleFonts.dmSans(
-                              fontSize: 15,
+                              fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary),
                           maxLines: 1,
@@ -1401,13 +1450,13 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                            color: AppColors.success.withValues(alpha: 0.1),
+                            color: const Color(0xFF10B981).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12)),
                         child: Text('\$${dayCost.toStringAsFixed(0)}',
-                            style: const TextStyle(
+                            style: GoogleFonts.dmSans(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.success))),
+                                color: const Color(0xFF10B981)))),
                 ]),
                 const SizedBox(height: 2),
                 Row(children: [
@@ -1611,6 +1660,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
           boxShadow: [
             BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -1800,22 +1850,21 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
               Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                      color: AppColors.success.withValues(alpha: 0.06),
+                      color: const Color(0xFFFFFBEB),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color:
-                              AppColors.success.withValues(alpha: 0.2))),
+                          color: const Color(0xFFFDE68A))),
                   child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Icon(Icons.lightbulb_outline,
-                            size: 14, color: AppColors.success),
+                            size: 14, color: Color(0xFFF59E0B)),
                         const SizedBox(width: 6),
                         Expanded(
                             child: Text(tipText,
-                                style: TextStyle(
+                                style: GoogleFonts.dmSans(
                                     fontSize: 12,
-                                    color: AppColors.success.withValues(alpha: 0.9),
+                                    color: const Color(0xFF92400E),
                                     height: 1.3),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis)),
@@ -2089,13 +2138,16 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8)],
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8),
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 2, offset: const Offset(0, 1)),
+                    ],
                   ),
-                  child: Text(item.$1, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  child: Text(item.$1, style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
                 const SizedBox(width: 8),
                 SizedBox(
-                  width: 44, height: 44,
+                  width: 48, height: 48,
                   child: FloatingActionButton(
                     heroTag: item.$1,
                     backgroundColor: AppColors.brandBlue,
@@ -2132,37 +2184,53 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   Widget _addActivityCard() {
     return GestureDetector(
       onTap: _showAddDestinationDialog,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+      child: CustomPaint(
+        painter: _DashedBorderPainter(
+          color: AppColors.brandBlue.withValues(alpha: 0.35),
+          borderRadius: 16,
+          dashWidth: 6,
+          dashSpace: 4,
+          strokeWidth: 1.5,
         ),
-        child: Row(children: [
-          Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.brandBlue.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.add, size: 20, color: AppColors.brandBlue),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
           ),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Text('Add Activity', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: AppColors.brandBlue, borderRadius: BorderRadius.circular(8)),
-                child: Text('+ New', style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white)),
+          child: Row(children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.brandBlue.withValues(alpha: 0.12),
+                    AppColors.brandBlue.withValues(alpha: 0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(14),
               ),
-            ]),
-            Text('Add a place to your itinerary', style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
-          ])),
-          const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
-        ]),
+              child: const Icon(Icons.add_rounded, size: 24, color: AppColors.brandBlue),
+            ),
+            const SizedBox(width: 14),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Text('Add Activity', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(color: AppColors.brandBlue, borderRadius: BorderRadius.circular(8)),
+                  child: Text('+ New', style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white)),
+                ),
+              ]),
+              const SizedBox(height: 2),
+              Text('Add a place to your itinerary', style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
+            ])),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary, size: 22),
+          ]),
+        ),
       ),
     );
   }
@@ -2170,9 +2238,14 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   Widget _budgetCard() {
     final budget = _trip?.budgetTotal ?? 0;
     const currency = 'USD';
-    // TODO: calculate actual spending from expenses
     const spent = 0.0;
     final pct = budget > 0 ? (spent / budget).clamp(0.0, 1.0) : 0.0;
+    final pctInt = (pct * 100).toInt();
+    final barColor = pct < 0.5
+        ? const Color(0xFF10B981)
+        : pct < 0.8
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFFEF4444);
 
     return GestureDetector(
       onTap: () => context.push('/budget', extra: _trip),
@@ -2185,24 +2258,43 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            const Icon(Icons.account_balance_wallet_outlined, size: 18, color: AppColors.brandBlue),
-            const SizedBox(width: 8),
-            Text('Budget', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-            const Spacer(),
-            Text('$currency ${spent.toStringAsFixed(0)} / ${budget.toStringAsFixed(0)}',
-                style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.brandBlue.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.account_balance_wallet_outlined, size: 18, color: AppColors.brandBlue),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Budget', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              Text('$currency ${spent.toStringAsFixed(0)} / ${budget.toStringAsFixed(0)}',
+                  style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
+            ])),
+            Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: barColor.withValues(alpha: 0.3), width: 3),
+                color: barColor.withValues(alpha: 0.08),
+              ),
+              child: Center(
+                child: Text('$pctInt%', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: barColor)),
+              ),
+            ),
           ]),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
               value: pct,
-              minHeight: 6,
-              backgroundColor: const Color(0xFFE5E7EB),
-              valueColor: const AlwaysStoppedAnimation(AppColors.brandBlue),
+              minHeight: 8,
+              backgroundColor: const Color(0xFFF3F4F6),
+              valueColor: AlwaysStoppedAnimation(barColor),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text('Track spending by day and category', style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
         ]),
       ),
@@ -2210,22 +2302,39 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   }
 
   Widget _buildInlineActions(bool canEdit) {
-    final actions = <(String, IconData, VoidCallback)>[
-      if (canEdit) ('Regenerate', Icons.refresh, _handleRegenerate),
-      if (canEdit) ('Optimize', Icons.auto_awesome, _handleRegenerate),
-      if (canEdit) ('Smart Replan', Icons.route, _handleSmartReplan),
+    final actions = <(String, IconData, bool, VoidCallback)>[
+      if (canEdit) ('Regenerate', Icons.refresh, _regenerating, _handleRegenerate),
+      if (canEdit) ('Optimize', Icons.auto_awesome, false, _handleRegenerate),
+      if (canEdit) ('Smart Replan', Icons.route, _replanning, _handleSmartReplan),
     ];
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: actions.map((a) => ActionChip(
-        avatar: Icon(a.$2, size: 16, color: AppColors.brandBlue),
-        label: Text(a.$1, style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
-        backgroundColor: AppColors.brandBlue.withValues(alpha: 0.08),
-        side: BorderSide(color: AppColors.brandBlue.withValues(alpha: 0.2)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        onPressed: a.$3,
-      )).toList(),
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: actions.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) {
+          final a = actions[i];
+          return GestureDetector(
+            onTap: a.$3 ? null : a.$4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.2)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                a.$3
+                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.brandBlue))
+                    : Icon(a.$2, size: 16, color: AppColors.brandBlue),
+                const SizedBox(width: 6),
+                Text(a.$1, style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
+              ]),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -2286,4 +2395,49 @@ class _TripReviewsSectionState extends State<_TripReviewsSection> {
       ],
     );
   }
+}
+
+// ── Dashed Border Painter for Add Activity card ──
+class _DashedBorderPainter extends CustomPainter {
+  final Color color;
+  final double borderRadius;
+  final double dashWidth;
+  final double dashSpace;
+  final double strokeWidth;
+
+  _DashedBorderPainter({
+    required this.color,
+    this.borderRadius = 16,
+    this.dashWidth = 6,
+    this.dashSpace = 4,
+    this.strokeWidth = 1.5,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    final path = Path()
+      ..addRRect(RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        Radius.circular(borderRadius),
+      ));
+
+    final metrics = path.computeMetrics();
+    for (final metric in metrics) {
+      double distance = 0;
+      while (distance < metric.length) {
+        final end = (distance + dashWidth).clamp(0.0, metric.length);
+        canvas.drawPath(metric.extractPath(distance, end), paint);
+        distance += dashWidth + dashSpace;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) =>
+      color != oldDelegate.color || borderRadius != oldDelegate.borderRadius;
 }

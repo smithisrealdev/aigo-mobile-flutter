@@ -565,78 +565,10 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                           ])),
                     ]),
                   ),
-                  // Pinned: Day tabs + section tabs
+                  // Pinned: section tabs + view toggle
                   bottom: PreferredSize(
-                      preferredSize: const Size.fromHeight(88),
+                      preferredSize: const Size.fromHeight(44),
                       child: Column(children: [
-                        // Day tabs
-                        Container(
-                          color: AppColors.brandBlue,
-                          child: SizedBox(
-                              height: 44,
-                              child: Row(children: [
-                                Expanded(
-                                    child: ShaderMask(
-                                      shaderCallback: (Rect bounds) {
-                                        return const LinearGradient(
-                                          begin: Alignment.centerLeft,
-                                          end: Alignment.centerRight,
-                                          colors: [Colors.white, Colors.white, Colors.transparent],
-                                          stops: [0.0, 0.85, 1.0],
-                                        ).createShader(bounds);
-                                      },
-                                      blendMode: BlendMode.dstIn,
-                                      child: ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  padding: const EdgeInsets.only(left: 16),
-                                  itemCount: days.length + 1, // +1 for "All"
-                                  itemBuilder: (_, i) {
-                                    final isAll = i == 0;
-                                    final dayIdx = i - 1; // -1 = All
-                                    final isSelected = _selectedDay == dayIdx;
-                                    return GestureDetector(
-                                      onTap: () => _onDaySelected(dayIdx),
-                                      child: Container(
-                                        margin: const EdgeInsets.only(
-                                            right: 6, top: 6, bottom: 6),
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 18),
-                                        alignment: Alignment.center,
-                                        decoration: BoxDecoration(
-                                            color: isSelected
-                                                ? Colors.white
-                                                : Colors.white
-                                                    .withValues(alpha: 0.15),
-                                            borderRadius:
-                                                BorderRadius.circular(24)),
-                                        child: Text(isAll ? 'All' : 'Day $i',
-                                            style: TextStyle(
-                                                color: isSelected
-                                                    ? AppColors.brandBlue
-                                                    : Colors.white,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 13)),
-                                      ),
-                                    );
-                                  },
-                                ))),
-                                Container(
-                                  margin: const EdgeInsets.only(right: 16),
-                                  decoration: BoxDecoration(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(20)),
-                                  child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        _toggleBtn(Icons.view_list, !_showMap,
-                                            () => setState(() => _showMap = false)),
-                                        _toggleBtn(Icons.map_outlined, _showMap,
-                                            () => setState(() => _showMap = true)),
-                                      ]),
-                                ),
-                              ])),
-                        ),
                         // Section segment control
                         Container(
                           color: Colors.white,

@@ -166,13 +166,19 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             (coords?['lng'] as num?)?.toDouble();
         if (lat == null || lng == null) continue;
         numInDay++;
+        final name = (a['name'] ?? a['title'] ?? '').toString();
+        final imgUrl = (a['image'] ?? a['photo'] ?? a['image_url'] ?? a['imageUrl'] ?? '').toString();
         result.add(MapActivity(
-          name: a['name'] ?? a['title'] ?? '',
-          time: a['time'] ?? '',
+          name: name,
+          time: (a['startTime'] ?? a['start_time'] ?? a['time'] ?? '').toString(),
           lat: lat,
           lng: lng,
           dayIndex: dayIdx,
           numberInDay: numInDay,
+          imageUrl: imgUrl.isNotEmpty ? imgUrl : _placePhotos[name],
+          category: _inferCat(a),
+          rating: (a['rating'] as num?)?.toDouble(),
+          cost: _formatCost(a['cost'] ?? a['estimated_cost']),
         ));
       }
     }

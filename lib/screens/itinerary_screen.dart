@@ -922,7 +922,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       } else {
         subtitle = 'Your trip is coming up!';
       }
-      circleColor = const Color(0xFFEC4899);
+      circleColor = AppColors.brandBlue;
     }
 
     return Container(
@@ -1042,7 +1042,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
-                          color: AppColors.success,
+                          color: AppColors.brandBlue,
                           borderRadius: BorderRadius.circular(8)),
                       child: Text('New',
                           style: GoogleFonts.dmSans(
@@ -1164,11 +1164,22 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Budget Tracker',
-                      style: GoogleFonts.dmSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                  Row(children: [
+                    Text('Budget Tracker',
+                        style: GoogleFonts.dmSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary)),
+                    const Spacer(),
+                    if (budget > 0)
+                      Text(
+                        'USD ${spent.toStringAsFixed(0)} / ${budget.toStringAsFixed(0)}',
+                        style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary),
+                      ),
+                  ]),
                   const SizedBox(height: 2),
                   Text(
                     'Track spending by day and category, add expenses, and get alerts when you\'re over budget.',
@@ -1191,12 +1202,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 backgroundColor: const Color(0xFFF3F4F6),
                 valueColor: AlwaysStoppedAnimation(barColor),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'USD ${spent.toStringAsFixed(0)} / ${budget.toStringAsFixed(0)}',
-              style: GoogleFonts.dmSans(
-                  fontSize: 12, color: AppColors.textSecondary),
             ),
           ] else ...[
             const SizedBox(height: 10),
@@ -2064,32 +2069,33 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             ('Share', Icons.share),
           ].reversed)
             Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: 8),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 8),
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 6),
                     ],
                   ),
                   child: Text(item.$1,
                       style: GoogleFonts.dmSans(
-                          fontSize: 12, fontWeight: FontWeight.w600)),
+                          fontSize: 11, fontWeight: FontWeight.w600)),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 SizedBox(
-                  width: 48,
-                  height: 48,
+                  width: 40,
+                  height: 40,
                   child: FloatingActionButton(
                     heroTag: item.$1,
+                    mini: true,
                     backgroundColor: AppColors.brandBlue,
-                    elevation: 3,
+                    elevation: 2,
                     onPressed: () {
                       setState(() => _fabExpanded = false);
                       if (item.$1 == 'AI Chat') context.push('/ai-chat');
@@ -2102,7 +2108,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         context.push('/packing-list', extra: _trip);
                       if (item.$1 == 'Share') _showShareSheet();
                     },
-                    child: Icon(item.$2, color: Colors.white, size: 20),
+                    child: Icon(item.$2, color: Colors.white, size: 18),
                   ),
                 ),
               ]),

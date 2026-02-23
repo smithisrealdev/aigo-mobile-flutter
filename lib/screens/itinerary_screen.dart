@@ -572,50 +572,15 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
               // ── 1. HERO COVER PHOTO ──
               _buildHeroAppBar(perm, role),
 
-              // ── SECTION TABS ──
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _SectionTabDelegate(
-                  activeSection: _activeSection,
-                  onChanged: (s) => setState(() => _activeSection = s),
-                ),
-              ),
-
-              // ── CONTENT ──
+              // ── CONTENT (no section tabs) ──
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     if (role == 'viewer') _viewerBanner(),
 
-                    if (_activeSection == 'itinerary') ..._buildItineraryContent(canEdit),
+                    ..._buildItineraryContent(canEdit),
 
-                    if (_activeSection == 'checklist' && _trip != null) ...[
-                      TripChecklistWidget(tripId: _trip!.id),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () =>
-                              context.push('/packing-list', extra: _trip),
-                          icon: const Icon(Icons.backpack_outlined, size: 18),
-                          label: const Text('Generate Packing List'),
-                          style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.brandBlue,
-                              side: const BorderSide(color: AppColors.brandBlue),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12)),
-                        ),
-                      ),
-                    ],
-                    if (_activeSection == 'reservations' && _trip != null)
-                      TripReservationsWidget(tripId: _trip!.id),
-                    if (_activeSection == 'alerts' && _trip != null)
-                      TripAlertsWidget(tripId: _trip!.id),
-                    if (_activeSection == 'reviews' && _trip != null)
-                      _TripReviewsSection(tripId: _trip!.id),
                     const SizedBox(height: 80),
                   ]),
                 ),
@@ -664,6 +629,12 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       // 6. Budget Tracker Card
       _budgetCard(),
       const SizedBox(height: 16),
+
+      // 6.5 Checklist (inline)
+      if (_trip != null) ...[
+        TripChecklistWidget(tripId: _trip!.id),
+        const SizedBox(height: 16),
+      ],
 
       // 7. Reservations Section
       _reservationsHeader(),

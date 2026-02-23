@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:ui';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../theme/app_colors.dart';
 import '../widgets/trip_map_view.dart';
 import '../widgets/upgrade_dialog.dart';
@@ -42,6 +44,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   bool _replanning = false;
   String _activeSection = 'itinerary';
   bool _tipsExpanded = false;
+  final Map<String, String> _placePhotos = {};
+  static const _googleMapsKey = 'AIzaSyDvA2wmeqKw93M4v8b2Xm1uFWtIcCs46l0';
   final Set<int> _collapsedDays = {};
   final ScrollController _scrollController = ScrollController();
   late AnimationController _staggerController;
@@ -53,6 +57,39 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     _staggerController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 500));
     _staggerController.forward();
+    // Fetch place photos after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchPlacePhotos());
+  }
+
+  /// Fetch Google Places photos for activities missing images
+  Future<void> _fetchPlacePhotos() async {
+    for (final a in _allActivities) {
+      final name = (a['name'] ?? a['title'] ?? '').toString();
+      if (name.isEmpty) continue;
+      final existingImg =
+          (a['image'] ?? a['photo'] ?? a['image_url'] ?? a['imageUrl'] ?? '')
+              .toString();
+      if (existingImg.isNotEmpty || _placePhotos.containsKey(name)) continue;
+
+      try {
+        final q = Uri.encodeComponent('$name ${_tripDestination}');
+        final searchUrl = Uri.parse(
+            'https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=$q&inputtype=textquery&fields=photos&key=$_googleMapsKey');
+        final resp = await http.get(searchUrl);
+        final data = jsonDecode(resp.body);
+        final candidates = data['candidates'] as List? ?? [];
+        if (candidates.isNotEmpty) {
+          final photos = candidates[0]['photos'] as List? ?? [];
+          if (photos.isNotEmpty) {
+            final ref = photos[0]['photo_reference'];
+            final photoUrl =
+                'https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=$ref&key=$_googleMapsKey';
+            _placePhotos[name] = photoUrl;
+          }
+        }
+      } catch (_) {}
+    }
+    if (mounted && _placePhotos.isNotEmpty) setState(() {});
   }
 
   @override
@@ -1362,7 +1399,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           widgets.add(GestureDetector(
             onTap: () => showActivityDetailSheet(context,
                 activity: a, tripId: _trip?.id ?? ''),
-            child: _activityCard(a, actNum, canEdit: canEdit),
+            child: _activityCard(a, actNum, dayIdx: dayIdx, canEdit: canEdit),
           ));
 
           // Travel connector between activities
@@ -1473,7 +1510,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
   // ─── Activity Card (website-matching) ───
   Widget _activityCard(Map<String, dynamic> a, int number,
-      {required bool canEdit}) {
+      {required bool canEdit, int dayIdx = 0}) {
     final name = (a['name'] ?? a['title'] ?? 'Activity').toString();
     final startTime =
         (a['startTime'] ?? a['start_time'] ?? a['time'] ?? '').toString();
@@ -1486,12 +1523,13 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     final cost = a['cost'] ?? a['estimated_cost'];
     final cat = _inferCat(a);
     final catColor = _catBadgeColors[cat] ?? AppColors.brandBlue;
-    final numColor = _numberColors[(number - 1) % _numberColors.length];
+    final numColor = _numberColors[dayIdx % _numberColors.length];
     final imageUrl =
         (a['image'] ?? a['photo'] ?? a['image_url'] ?? a['imageUrl'] ?? '')
             .toString();
-    final effectiveImage =
-        imageUrl.isNotEmpty ? imageUrl : _activityFallbackImage(name, cat);
+    final effectiveImage = imageUrl.isNotEmpty
+        ? imageUrl
+        : (_placePhotos[name] ?? _activityFallbackImage(name, cat));
     final photoCount = (a['photos'] as List?)?.length ?? (imageUrl.isNotEmpty ? 1 : 0);
     final costStr = _formatCost(cost);
     final isFree = costStr.toLowerCase() == 'free';
@@ -2132,8 +2170,9 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   }
 
   String _activityFallbackImage(String name, String category) {
-    final q = Uri.encodeComponent('${name.split('(').first.trim()} travel');
-    return 'https://source.unsplash.com/800x400/?$q';
+    // Use loremflickr which still works (unsplash source is deprecated)
+    final q = Uri.encodeComponent(name.split('(').first.trim());
+    return 'https://loremflickr.com/800/400/$q';
   }
 }
 

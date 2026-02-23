@@ -18,6 +18,14 @@ class AppColors {
   static const Color cardDark = Color(0xFF2A2D35);
   static const Color surfaceDark = Color(0xFF1E2028);
 
+  // Dark mode colors
+  static const Color backgroundDark = Color(0xFF0F1117);
+  static const Color surfaceDarkMode = Color(0xFF1A1D27);
+  static const Color cardDarkMode = Color(0xFF242731);
+  static const Color textPrimaryDark = Color(0xFFF1F3F5);
+  static const Color textSecondaryDark = Color(0xFF9CA3AF);
+  static const Color borderDark = Color(0xFF2E3240);
+
   static const LinearGradient blueGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,

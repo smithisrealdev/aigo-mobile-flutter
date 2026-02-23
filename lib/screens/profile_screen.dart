@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
+import '../theme/theme_provider.dart';
 import '../widgets/plan_card.dart';
 import '../widgets/payment_history_list.dart';
 import '../services/auth_service.dart';
@@ -278,7 +279,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       _settingRow(Icons.language, 'Language', trailingText: 'English'),
                       _thinDivider(),
                       _settingRow(Icons.dark_mode_outlined, 'Dark Mode',
-                        trailing: Switch.adaptive(value: _darkModeEnabled, onChanged: (v) => setState(() => _darkModeEnabled = v), activeTrackColor: AppColors.brandBlue)),
+                        trailing: Switch.adaptive(value: Theme.of(context).brightness == Brightness.dark, onChanged: (v) => ref.read(themeModeProvider.notifier).setMode(v ? ThemeMode.dark : ThemeMode.light), activeTrackColor: AppColors.brandBlue)),
                     ],
                   ),
                 ),

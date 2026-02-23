@@ -1649,7 +1649,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         (a['category'] ?? a['type'] ?? cat).toString();
     final catColor =
         _catBadgeColors[cat] ?? AppColors.brandBlue;
-    final imageUrl = (a['image'] ?? a['photo'] ?? '').toString();
+    final imageUrl = (a['image'] ?? a['photo'] ?? a['image_url'] ?? a['imageUrl'] ?? '').toString();
+    final effectiveImage = imageUrl.isNotEmpty ? imageUrl : _activityFallbackImage(name, cat);
     final tips = a['tips'];
     final tipText = tips is List && tips.isNotEmpty
         ? tips.first.toString()
@@ -1669,13 +1670,13 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           ]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // Photo section
-        if (imageUrl.isNotEmpty)
+        if (effectiveImage.isNotEmpty)
           Stack(children: [
             ClipRRect(
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(16)),
               child: CachedNetworkImage(
-                imageUrl: imageUrl,
+                imageUrl: effectiveImage,
                 height: 160,
                 width: double.infinity,
                 fit: BoxFit.cover,
@@ -1738,7 +1739,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (imageUrl.isEmpty)
+                  if (effectiveImage.isEmpty)
                     Container(
                         width: 28,
                         height: 28,
@@ -2179,6 +2180,12 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         ),
       ],
     );
+  }
+
+  String _activityFallbackImage(String name, String category) {
+    // Use Unsplash source for activity photos based on name
+    final q = Uri.encodeComponent('${name.split('(').first.trim()} travel');
+    return 'https://source.unsplash.com/800x400/?$q';
   }
 
   Widget _addActivityCard() {

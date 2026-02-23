@@ -2070,9 +2070,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           for (final item in [
             ('Map', Icons.map_outlined),
             ('AI Chat', Icons.chat_bubble_outline),
-            ('Summary', Icons.summarize_outlined),
-            ('Travel Tips', Icons.lightbulb_outline),
-            ('Packing List', Icons.backpack_outlined),
             ('Share', Icons.share),
           ].reversed)
             Padding(

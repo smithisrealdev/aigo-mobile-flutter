@@ -45,10 +45,12 @@ List<LatLng> _decodePolyline(String encoded) {
 class TripMapView extends StatefulWidget {
   final List<MapActivity> activities;
   final int selectedDayIndex;
+  final void Function(MapActivity)? onActivityTap;
   const TripMapView({
     super.key,
     required this.activities,
     this.selectedDayIndex = -1,
+    this.onActivityTap,
   });
 
   @override
@@ -115,7 +117,10 @@ class _TripMapViewState extends State<TripMapView>
         icon: _iconCache[key]!,
         anchor: const Offset(0.5, 1.0),
         zIndex: acts.length - i.toDouble(),
-        onTap: () => _selectPin(a),
+        onTap: () {
+          _selectPin(a);
+          widget.onActivityTap?.call(a);
+        },
       ));
     }
     if (mounted) setState(() => _markers = m);

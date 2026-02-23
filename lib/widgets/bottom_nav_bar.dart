@@ -31,8 +31,11 @@ class ScaffoldWithNav extends StatelessWidget {
       body: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Main content — extends full height, nav floats on top
-          child,
+          // Main content with bottom padding so nav doesn't cover content
+          Padding(
+            padding: EdgeInsets.only(bottom: 80 + bottomPadding),
+            child: child,
+          ),
           // Floating nav bar
           Positioned(
             left: 12,

@@ -608,94 +608,15 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           Column(children: [
             _buildMapBar(role, days),
             Expanded(
-              child: Stack(children: [
-                // Map takes full remaining space
-                TripMapView(
-                  selectedDayIndex: _selectedDay,
-                  activities: _mapActivities.isNotEmpty
-                      ? _mapActivities
-                      : const [
-                          MapActivity(
-                              name: '', time: '', lat: 35.6762, lng: 139.6503)
-                        ],
-                  onActivityTap: (activity) {
-                    // Scroll to activity in bottom sheet
-                    // Find index in _mapActivities
-                  },
-                ),
-                // Bottom half: draggable activity list
-                DraggableScrollableSheet(
-                  initialChildSize: 0.42,
-                  minChildSize: 0.12,
-                  maxChildSize: 0.85,
-                  snap: true,
-                  snapSizes: const [0.12, 0.42, 0.85],
-                  builder: (context, scrollController) {
-                    return Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(16)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 10,
-                            offset: Offset(0, -2),
-                          ),
-                        ],
-                      ),
-                      child: Column(children: [
-                        // Drag handle
-                        Container(
-                          margin: const EdgeInsets.only(top: 10, bottom: 6),
-                          width: 36,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        // Activity count
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 4),
-                          child: Row(children: [
-                            Text(
-                              '${_mapActivities.length} places',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              _selectedDay < 0
-                                  ? 'All days'
-                                  : 'Day ${_selectedDay + 1}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey.shade500,
-                              ),
-                            ),
-                          ]),
-                        ),
-                        const Divider(height: 1),
-                        // Activity list
-                        Expanded(
-                          child: ListView.builder(
-                            controller: scrollController,
-                            padding: const EdgeInsets.only(bottom: 20),
-                            itemCount: _mapActivities.length,
-                            itemBuilder: (context, i) =>
-                                _mapActivityListItem(_mapActivities[i]),
-                          ),
-                        ),
-                      ]),
-                    );
-                  },
-                ),
-              ]),
+              child: TripMapView(
+                selectedDayIndex: _selectedDay,
+                activities: _mapActivities.isNotEmpty
+                    ? _mapActivities
+                    : const [
+                        MapActivity(
+                            name: '', time: '', lat: 35.6762, lng: 139.6503)
+                      ],
+              ),
             ),
           ])
         else
@@ -2080,111 +2001,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         ]),
       );
 
-  // ── Map activity list item (Wanderlog-style) ──
-  Widget _mapActivityListItem(MapActivity a) {
-    final color = dayColors[a.dayIndex % dayColors.length];
-    return InkWell(
-      onTap: () {
-        // Could open activity detail sheet
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Numbered badge
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            alignment: Alignment.center,
-            child: Text('${a.numberInDay}',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800)),
-          ),
-          const SizedBox(width: 12),
-          // Info
-          Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(a.name,
-                  style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF111827)),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 4),
-              Row(children: [
-                if (a.category != null && a.category!.isNotEmpty) ...[
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(a.category!,
-                        style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w500)),
-                  ),
-                  const SizedBox(width: 6),
-                ],
-                if (a.rating != null) ...[
-                  const Icon(Icons.star, size: 12, color: Color(0xFFF59E0B)),
-                  const SizedBox(width: 2),
-                  Text('${a.rating}',
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade600,
-                          fontWeight: FontWeight.w600)),
-                  const SizedBox(width: 6),
-                ],
-                if (a.time.isNotEmpty)
-                  Text(a.time,
-                      style:
-                          TextStyle(fontSize: 11, color: Colors.grey.shade500)),
-              ]),
-              if (a.cost != null && a.cost!.isNotEmpty && a.cost != 'Free')
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(a.cost!,
-                      style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF10B981),
-                          fontWeight: FontWeight.w600)),
-                ),
-            ]),
-          ),
-          const SizedBox(width: 10),
-          // Photo
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-              width: 56,
-              height: 56,
-              child: a.imageUrl != null && a.imageUrl!.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: a.imageUrl!,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(
-                          color: color.withValues(alpha: 0.1),
-                          child: Icon(Icons.place, color: color, size: 20)),
-                    )
-                  : Container(
-                      color: color.withValues(alpha: 0.08),
-                      child: Icon(Icons.place, color: color, size: 20)),
-            ),
-          ),
-          // Save button
-          const SizedBox(width: 6),
-          Icon(Icons.bookmark_border, size: 20, color: Colors.grey.shade400),
-        ]),
-      ),
-    );
-  }
 
   Widget _toggleBtn(IconData icon, bool active, VoidCallback onTap) =>
       GestureDetector(

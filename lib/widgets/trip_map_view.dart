@@ -45,12 +45,10 @@ List<LatLng> _decodePolyline(String encoded) {
 class TripMapView extends StatefulWidget {
   final List<MapActivity> activities;
   final int selectedDayIndex;
-  final void Function(MapActivity)? onActivityTap;
   const TripMapView({
     super.key,
     required this.activities,
     this.selectedDayIndex = -1,
-    this.onActivityTap,
   });
 
   @override
@@ -119,7 +117,6 @@ class _TripMapViewState extends State<TripMapView>
         zIndex: acts.length - i.toDouble(),
         onTap: () {
           _selectPin(a);
-          widget.onActivityTap?.call(a);
         },
       ));
     }

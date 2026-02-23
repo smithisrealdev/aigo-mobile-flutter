@@ -32,6 +32,7 @@ import '../screens/budget_categories_screen.dart';
 import '../screens/activity_feed_screen.dart';
 import '../screens/referral_screen.dart';
 import '../screens/reviews_screen.dart';
+import '../screens/destination_guide_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../models/models.dart';
 
@@ -105,6 +106,11 @@ final appRouter = GoRouter(
         placeId: extra['placeId'],
         title: extra['title'],
       );
+    }),
+    GoRoute(path: '/destination-guide', builder: (_, state) {
+      final destination = state.uri.queryParameters['destination'] ??
+          (state.extra is String ? state.extra as String : 'Bangkok');
+      return DestinationGuideScreen(destination: destination);
     }),
     GoRoute(path: '/place-detail', builder: (_, state) {
       final extra = state.extra;

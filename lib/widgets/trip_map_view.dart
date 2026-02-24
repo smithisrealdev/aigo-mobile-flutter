@@ -39,10 +39,14 @@ const _mapsKey = 'AIzaSyDvA2wmeqKw93M4v8b2Xm1uFWtIcCs46l0';
 class TripMapView extends StatefulWidget {
   final List<MapActivity> activities;
   final int selectedDayIndex;
+  final bool hideInfoCard;
+  final void Function(MapActivity)? onPinTap;
   const TripMapView({
     super.key,
     required this.activities,
     this.selectedDayIndex = -1,
+    this.hideInfoCard = false,
+    this.onPinTap,
   });
 
   @override
@@ -197,6 +201,10 @@ class TripMapViewState extends State<TripMapView>
 
   void _selectPin(MapActivity a) async {
     HapticFeedback.selectionClick();
+    if (widget.onPinTap != null) {
+      widget.onPinTap!(a);
+      return;
+    }
     setState(() {
       if (_selected == a) {
         _selected = null;
@@ -452,7 +460,7 @@ class TripMapViewState extends State<TripMapView>
       ),
 
       // ── Info card ──
-      if (_selected != null)
+      if (_selected != null && !widget.hideInfoCard)
         AnimatedBuilder(
           animation: _cardAnim,
           builder: (_, __) {

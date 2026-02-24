@@ -818,6 +818,13 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           child: TripMapView(
             key: _mapKey,
             selectedDayIndex: _selectedDay,
+            hideInfoCard: true,
+            onPinTap: (ma) {
+              final idx = _mapActivities.indexOf(ma);
+              if (idx >= 0) {
+                _carouselController.animateToPage(idx, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+              }
+            },
             activities: _mapActivities.isNotEmpty
                 ? _mapActivities
                 : const [

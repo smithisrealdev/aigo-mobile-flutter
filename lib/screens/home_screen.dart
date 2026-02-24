@@ -567,7 +567,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             // Logo row
             Row(
               children: [
-                SvgPicture.asset('assets/images/logo.svg', height: 36, colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn)),
+                SvgPicture.asset('assets/images/logo.svg', height: 48, colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn)),
                 const Spacer(),
                 // Notification bell
                 IconButton(

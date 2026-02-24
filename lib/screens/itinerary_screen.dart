@@ -842,72 +842,72 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
               () => setState(() => _mapMode = false)),
         ),
 
-        // Title + Day filter chips (top center)
+        // Title + Day filter chips (top center) with frosted background
         Positioned(
           top: topPad + 8,
           left: 56,
           right: 56,
-          child: Column(children: [
-            Text(_tripTitle, style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 32,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _dayFilterChip(-1, 'All'),
-                  for (var i = 0; i < _days.length; i++)
-                    _dayFilterChip(i, 'Day ${i + 1}'),
-                ],
-              ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8)],
             ),
-          ]),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text(_tripTitle, style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 32,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    _dayFilterChip(-1, 'All'),
+                    for (var i = 0; i < _days.length; i++)
+                      _dayFilterChip(i, 'Day ${i + 1}'),
+                  ],
+                ),
+              ),
+            ]),
+          ),
         ),
 
-        // Zoom into pill (bottom-left, above carousel)
+        // Fit all places button (above carousel, centered)
         Positioned(
-          bottom: 200 + MediaQuery.of(context).padding.bottom,
-          left: 16,
-          child: GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              _mapKey.currentState?.fitBoundsPublic();
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 10, offset: const Offset(0, 2))],
+          bottom: 190 + MediaQuery.of(context).padding.bottom,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                _mapKey.currentState?.fitBoundsPublic();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2))],
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.zoom_out_map, size: 14, color: Color(0xFF5F6368)),
+                  const SizedBox(width: 6),
+                  Text('Fit all places', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF5F6368))),
+                ]),
               ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.search, size: 16, color: Color(0xFF5F6368)),
-                const SizedBox(width: 6),
-                Text('Zoom into...', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF5F6368))),
-              ]),
             ),
           ),
         ),
 
-        // X close button (bottom-right, above carousel)
+        // X close button (top-right)
         Positioned(
-          bottom: 200 + MediaQuery.of(context).padding.bottom,
-          right: 16,
-          child: GestureDetector(
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              setState(() => _mapMode = false);
-            },
-            child: Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 8, offset: const Offset(0, 2))],
-              ),
-              child: const Icon(Icons.close, color: AppColors.textPrimary, size: 20),
-            ),
-          ),
+          top: topPad + 8,
+          right: 12,
+          child: _circleBtn(Icons.close, () {
+            HapticFeedback.mediumImpact();
+            setState(() => _mapMode = false);
+          }),
         ),
 
         // Card carousel at bottom (always visible in map mode)
@@ -950,7 +950,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: Text(ma.name, style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          child: Text(ma.name, style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary), maxLines: 2, overflow: TextOverflow.ellipsis),
                         ),
                       ]),
                       const SizedBox(height: 8),
@@ -2454,6 +2454,12 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                       if (item.$1 == 'Map') {
                         HapticFeedback.mediumImpact();
                         setState(() => _mapMode = true);
+                        // Default active pin to first activity
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (_mapActivities.isNotEmpty) {
+                            _mapKey.currentState?.animateTo(_mapActivities.first);
+                          }
+                        });
                       }
                       if (item.$1 == 'Travel Tips')
                         context.push('/travel-tips', extra: _tripDestination);

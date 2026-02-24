@@ -344,18 +344,29 @@ class TripMapViewState extends State<TripMapView>
     c.drawPath(path.shift(const Offset(0, 4)), Paint()
       ..color = Colors.black38
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
-    // Blue highlight ring
-    c.drawPath(path, Paint()
-      ..color = const Color(0xFF2563EB)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 10);
-    // White border
+    // Fill first
+    c.drawPath(path, Paint()..color = color);
+    // White border on top
     c.drawPath(path, Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 6);
-    // Fill
-    c.drawPath(path, Paint()..color = color);
+      ..strokeWidth = 8);
+    // Blue highlight ring on top of white
+    c.drawPath(path, Paint()
+      ..color = const Color(0xFF2563EB)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4);
+    // Re-fill center (border ate into fill)
+    final innerPath = Path();
+    final innerR = circleR - 6;
+    final innerWedge = math.atan2(cx, tipY - circleY) * 0.7;
+    innerPath.arcTo(
+      Rect.fromCircle(center: Offset(cx, circleY), radius: innerR),
+      math.pi / 2 + innerWedge, 2 * math.pi - 2 * innerWedge, false,
+    );
+    innerPath.lineTo(cx, tipY - 8);
+    innerPath.close();
+    c.drawPath(innerPath, Paint()..color = color);
 
     final label = '$number';
     final fs = label.length > 1 ? 54.0 : 63.0;

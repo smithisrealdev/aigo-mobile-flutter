@@ -22,29 +22,12 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with SingleTickerProviderStateMixin {
-  static const _cardShadow = BoxShadow(
-    color: Color(0x0A000000),
-    blurRadius: 24,
-    offset: Offset(0, 8),
-  );
 
-  // Outer widget container (white on gradient bg)
-  static BoxDecoration _widgetOuter() => BoxDecoration(
-    color: Colors.white.withValues(alpha: 0.85),
-    borderRadius: BorderRadius.circular(28),
-    boxShadow: const [
-      BoxShadow(color: Color(0x12000000), blurRadius: 24, offset: Offset(0, 8)),
-    ],
-    border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1),
-  );
-
-  // Inner card (pure white, prominent float)
-  static BoxDecoration _widgetInner() => BoxDecoration(
+  // Dime! style flat card decoration
+  static const _flatCardDecoration = BoxDecoration(
     color: Colors.white,
-    borderRadius: BorderRadius.circular(20),
-    boxShadow: const [
-      BoxShadow(color: Color(0x14000000), blurRadius: 16, offset: Offset(0, 4)),
-    ],
+    borderRadius: BorderRadius.all(Radius.circular(20)),
+    boxShadow: [BoxShadow(color: Color(0x08000000), blurRadius: 20, offset: Offset(0, 4))],
   );
 
   // iOS widget-style colored quick action data
@@ -150,184 +133,191 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final tripsAsync = ref.watch(tripsProvider);
+    final topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFE8F0FE), // soft blue top
-              Color(0xFFEFF8EE), // soft green middle
-              Color(0xFFF5F0FF), // soft purple
-              Color(0xFFFFFFFF), // white bottom
-            ],
-            stops: [0.0, 0.3, 0.6, 1.0],
-          ),
-        ),
-        child: Column(
-          children: [
-          // ── Compact Header with embedded search ──
-          _buildHeader(context),
-
-          // ── Email verification banner ──
-          _buildEmailVerificationBanner(),
-
-          // ── Scrollable body ──
-          Expanded(
-            child: RefreshIndicator(
-              color: AppColors.brandBlue,
-              onRefresh: () async {
-                ref.invalidate(tripsProvider);
-                AiPicksService.instance.clearCache();
-                _loadAiPicks();
-              },
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── Greeting ──
-                    Text(
-                      '${_greeting()}, ${_getUserName()}',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Where to next?',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // ── Quick Actions ──
-                    const Text(
-                      'Quick Actions',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        for (var i = 0; i < _quickActions.length; i++)
-                          _WidgetQuickAction(
-                            icon: _quickActions[i].$2,
-                            label: _quickActions[i].$1,
-                            iconColor: _quickActions[i].$3,
-                            bgColor: _quickActions[i].$4,
-                            onTap: () {
-                              if (i == 0) context.push('/ai-chat');
-                              if (i == 1) context.go('/trips');
-                              if (i == 2) context.push('/budget');
-                              if (i == 3) context.go('/explore');
-                            },
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // ── Upcoming Trip ──
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Upcoming Trip',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => context.go('/trips'),
-                          child: const Text(
-                            'See All',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.brandBlue,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    tripsAsync.when(
-                      data: (trips) => _buildUpcomingTripReal(context, trips),
-                      loading: () => _buildUpcomingTripSkeleton(),
-                      error: (e, _) => _buildErrorCard('Failed to load trips', () => ref.invalidate(tripsProvider)),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // ── Budget Overview (only if trips exist) ──
-                    tripsAsync.when(
-                      data: (trips) => trips.isEmpty
-                          ? const SizedBox.shrink()
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Your Budget',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                _buildBudgetReal(context, trips),
-                                const SizedBox(height: 24),
-                              ],
-                            ),
-                      loading: () => Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Your Budget', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                          const SizedBox(height: 10),
-                          _buildBudgetSkeleton(),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
-                      error: (_, __) => const SizedBox.shrink(),
-                    ),
-
-                    // ── AI Picks for You ──
-                    _buildAiPicksHeader(context),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Based on your travel style',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildAiPicksDynamic(context),
-
-                    const SizedBox(height: 24),
-
-                    // ── Tailored for You (AI Recommendations) ──
-                    _buildTailoredForYou(),
-
-                    const SizedBox(height: 20),
-                  ],
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          // ── Header gradient zone (top ~35%) ──
+          Positioned(
+            top: 0, left: 0, right: 0,
+            height: MediaQuery.of(context).size.height * 0.35,
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFFE8F0FE), Color(0xFFDBEAFE)],
                 ),
               ),
             ),
           ),
-          ],
-        ),
+
+          // ── Content ──
+          Column(
+            children: [
+              // ── Header (logo + search) ──
+              _buildHeader(context),
+
+              // ── Email verification banner ──
+              _buildEmailVerificationBanner(),
+
+              // ── Scrollable body ──
+              Expanded(
+                child: RefreshIndicator(
+                  color: AppColors.brandBlue,
+                  onRefresh: () async {
+                    ref.invalidate(tripsProvider);
+                    AiPicksService.instance.clearCache();
+                    _loadAiPicks();
+                  },
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 8),
+                        // ── Greeting ──
+                        Text(
+                          '${_greeting()}, ${_getUserName()}',
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Where to next?',
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // ── Quick Actions ──
+                        const Text(
+                          'Quick Actions',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            for (var i = 0; i < _quickActions.length; i++)
+                              _WidgetQuickAction(
+                                icon: _quickActions[i].$2,
+                                label: _quickActions[i].$1,
+                                iconColor: _quickActions[i].$3,
+                                bgColor: _quickActions[i].$4,
+                                onTap: () {
+                                  if (i == 0) context.push('/ai-chat');
+                                  if (i == 1) context.go('/trips');
+                                  if (i == 2) context.push('/budget');
+                                  if (i == 3) context.go('/explore');
+                                },
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 28),
+
+                        // ── Upcoming Trip ──
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Upcoming Trip',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => context.go('/trips'),
+                              child: const Text(
+                                'See All',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.brandBlue,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        tripsAsync.when(
+                          data: (trips) => _buildUpcomingTripReal(context, trips),
+                          loading: () => _buildUpcomingTripSkeleton(),
+                          error: (e, _) => _buildErrorCard('Failed to load trips', () => ref.invalidate(tripsProvider)),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // ── Budget Overview (only if trips exist) ──
+                        tripsAsync.when(
+                          data: (trips) => trips.isEmpty
+                              ? const SizedBox.shrink()
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Your Budget',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildBudgetReal(context, trips),
+                                    const SizedBox(height: 28),
+                                  ],
+                                ),
+                          loading: () => Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Your Budget', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                              const SizedBox(height: 12),
+                              _buildBudgetSkeleton(),
+                              const SizedBox(height: 28),
+                            ],
+                          ),
+                          error: (_, __) => const SizedBox.shrink(),
+                        ),
+
+                        // ── AI Picks for You ──
+                        _buildAiPicksHeader(context),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Based on your travel style',
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildAiPicksDynamic(context),
+
+                        const SizedBox(height: 24),
+
+                        // ── Tailored for You (AI Recommendations) ──
+                        _buildTailoredForYou(),
+
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -338,12 +328,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         onTap: () => context.push('/ai-chat'),
         child: Container(
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: const [_cardShadow],
-            border: Border.all(color: const Color(0xFFF0F0F0)),
-          ),
+          decoration: _flatCardDecoration,
           child: Column(
             children: [
               Icon(Icons.flight_takeoff, size: 40, color: AppColors.brandBlue.withValues(alpha: 0.5)),
@@ -375,102 +360,54 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final startDate = upcoming.startDate != null ? DateTime.tryParse(upcoming.startDate!) : null;
     final endDate = upcoming.endDate != null ? DateTime.tryParse(upcoming.endDate!) : null;
     final days = (startDate != null && endDate != null) ? endDate.difference(startDate).inDays : null;
-    final dateStr = startDate != null ? '${_monthDay(startDate)}${endDate != null ? ' – ${_monthDay(endDate)}' : ''}${days != null ? ' · $days days' : ''}' : 'Not scheduled';
-    final progress = (upcoming.budgetTotal != null && upcoming.budgetTotal! > 0 && upcoming.budgetSpent != null)
-        ? (upcoming.budgetSpent! / upcoming.budgetTotal!).clamp(0.0, 1.0)
-        : 0.0;
+    final dateStr = startDate != null ? '${_monthDay(startDate)}${endDate != null ? ' – ${_monthDay(endDate)}' : ''}' : 'Not scheduled';
     final imageUrl = upcoming.coverImage ?? 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200&h=200&fit=crop';
 
     return GestureDetector(
       onTap: () => context.push('/itinerary', extra: upcoming),
       child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: _widgetOuter(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.all(16),
+        decoration: _flatCardDecoration,
+        child: Row(
           children: [
-            // Status header row (like "SHOPPER" / "IN-PROGRESS")
-            Row(
-              children: [
-                Icon(Icons.flight_takeoff, size: 16, color: AppColors.brandBlue),
-                const SizedBox(width: 6),
-                Text(
-                  _tripStatus(upcoming),
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.8),
-                ),
-                const Spacer(),
-                if (startDate != null)
-                  Text(dateStr, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-              ],
+            // Cover image LEFT (rounded square)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                width: 72, height: 72,
+                fit: BoxFit.cover,
+                errorWidget: (_, __, ___) => Container(width: 72, height: 72, color: AppColors.border),
+              ),
             ),
-            const SizedBox(height: 12),
-            // Inner card
-            Container(
-              decoration: _widgetInner(),
-              child: Row(
+            const SizedBox(width: 14),
+            // Trip info RIGHT
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Date badge (green like reference)
-                  if (startDate != null)
-                    Container(
-                      width: 68, height: 68,
-                      margin: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF22C55E),
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: const [BoxShadow(color: Color(0x3022C55E), blurRadius: 12, offset: Offset(0, 4))],
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(_monthAbbr(startDate), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white, height: 1)),
-                          Text('${startDate.day}', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: Colors.white, height: 1.1)),
-                        ],
-                      ),
-                    )
-                  else
-                    const SizedBox(width: 12),
-                  // Trip info
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            upcoming.title,
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary, height: 1.3),
-                            maxLines: 3, overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${days ?? 0} days trip',
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                          ),
-                        ],
-                      ),
-                    ),
+                  Text(
+                    upcoming.title,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary, height: 1.3),
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
                   ),
-                  // Cover image
-                  ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topRight: Radius.circular(20),
-                      bottomRight: Radius.circular(20),
-                    ),
-                    child: CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      width: 80, height: 84,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(width: 80, height: 84, color: AppColors.border),
-                    ),
+                  const SizedBox(height: 6),
+                  // Inline date as accent
+                  Text(
+                    dateStr,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.brandBlue),
                   ),
+                  if (days != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '$days days trip',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
                 ],
               ),
             ),
-            // Progress pills
-            if (progress > 0) ...[
-              const SizedBox(height: 12),
-              _PillProgressBar(value: progress, segments: 6, height: 8),
-            ],
+            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 22),
           ],
         ),
       ),
@@ -479,17 +416,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildUpcomingTripSkeleton() {
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: const [_cardShadow],
-        border: Border.all(color: const Color(0xFFF0F0F0)),
-      ),
+      padding: const EdgeInsets.all(16),
+      decoration: _flatCardDecoration,
       child: Row(
         children: [
-          Container(width: 52, height: 52, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(12))),
-          const SizedBox(width: 12),
+          Container(width: 72, height: 72, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(16))),
+          const SizedBox(width: 14),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(width: 120, height: 14, color: AppColors.border),
             const SizedBox(height: 6),
@@ -516,59 +448,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       onTap: () => context.push('/budget'),
       child: Container(
         padding: const EdgeInsets.all(20),
-        decoration: _widgetOuter(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 20, offset: Offset(0, 4))],
+        ),
+        child: Row(
           children: [
-            // Status header
-            Row(
-              children: [
-                Icon(Icons.account_balance_wallet, size: 16, color: pct < 0.5 ? const Color(0xFF22C55E) : pct < 0.8 ? AppColors.brandBlue : const Color(0xFFEF4444)),
-                const SizedBox(width: 6),
-                Text('BUDGET TRACKER', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.8)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Inner card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: _widgetInner(),
-              child: Row(
-                children: [
-                  // Progress ring
-                  SizedBox(
-                    width: 52, height: 52,
-                    child: Stack(alignment: Alignment.center, children: [
-                      SizedBox(
-                        width: 52, height: 52,
-                        child: CircularProgressIndicator(
-                          value: pct,
-                          strokeWidth: 5,
-                          strokeCap: StrokeCap.round,
-                          backgroundColor: const Color(0xFFD1D5DB),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            pct < 0.5 ? const Color(0xFF22C55E) : pct < 0.8 ? AppColors.brandBlue : const Color(0xFFEF4444),
-                          ),
-                        ),
-                      ),
-                      Text('${(pct * 100).toInt()}%', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                    ]),
+            // Progress ring (white/light on dark bg)
+            SizedBox(
+              width: 56, height: 56,
+              child: Stack(alignment: Alignment.center, children: [
+                SizedBox(
+                  width: 56, height: 56,
+                  child: CircularProgressIndicator(
+                    value: pct,
+                    strokeWidth: 5,
+                    strokeCap: StrokeCap.round,
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      pct < 0.5 ? const Color(0xFF4ADE80) : pct < 0.8 ? const Color(0xFF60A5FA) : const Color(0xFFFCA5A5),
+                    ),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Text('Total Budget', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                      const SizedBox(height: 2),
-                      Text('฿${totalSpent.toStringAsFixed(0)} / ฿${totalBudget.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                    ]),
-                  ),
-                  const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 22),
-                ],
-              ),
+                ),
+                Text('${(pct * 100).toInt()}%', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+              ]),
             ),
-            const SizedBox(height: 10),
-            // Progress pills
-            _PillProgressBar(value: pct, segments: 6, height: 8),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Total Budget', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.6))),
+                const SizedBox(height: 4),
+                Text('฿${totalBudget.toStringAsFixed(0)}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+                const SizedBox(height: 2),
+                Text('฿${totalSpent.toStringAsFixed(0)} spent', style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.5))),
+              ]),
+            ),
+            Icon(Icons.chevron_right, color: Colors.white.withValues(alpha: 0.4), size: 22),
           ],
         ),
       ),
@@ -578,14 +494,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildBudgetSkeleton() {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: const [_cardShadow], border: Border.all(color: const Color(0xFFF0F0F0))),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(children: [
-        Container(width: 40, height: 40, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(12))),
-        const SizedBox(width: 12),
+        Container(width: 56, height: 56, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), shape: BoxShape.circle)),
+        const SizedBox(width: 16),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(width: 100, height: 14, color: AppColors.border),
-          const SizedBox(height: 4),
-          Container(width: 140, height: 12, color: AppColors.border),
+          Container(width: 100, height: 14, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4))),
+          const SizedBox(height: 6),
+          Container(width: 140, height: 12, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4))),
         ])),
       ]),
     );
@@ -594,7 +513,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildErrorCard(String message, VoidCallback onRetry) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: const [_cardShadow], border: Border.all(color: const Color(0xFFF0F0F0))),
+      decoration: _flatCardDecoration,
       child: Column(children: [
         Text(message, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
         const SizedBox(height: 8),
@@ -663,119 +582,113 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  // ── Header: clean white minimal with embedded search ──
+  // ── Header: logo + search on gradient zone ──
   Widget _buildHeader(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.transparent,
-      ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20, topPadding + 10, 20, 16),
-        child: Column(
-          children: [
-            // Logo row
-            Row(
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, topPadding + 10, 20, 16),
+      child: Column(
+        children: [
+          // Logo row
+          Row(
+            children: [
+              SvgPicture.asset('assets/images/logo.svg', height: 28),
+              const Spacer(),
+              // Notification bell
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined,
+                    color: AppColors.textSecondary, size: 22),
+                onPressed: () => context.push('/notifications'),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 36,
+                  minHeight: 36,
+                ),
+              ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () => context.go('/profile'),
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.border, width: 1.5),
+                  ),
+                  child: const CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Color(0xFFF3F4F6),
+                    child: Icon(Icons.person, color: AppColors.textSecondary, size: 20),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Search bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 2))],
+            ),
+            child: Row(
               children: [
-                SvgPicture.asset('assets/images/logo.svg', height: 28),
-                const Spacer(),
-                // Notification bell
-                IconButton(
-                  icon: const Icon(Icons.notifications_outlined,
-                      color: AppColors.textSecondary, size: 22),
-                  onPressed: () => context.push('/notifications'),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 36,
-                    minHeight: 36,
-                  ),
+                Icon(Icons.auto_awesome, size: 18, color: AppColors.brandBlue),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _isInputActive
+                      ? TextField(
+                          controller: _tripController,
+                          autofocus: true,
+                          style: const TextStyle(
+                              fontSize: 14, color: AppColors.textPrimary),
+                          decoration: const InputDecoration(
+                            hintText: 'Describe your dream trip...',
+                            hintStyle: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.textSecondary),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                          onSubmitted: (val) => _submitTrip(context),
+                        )
+                      : GestureDetector(
+                          onTap: () {
+                            setState(() => _isInputActive = true);
+                            _ticker.stop();
+                          },
+                          child: Row(
+                            children: [
+                              Text(
+                                _displayText.isEmpty
+                                    ? 'Plan my trip with AI'
+                                    : _displayText,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: _displayText.isEmpty
+                                      ? AppColors.textSecondary
+                                      : AppColors.textPrimary,
+                                ),
+                              ),
+                              if (_displayText.isNotEmpty)
+                                _BlinkingCursor(),
+                            ],
+                          ),
+                        ),
                 ),
-                const SizedBox(width: 4),
-                GestureDetector(
-                  onTap: () => context.go('/profile'),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.border, width: 1.5),
-                    ),
-                    child: const CircleAvatar(
-                      radius: 18,
-                      backgroundColor: Color(0xFFF3F4F6),
-                      child: Icon(Icons.person, color: AppColors.textSecondary, size: 20),
-                    ),
+                if (_isInputActive && _tripController.text.trim().isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _submitTrip(context),
+                    child: const Icon(Icons.arrow_forward,
+                        color: AppColors.brandBlue, size: 20),
                   ),
-                ),
+                ],
               ],
             ),
-            const SizedBox(height: 14),
-            // Search bar embedded in header
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-              decoration: BoxDecoration(
-                color: AppColors.searchBackground,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.auto_awesome,
-                      size: 18, color: AppColors.brandBlue),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _isInputActive
-                        ? TextField(
-                            controller: _tripController,
-                            autofocus: true,
-                            style: const TextStyle(
-                                fontSize: 14, color: AppColors.textPrimary),
-                            decoration: const InputDecoration(
-                              hintText: 'Describe your dream trip...',
-                              hintStyle: TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.textSecondary),
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                            onSubmitted: (val) => _submitTrip(context),
-                          )
-                        : GestureDetector(
-                            onTap: () {
-                              setState(() => _isInputActive = true);
-                              _ticker.stop();
-                            },
-                            child: Row(
-                              children: [
-                                Text(
-                                  _displayText.isEmpty
-                                      ? 'Plan my trip with AI'
-                                      : _displayText,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: _displayText.isEmpty
-                                        ? AppColors.textSecondary
-                                        : AppColors.textPrimary,
-                                  ),
-                                ),
-                                if (_displayText.isNotEmpty)
-                                  _BlinkingCursor(),
-                              ],
-                            ),
-                          ),
-                  ),
-                  if (_isInputActive && _tripController.text.trim().isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => _submitTrip(context),
-                      child: const Icon(Icons.arrow_forward,
-                          color: AppColors.brandBlue, size: 20),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -787,41 +700,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: const [_cardShadow],
-          border: Border.all(color: const Color(0xFFF0F0F0)),
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 20, offset: Offset(0, 4))],
         ),
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                color: AppColors.brandBlue.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.white.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: const Icon(Icons.account_balance_wallet_outlined,
-                  color: AppColors.brandBlue, size: 20),
+                  color: Colors.white, size: 22),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'No budget data yet',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'Create a trip to start tracking',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.5)),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+            Icon(Icons.chevron_right, color: Colors.white.withValues(alpha: 0.4), size: 22),
           ],
         ),
       ),
@@ -833,40 +745,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            const Text(
-              'AI Picks for You',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.brandBlue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Text(
-                'NEW',
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.brandBlue,
-                ),
-              ),
-            ),
-          ],
+        const Text(
+          'AI Picks for You',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
         ),
         GestureDetector(
           onTap: () => context.go('/explore'),
           child: const Text(
             'See All',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.brandBlue,
             ),
@@ -1157,7 +1049,7 @@ class _BlinkingCursorState extends State<_BlinkingCursor>
   }
 }
 
-// ── Widget-style Quick Action Button (colored) ──
+// ── Widget-style Quick Action Button (cleaner, less shadow) ──
 
 class _WidgetQuickAction extends StatelessWidget {
   final IconData icon;
@@ -1179,24 +1071,24 @@ class _WidgetQuickAction extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
-        width: 76,
+        width: 80,
         child: Column(
           children: [
             Container(
-              width: 64,
-              height: 64,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
                 color: bgColor,
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: const [
                   BoxShadow(
-                    color: iconColor.withValues(alpha: 0.2),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
+                    color: Color(0x08000000),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
                   ),
                 ],
               ),
-              child: Icon(icon, color: iconColor, size: 30),
+              child: Icon(icon, color: iconColor, size: 28),
             ),
             const SizedBox(height: 8),
             Text(

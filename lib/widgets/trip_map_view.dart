@@ -8,6 +8,19 @@ import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+/// Category-based marker colors (Wanderlog style)
+const _categoryColors = <String, Color>{
+  'restaurant': Color(0xFFEA4335), // Red
+  'temple': Color(0xFF34A853),     // Green (attraction)
+  'museum': Color(0xFF34A853),     // Green (attraction)
+  'park': Color(0xFF34A853),       // Green (attraction)
+  'attraction': Color(0xFF34A853), // Green
+  'shopping': Color(0xFF4285F4),   // Blue
+  'hotel': Color(0xFF9334E6),      // Purple
+  'beach': Color(0xFF00ACC1),      // Teal
+  'transport': Color(0xFF64748B),  // Gray
+};
+
 /// Day colors — matches Wanderlog palette (vibrant, saturated)
 const dayColors = <Color>[
   Color(0xFF4285F4), // Day 1 — Google blue
@@ -160,7 +173,7 @@ class TripMapViewState extends State<TripMapView>
       } else {
         // Single pin
         final a = item.activity!;
-        final c = dayColors[a.dayIndex % dayColors.length];
+        final c = _categoryColors[a.category] ?? dayColors[a.dayIndex % dayColors.length];
         final key = '${c.value}_${a.numberInDay}';
         _iconCache[key] ??= await _makeIcon(a.numberInDay, c);
         m.add(Marker(
@@ -178,6 +191,9 @@ class TripMapViewState extends State<TripMapView>
 
   /// Public API: animate camera to a specific activity from outside.
   void animateTo(MapActivity a) => _selectPin(a);
+
+  /// Public API: fit bounds from outside.
+  void fitBoundsPublic() => _fitBounds();
 
   void _selectPin(MapActivity a) async {
     HapticFeedback.selectionClick();
@@ -453,67 +469,90 @@ class TripMapViewState extends State<TripMapView>
     ]);
   }
 
-  // ─── Dark info card ──────────────────────────────────────
+  // ─── White Wanderlog-style info card ──────────────────────
   Widget _infoCard(MapActivity a) {
-    final color = dayColors[a.dayIndex % dayColors.length];
+    final color = _categoryColors[a.category] ?? dayColors[a.dayIndex % dayColors.length];
     return GestureDetector(
       onTap: () {},
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF202030),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 16, offset: const Offset(0, 4))],
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, -4))],
         ),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 10, 0),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            // Row 1: Number badge + Name + Close
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Container(
-                width: 28, height: 28,
+                width: 30, height: 30,
                 decoration: BoxDecoration(color: color, shape: BoxShape.circle),
                 alignment: Alignment.center,
                 child: Text('${a.numberInDay}', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(a.name, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 5),
-                  DefaultTextStyle(
-                    style: TextStyle(fontSize: 11.5, color: Colors.grey.shade400),
-                    child: Row(children: [
-                      if (a.category != null && a.category!.isNotEmpty) ...[Text(a.category!), _dot()],
-                      if (a.rating != null) ...[const Icon(Icons.star, size: 12, color: Color(0xFFFBBC04)), Text(' ${a.rating}'), _dot()],
-                      if (a.time.isNotEmpty) Text(a.time),
-                    ]),
-                  ),
-                ]),
-              ),
-              const SizedBox(width: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 64, height: 64,
-                  child: a.imageUrl != null && a.imageUrl!.isNotEmpty
-                      ? CachedNetworkImage(imageUrl: a.imageUrl!, fit: BoxFit.cover, errorWidget: (_, __, ___) => _photoPlaceholder(color))
-                      : _photoPlaceholder(color),
-                ),
+                child: Text(a.name, style: const TextStyle(color: Color(0xFF1A1A1A), fontSize: 16, fontWeight: FontWeight.w700, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
               ),
               GestureDetector(
                 onTap: () { setState(() => _selected = null); _cardAnim.reverse(); },
-                child: const Padding(padding: EdgeInsets.only(left: 2, bottom: 40), child: Icon(Icons.close, size: 18, color: Colors.white30)),
+                child: const Icon(Icons.close, size: 20, color: Color(0xFF9CA3AF)),
               ),
             ]),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
-            child: Row(children: [
-              if (a.cost != null && a.cost!.isNotEmpty && a.cost != 'Free')
-                _chip(a.cost!, const Color(0xFF34A853)),
-              const Spacer(),
-              Text('Day ${a.dayIndex + 1}', style: TextStyle(fontSize: 11.5, color: color, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 10),
+            // Row 2: Rating + Google badge + Opening hours
+            Row(children: [
+              if (a.rating != null) ...[
+                const Icon(Icons.star, size: 14, color: Color(0xFFFBBC04)),
+                const SizedBox(width: 3),
+                Text('${a.rating!.toStringAsFixed(1)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A))),
+                const SizedBox(width: 6),
+                Container(
+                  width: 18, height: 18,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4285F4),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Text('G', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                ),
+                const SizedBox(width: 10),
+              ],
+              if (a.category != null && a.category!.isNotEmpty)
+                Text(a.category![0].toUpperCase() + a.category!.substring(1), style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+              if (a.time.isNotEmpty) ...[
+                Text('  ·  ', style: TextStyle(color: Colors.grey.shade400)),
+                Text(a.time, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+              ],
             ]),
-          ),
+            const SizedBox(height: 14),
+            // Row 3: Action buttons
+            Row(children: [
+              _outlinePill('Directions', Icons.directions),
+              const SizedBox(width: 8),
+              _outlinePill('Details', Icons.info_outline),
+              const SizedBox(width: 8),
+              _outlinePill('Google Maps', Icons.map_outlined),
+            ]),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _outlinePill(String label, IconData icon) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, size: 14, color: const Color(0xFF5F6368)),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF5F6368))),
         ]),
       ),
     );

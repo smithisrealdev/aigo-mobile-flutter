@@ -44,6 +44,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   bool _replanning = false;
   String _activeSection = 'itinerary';
   bool _tipsExpanded = false;
+  bool _mapMode = false;
+  final DraggableScrollableController _sheetController = DraggableScrollableController();
   final Map<String, String> _placePhotos = {};
   static const _googleMapsKey = 'AIzaSyDvA2wmeqKw93M4v8b2Xm1uFWtIcCs46l0';
   final Set<int> _collapsedDays = {};
@@ -57,6 +59,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     _staggerController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 500));
     _staggerController.forward();
+    _sheetController.addListener(_onSheetChanged);
     // Fetch place photos after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) => _fetchPlacePhotos());
   }
@@ -95,7 +98,15 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   @override
   void dispose() {
     _staggerController.dispose();
+    _sheetController.removeListener(_onSheetChanged);
+    _sheetController.dispose();
     super.dispose();
+  }
+
+  void _onSheetChanged() {
+    if (_sheetController.size >= 0.88 && _mapMode) {
+      setState(() => _mapMode = false);
+    }
   }
 
   // ─── Data helpers ───
@@ -599,77 +610,62 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(children: [
-        // ── Layer 1: Full-screen map ──
-        Positioned.fill(
-          child: TripMapView(
-            key: _mapKey,
-            selectedDayIndex: _selectedDay,
-            activities: _mapActivities.isNotEmpty
-                ? _mapActivities
-                : const [
-                    MapActivity(
-                        name: '', time: '', lat: 35.6762, lng: 139.6503)
-                  ],
-          ),
-        ),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: _mapMode
+            ? _buildMapMode(topPad, perm, role, canEdit)
+            : _buildContentMode(topPad, perm, role, canEdit),
+      ),
+    );
+  }
 
-        // ── Layer 2: DraggableScrollableSheet ──
-        DraggableScrollableSheet(
-          initialChildSize: 0.55,
-          minChildSize: 0.15,
-          maxChildSize: 0.95,
-          builder: (context, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x1A000000),
-                    blurRadius: 16,
-                    offset: Offset(0, -4),
-                  ),
-                ],
+  // ═══════════════════════════════════════════
+  // MODE 1: CONTENT MODE (default on open)
+  // ═══════════════════════════════════════════
+  Widget _buildContentMode(double topPad, PermissionService perm, String role, bool canEdit) {
+    return Stack(
+      key: const ValueKey('content_mode'),
+      children: [
+        CustomScrollView(
+          slivers: [
+            // Hero photo as SliverAppBar
+            SliverAppBar(
+              expandedHeight: 260,
+              pinned: true,
+              automaticallyImplyLeading: false,
+              backgroundColor: Colors.white,
+              flexibleSpace: FlexibleSpaceBar(
+                background: _buildHeroImage(),
               ),
-              child: ListView(
-                controller: scrollController,
-                padding: EdgeInsets.zero,
-                children: [
-                  // Grab handle
-                  Center(
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 10, bottom: 6),
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD1D5DB),
-                        borderRadius: BorderRadius.circular(2),
+            ),
+            SliverToBoxAdapter(
+              child: Container(
+                color: Colors.white,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title + follow row
+                    _buildTitleRow(perm, role),
+                    if (role == 'viewer')
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                        child: _viewerBanner(),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: _buildItineraryContent(canEdit),
                       ),
                     ),
-                  ),
-                  // Hero cover photo
-                  _buildHeroSection(perm, role),
-                  // Content
-                  if (role == 'viewer')
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                      child: _viewerBanner(),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: _buildItineraryContent(canEdit),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            );
-          },
+            ),
+          ],
         ),
 
-        // ── Layer 3: Top buttons (back + bookmark) ──
+        // Top buttons
         Positioned(
           top: topPad + 8,
           left: 12,
@@ -704,113 +700,353 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             bottom: 16 + MediaQuery.of(context).padding.bottom,
             child: _buildFab(canEdit),
           ),
-      ]),
+      ],
+    );
+  }
+
+  Widget _buildHeroImage() {
+    final images = _heroImages;
+    return Stack(children: [
+      PageView.builder(
+        itemCount: images.length,
+        onPageChanged: (i) => setState(() => _heroDotIndex = i),
+        itemBuilder: (_, i) => CachedNetworkImage(
+          imageUrl: images[i],
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: 260,
+          fadeInDuration: const Duration(milliseconds: 300),
+          fadeOutDuration: const Duration(milliseconds: 150),
+          placeholder: (_, __) =>
+              Container(height: 260, color: const Color(0xFFF3F4F6)),
+          errorWidget: (_, __, ___) =>
+              Container(color: AppColors.brandBlue),
+        ),
+      ),
+      if (images.length > 1)
+        Positioned(
+          bottom: 12,
+          left: 0,
+          right: 0,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              images.length,
+              (i) => Container(
+                width: i == _heroDotIndex ? 20 : 6,
+                height: 6,
+                margin: const EdgeInsets.only(right: 4),
+                decoration: BoxDecoration(
+                  color: i == _heroDotIndex
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ),
+          ),
+        ),
+    ]);
+  }
+
+  Widget _buildTitleRow(PermissionService perm, String role) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Text(
+              _tripTitle,
+              style: GoogleFonts.dmSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+                height: 1.25,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 10),
+          OutlinedButton.icon(
+            onPressed: () {},
+            icon: const Icon(Icons.person_add_alt, size: 14),
+            label: Text('Follow',
+                style: GoogleFonts.dmSans(
+                    fontSize: 12, fontWeight: FontWeight.w600)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.textPrimary,
+              side: const BorderSide(color: Color(0xFFE5E7EB)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: _showShareSheet,
+            child: const Icon(Icons.share,
+                size: 20, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
     );
   }
 
   // ═══════════════════════════════════════════
-  // HERO SECTION (inside sheet, replaces SliverAppBar)
+  // MODE 2: MAP MODE (activated by FAB)
   // ═══════════════════════════════════════════
-  Widget _buildHeroSection(PermissionService perm, String role) {
-    final images = _heroImages;
-    return Column(children: [
-      // Photo carousel
-      SizedBox(
-        height: 220,
-        width: double.infinity,
-        child: Stack(children: [
-          PageView.builder(
-            itemCount: images.length,
-            onPageChanged: (i) => setState(() => _heroDotIndex = i),
-            itemBuilder: (_, i) => ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              child: CachedNetworkImage(
-                imageUrl: images[i],
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: 220,
-                fadeInDuration: const Duration(milliseconds: 300),
-                fadeOutDuration: const Duration(milliseconds: 150),
-                placeholder: (_, __) =>
-                    Container(height: 220, color: const Color(0xFFF3F4F6)),
-                errorWidget: (_, __, ___) =>
-                    Container(color: AppColors.brandBlue),
-              ),
-            ),
+  Widget _buildMapMode(double topPad, PermissionService perm, String role, bool canEdit) {
+    return Stack(
+      key: const ValueKey('map_mode'),
+      children: [
+        // Map takes full screen
+        Positioned.fill(
+          child: TripMapView(
+            key: _mapKey,
+            selectedDayIndex: _selectedDay,
+            activities: _mapActivities.isNotEmpty
+                ? _mapActivities
+                : const [
+                    MapActivity(
+                        name: '', time: '', lat: 35.6762, lng: 139.6503)
+                  ],
           ),
-          // Dot indicators
-          if (images.length > 1)
-            Positioned(
-              bottom: 12,
-              left: 0,
-              right: 0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  images.length,
-                  (i) => Container(
-                    width: i == _heroDotIndex ? 20 : 6,
-                    height: 6,
-                    margin: const EdgeInsets.only(right: 4),
-                    decoration: BoxDecoration(
-                      color: i == _heroDotIndex
-                          ? Colors.white
-                          : Colors.white.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(3),
+        ),
+
+        // DraggableScrollableSheet from bottom
+        DraggableScrollableSheet(
+          controller: _sheetController,
+          initialChildSize: 0.45,
+          minChildSize: 0.15,
+          maxChildSize: 0.90,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x1A000000),
+                    blurRadius: 16,
+                    offset: Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: ListView(
+                controller: scrollController,
+                padding: EdgeInsets.zero,
+                children: [
+                  // Drag handle pill
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 10, bottom: 6),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD1D5DB),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
+                  // Title
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                    child: Text(
+                      _tripTitle,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  // Day filter chips
+                  SizedBox(
+                    height: 36,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      children: [
+                        _dayFilterChip(-1, 'All Days'),
+                        for (var i = 0; i < _days.length; i++)
+                          _dayFilterChip(i, 'Day ${i + 1}'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Simplified activity list
+                  ..._buildMapModeActivityList(),
+                  const SizedBox(height: 80),
+                ],
               ),
-            ),
-        ]),
-      ),
-      // Title + follow row
-      Container(
-        padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Text(
-                _tripTitle,
-                style: GoogleFonts.dmSans(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  height: 1.25,
-                ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
+            );
+          },
+        ),
+
+        // Back arrow (top-left)
+        Positioned(
+          top: topPad + 8,
+          left: 12,
+          child: _circleBtn(Icons.arrow_back_ios_new,
+              () => Navigator.maybePop(context)),
+        ),
+
+        // X close button (bottom-right) → returns to Content Mode
+        Positioned(
+          bottom: 16 + MediaQuery.of(context).padding.bottom,
+          right: 16,
+          child: FloatingActionButton(
+            heroTag: 'close_map',
+            backgroundColor: Colors.white,
+            elevation: 4,
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              setState(() => _mapMode = false);
+            },
+            child: const Icon(Icons.close, color: AppColors.textPrimary, size: 24),
+          ),
+        ),
+
+        // Zoom into search pill (bottom-left)
+        Positioned(
+          bottom: 24 + MediaQuery.of(context).padding.bottom,
+          left: 16,
+          child: GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              _mapKey.currentState?.fitBoundsPublic();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 10, offset: const Offset(0, 2))],
               ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.search, size: 16, color: Color(0xFF5F6368)),
+                const SizedBox(width: 6),
+                Text('Zoom into...', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF5F6368))),
+              ]),
             ),
-            const SizedBox(width: 10),
-            OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.person_add_alt, size: 14),
-              label: Text('Follow',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 12, fontWeight: FontWeight.w600)),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.textPrimary,
-                side: const BorderSide(color: Color(0xFFE5E7EB)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24)),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: _showShareSheet,
-              child: const Icon(Icons.share,
-                  size: 20, color: AppColors.textSecondary),
-            ),
-          ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _dayFilterChip(int dayIndex, String label) {
+    final isSelected = _selectedDay == dayIndex;
+    return GestureDetector(
+      onTap: () => _onDaySelected(dayIndex),
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.brandBlue : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.dmSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : AppColors.textSecondary,
+          ),
         ),
       ),
-    ]);
+    );
+  }
+
+  List<Widget> _buildMapModeActivityList() {
+    final activities = _currentActivities;
+    final widgets = <Widget>[];
+    int globalNum = 0;
+    for (var dayIdx = 0; dayIdx < _days.length; dayIdx++) {
+      final dayActs = _activitiesForDay(dayIdx);
+      if (_selectedDay >= 0 && _selectedDay != dayIdx) {
+        globalNum += dayActs.length;
+        continue;
+      }
+      for (var i = 0; i < dayActs.length; i++) {
+        globalNum++;
+        final a = dayActs[i];
+        final name = (a['name'] ?? a['title'] ?? 'Activity').toString();
+        final time = (a['startTime'] ?? a['start_time'] ?? a['time'] ?? '').toString();
+        final cat = _inferCat(a);
+        final numColor = _numberColors[dayIdx % _numberColors.length];
+        widgets.add(
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              final mapActs = _mapActivities;
+              for (final ma in mapActs) {
+                if (ma.name == name) {
+                  _mapKey.currentState?.animateTo(ma);
+                  break;
+                }
+              }
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Row(children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: numColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text('$globalNum',
+                        style: GoogleFonts.dmSans(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name,
+                          style: GoogleFonts.dmSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                      if (time.isNotEmpty)
+                        Text(time,
+                            style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+                Icon(_icons[cat] ?? Icons.place,
+                    size: 18, color: AppColors.textSecondary),
+              ]),
+            ),
+          ),
+        );
+      }
+    }
+    return widgets;
   }
 
   // ═══════════════════════════════════════════
@@ -2101,6 +2337,9 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   }
 
   Widget _buildFab(bool canEdit) {
+    // In map mode, no FAB (X button handles exit)
+    if (_mapMode) return const SizedBox.shrink();
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -2142,7 +2381,10 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                     onPressed: () {
                       setState(() => _fabExpanded = false);
                       if (item.$1 == 'AI Chat') context.push('/ai-chat');
-                      if (item.$1 == 'Map') {} // map always visible
+                      if (item.$1 == 'Map') {
+                        HapticFeedback.mediumImpact();
+                        setState(() => _mapMode = true);
+                      }
                       if (item.$1 == 'Travel Tips')
                         context.push('/travel-tips', extra: _tripDestination);
                       if (item.$1 == 'Summary')

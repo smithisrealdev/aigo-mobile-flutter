@@ -22,14 +22,43 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with SingleTickerProviderStateMixin {
+  static const _cardShadow = BoxShadow(
+    color: Color(0x0A000000),
+    blurRadius: 24,
+    offset: Offset(0, 8),
+  );
+
+  // Outer widget container (frosted/tinted — more visible)
+  static BoxDecoration _widgetOuter() => BoxDecoration(
+    color: const Color(0xFFEEF1F5),
+    borderRadius: BorderRadius.circular(28),
+    boxShadow: const [
+      BoxShadow(color: Color(0x12000000), blurRadius: 24, offset: Offset(0, 8)),
+    ],
+  );
+
+  // Inner card (pure white, prominent float)
+  static BoxDecoration _widgetInner() => BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(20),
+    boxShadow: const [
+      BoxShadow(color: Color(0x14000000), blurRadius: 16, offset: Offset(0, 4)),
+    ],
+  );
+
+  // iOS widget-style colored quick action data
+  static const _quickActions = [
+    ('Create Trip', Icons.add_circle_rounded, Color(0xFF2563EB), Color(0xFFDBEAFE)),
+    ('My Trips', Icons.map_rounded, Color(0xFF059669), Color(0xFFD1FAE5)),
+    ('Budget', Icons.account_balance_wallet_rounded, Color(0xFFD97706), Color(0xFFFEF3C7)),
+    ('Marketplace', Icons.public_rounded, Color(0xFF7C3AED), Color(0xFFEDE9FE)),
+  ];
 
   final TextEditingController _tripController = TextEditingController();
-  final PageController _carouselController = PageController(viewportFraction: 0.92);
   bool _isInputActive = false;
   bool _emailBannerDismissed = false;
   List<AiPick>? _aiPicks;
   bool _aiPicksLoading = true;
-  int _carouselPage = 0;
 
   static const _prompts = [
     'Weekend getaway in Paris',
@@ -66,7 +95,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void dispose() {
     _ticker.dispose();
     _tripController.dispose();
-    _carouselController.dispose();
     super.dispose();
   }
 
@@ -74,7 +102,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final interval = _deleting ? 30 : 60;
     if ((elapsed - _lastTick).inMilliseconds < interval) return;
     _lastTick = elapsed;
+
     final prompt = _prompts[_promptIndex];
+
     if (!_deleting) {
       if (_charIndex <= prompt.length) {
         setState(() => _displayText = prompt.substring(0, _charIndex));
@@ -110,654 +140,461 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       final fullName = meta['full_name'] as String;
       return fullName.split(' ').first;
     }
-    if (user.email != null) return user.email!.split('@').first;
+    if (user.email != null) {
+      return user.email!.split('@').first;
+    }
     return 'Traveler';
   }
 
-  String _monthDay(DateTime d) {
-    const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return '${m[d.month - 1]} ${d.day}';
-  }
-
-  void _submitTrip(BuildContext context) {
-    final query = _tripController.text.trim();
-    if (query.isNotEmpty) context.push('/ai-chat', extra: query);
-  }
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // BUILD — Dime!-style Home
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   @override
   Widget build(BuildContext context) {
     final tripsAsync = ref.watch(tripsProvider);
-    final topPad = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: RefreshIndicator(
-        color: AppColors.brandBlue,
-        onRefresh: () async {
-          ref.invalidate(tripsProvider);
-          AiPicksService.instance.clearCache();
-          _loadAiPicks();
-        },
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            // ── Greeting row (like Dime! "Hi, Apichet Nuamtun!") ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(20, topPad + 16, 20, 0),
-                child: Row(
-                  children: [
-                    // Avatar
-                    GestureDetector(
-                      onTap: () => context.go('/profile'),
-                      child: Container(
-                        width: 44, height: 44,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: const Color(0xFFF3F4F6),
-                          border: Border.all(color: const Color(0xFFE5E7EB), width: 1.5),
-                        ),
-                        child: const Icon(Icons.person, color: Color(0xFF9CA3AF), size: 22),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Name
-                    Expanded(
-                      child: Text(
-                        'Hi, ${_getUserName()}!',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                      ),
-                    ),
-                    // Chat icon (like Dime! chatbot icon)
-                    GestureDetector(
-                      onTap: () => context.push('/ai-chat'),
-                      child: Container(
-                        width: 40, height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.brandBlue.withValues(alpha: 0.08),
-                        ),
-                        child: const Icon(Icons.auto_awesome, color: AppColors.brandBlue, size: 20),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Notification bell
-                    GestureDetector(
-                      onTap: () => context.push('/notifications'),
-                      child: Container(
-                        width: 40, height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: const Color(0xFFF3F4F6),
-                        ),
-                        child: const Icon(Icons.notifications_outlined, color: Color(0xFF6B7280), size: 20),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+      backgroundColor: AppColors.background,
+      body: Column(
+        children: [
+          // ── Compact Header with embedded search ──
+          _buildHeader(context),
 
-            // ── Email verification banner ──
-            SliverToBoxAdapter(child: _buildEmailVerificationBanner()),
+          // ── Email verification banner ──
+          _buildEmailVerificationBanner(),
 
-            // ── Search bar ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: _buildSearchBar(context),
-              ),
-            ),
-
-            // ── Hero Carousel (like Dime! promo banners) ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 20),
-                child: tripsAsync.when(
-                  data: (trips) => _buildHeroCarousel(context, trips),
-                  loading: () => _buildCarouselSkeleton(),
-                  error: (_, __) => _buildCarouselEmpty(context),
-                ),
-              ),
-            ),
-
-            // ── Page dots ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: tripsAsync.when(
-                  data: (trips) => _buildPageDots(trips.isEmpty ? 1 : trips.length.clamp(1, 5)),
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, __) => const SizedBox.shrink(),
-                ),
-              ),
-            ),
-
-            // ── Stat cards row (like Dime! stock tickers) ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                child: tripsAsync.when(
-                  data: (trips) => _buildStatCards(trips),
-                  loading: () => _buildStatCardsSkeleton(),
-                  error: (_, __) => const SizedBox.shrink(),
-                ),
-              ),
-            ),
-
-            // ── Quick Actions (horizontal pills) ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                child: _buildQuickActions(context),
-              ),
-            ),
-
-            // ── AI Picks section (tinted bg like Dime!) ──
-            SliverToBoxAdapter(
-              child: Container(
-                margin: const EdgeInsets.only(top: 28),
-                padding: const EdgeInsets.only(top: 20, bottom: 24),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF8FAFC),
-                  border: Border(
-                    top: BorderSide(color: Color(0xFFF1F5F9), width: 1),
-                    bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1),
-                  ),
-                ),
+          // ── Scrollable body ──
+          Expanded(
+            child: RefreshIndicator(
+              color: AppColors.brandBlue,
+              onRefresh: () async {
+                ref.invalidate(tripsProvider);
+                AiPicksService.instance.clearCache();
+                _loadAiPicks();
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.auto_awesome, size: 20, color: AppColors.brandBlue),
-                              const SizedBox(width: 8),
-                              const Text('AI Picks for You', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                            ],
-                          ),
-                          GestureDetector(
-                            onTap: () => context.go('/explore'),
-                            child: Row(
-                              children: [
-                                const Text('See All', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
-                                const SizedBox(width: 2),
-                                const Icon(Icons.arrow_forward_ios, size: 12, color: AppColors.brandBlue),
-                              ],
-                            ),
-                          ),
-                        ],
+                    // ── Greeting ──
+                    Text(
+                      '${_greeting()}, ${_getUserName()}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20),
-                      child: Text('Based on your travel style', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Where to next?',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     const SizedBox(height: 14),
+
+                    // ── Quick Actions ──
+                    const Text(
+                      'Quick Actions',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        for (var i = 0; i < _quickActions.length; i++)
+                          _WidgetQuickAction(
+                            icon: _quickActions[i].$2,
+                            label: _quickActions[i].$1,
+                            iconColor: _quickActions[i].$3,
+                            bgColor: _quickActions[i].$4,
+                            onTap: () {
+                              if (i == 0) context.push('/ai-chat');
+                              if (i == 1) context.go('/trips');
+                              if (i == 2) context.push('/budget');
+                              if (i == 3) context.go('/explore');
+                            },
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // ── Upcoming Trip ──
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Upcoming Trip',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => context.go('/trips'),
+                          child: const Text(
+                            'See All',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.brandBlue,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    tripsAsync.when(
+                      data: (trips) => _buildUpcomingTripReal(context, trips),
+                      loading: () => _buildUpcomingTripSkeleton(),
+                      error: (e, _) => _buildErrorCard('Failed to load trips', () => ref.invalidate(tripsProvider)),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ── Budget Overview (only if trips exist) ──
+                    tripsAsync.when(
+                      data: (trips) => trips.isEmpty
+                          ? const SizedBox.shrink()
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Your Budget',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                _buildBudgetReal(context, trips),
+                                const SizedBox(height: 24),
+                              ],
+                            ),
+                      loading: () => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Your Budget', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                          const SizedBox(height: 10),
+                          _buildBudgetSkeleton(),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
+                    ),
+
+                    // ── AI Picks for You ──
+                    _buildAiPicksHeader(context),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Based on your travel style',
+                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 12),
                     _buildAiPicksDynamic(context),
+
+                    const SizedBox(height: 24),
+
+                    // ── Tailored for You (AI Recommendations) ──
+                    _buildTailoredForYou(),
+
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
             ),
-
-            // ── Tailored for You ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
-                child: _buildTailoredForYou(),
-              ),
-            ),
-
-            // Bottom padding
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // SEARCH BAR — animated typing
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Widget _buildSearchBar(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.search, size: 20, color: Color(0xFF9CA3AF)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _isInputActive
-                ? TextField(
-                    controller: _tripController,
-                    autofocus: true,
-                    style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
-                    decoration: const InputDecoration(
-                      hintText: 'Describe your dream trip...',
-                      hintStyle: TextStyle(fontSize: 15, color: Color(0xFF9CA3AF)),
-                      border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero,
-                    ),
-                    onSubmitted: (val) => _submitTrip(context),
-                  )
-                : GestureDetector(
-                    onTap: () { setState(() => _isInputActive = true); _ticker.stop(); },
-                    child: Row(
-                      children: [
-                        Text(
-                          _displayText.isEmpty ? 'Plan my trip with AI' : _displayText,
-                          style: TextStyle(fontSize: 15, color: _displayText.isEmpty ? const Color(0xFF9CA3AF) : AppColors.textPrimary),
-                        ),
-                        if (_displayText.isNotEmpty) _BlinkingCursor(),
-                      ],
-                    ),
-                  ),
           ),
-          if (_isInputActive && _tripController.text.trim().isNotEmpty)
-            GestureDetector(
-              onTap: () => _submitTrip(context),
-              child: Container(
-                width: 32, height: 32,
-                decoration: BoxDecoration(color: AppColors.brandBlue, borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.arrow_forward, color: Colors.white, size: 16),
-              ),
-            )
-          else
-            Icon(Icons.tune, size: 20, color: const Color(0xFF9CA3AF)),
         ],
       ),
     );
   }
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // HERO CAROUSEL — like Dime! promo banners
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Widget _buildHeroCarousel(BuildContext context, List<Trip> trips) {
-    if (trips.isEmpty) return _buildCarouselEmpty(context);
+  Widget _buildUpcomingTripReal(BuildContext context, List<Trip> trips) {
+    if (trips.isEmpty) {
+      return GestureDetector(
+        onTap: () => context.push('/ai-chat'),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: const [_cardShadow],
+            border: Border.all(color: const Color(0xFFF0F0F0)),
+          ),
+          child: Column(
+            children: [
+              Icon(Icons.flight_takeoff, size: 40, color: AppColors.brandBlue.withValues(alpha: 0.5)),
+              const SizedBox(height: 8),
+              const Text('No trips yet', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              const Text('Tap to plan your first trip with AI!', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            ],
+          ),
+        ),
+      );
+    }
 
-    final displayTrips = trips.take(5).toList();
-    return SizedBox(
-      height: 170,
-      child: PageView.builder(
-        controller: _carouselController,
-        itemCount: displayTrips.length,
-        onPageChanged: (i) => setState(() => _carouselPage = i),
-        itemBuilder: (_, i) {
-          final trip = displayTrips[i];
-          final startDate = trip.startDate != null ? DateTime.tryParse(trip.startDate!) : null;
-          final endDate = trip.endDate != null ? DateTime.tryParse(trip.endDate!) : null;
-          final days = (startDate != null && endDate != null) ? endDate.difference(startDate).inDays : null;
-          final imageUrl = trip.coverImage ?? 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=600&h=300&fit=crop';
+    // Find upcoming trip (earliest future start date, or most recent)
+    final now = DateTime.now();
+    Trip? upcoming;
+    for (final t in trips) {
+      if (t.startDate != null) {
+        final start = DateTime.tryParse(t.startDate!);
+        if (start != null && start.isAfter(now)) {
+          if (upcoming == null || start.isBefore(DateTime.parse(upcoming.startDate!))) {
+            upcoming = t;
+          }
+        }
+      }
+    }
+    upcoming ??= trips.first;
 
-          // Overlay gradient colors (bottom gradient tint)
-          final gradientColors = [
-            const Color(0xFF059669),
-            const Color(0xFFEA580C),
-            const Color(0xFF2563EB),
-            const Color(0xFF7C3AED),
-            const Color(0xFFDB2777),
-          ];
-          final gradColor = gradientColors[i % gradientColors.length];
+    final startDate = upcoming.startDate != null ? DateTime.tryParse(upcoming.startDate!) : null;
+    final endDate = upcoming.endDate != null ? DateTime.tryParse(upcoming.endDate!) : null;
+    final days = (startDate != null && endDate != null) ? endDate.difference(startDate).inDays : null;
+    final dateStr = startDate != null ? '${_monthDay(startDate)}${endDate != null ? ' – ${_monthDay(endDate)}' : ''}${days != null ? ' · $days days' : ''}' : 'Not scheduled';
+    final progress = (upcoming.budgetTotal != null && upcoming.budgetTotal! > 0 && upcoming.budgetSpent != null)
+        ? (upcoming.budgetSpent! / upcoming.budgetTotal!).clamp(0.0, 1.0)
+        : 0.0;
+    final imageUrl = upcoming.coverImage ?? 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200&h=200&fit=crop';
 
-          return GestureDetector(
-            onTap: () => context.push('/itinerary', extra: trip),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
-              child: Stack(
-                fit: StackFit.expand,
+    return GestureDetector(
+      onTap: () => context.push('/itinerary', extra: upcoming),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: _widgetOuter(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Status header row (like "SHOPPER" / "IN-PROGRESS")
+            Row(
+              children: [
+                Icon(Icons.flight_takeoff, size: 16, color: AppColors.brandBlue),
+                const SizedBox(width: 6),
+                Text(
+                  _tripStatus(upcoming),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.8),
+                ),
+                const Spacer(),
+                if (startDate != null)
+                  Text(dateStr, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Inner card
+            Container(
+              decoration: _widgetInner(),
+              child: Row(
                 children: [
-                  // Full background image
-                  CachedNetworkImage(
-                    imageUrl: imageUrl, fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => Container(color: gradColor),
-                  ),
-                  // Gradient overlay (dark bottom for text readability)
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                        colors: [
-                          gradColor.withValues(alpha: 0.15),
-                          gradColor.withValues(alpha: 0.5),
-                          gradColor.withValues(alpha: 0.85),
+                  // Date badge (green like reference)
+                  if (startDate != null)
+                    Container(
+                      width: 68, height: 68,
+                      margin: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF22C55E),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: const [BoxShadow(color: Color(0x3022C55E), blurRadius: 12, offset: Offset(0, 4))],
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(_monthAbbr(startDate), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white, height: 1)),
+                          Text('${startDate.day}', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: Colors.white, height: 1.1)),
                         ],
-                        stops: const [0.0, 0.5, 1.0],
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 12),
+                  // Trip info
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            upcoming.title,
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary, height: 1.3),
+                            maxLines: 3, overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${days ?? 0} days trip',
+                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  // Content
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Status badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                          ),
-                          child: Text(
-                            _tripStatus(trip),
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5),
-                          ),
-                        ),
-                        const Spacer(),
-                        // Trip title
-                        Text(
-                          trip.title,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white, height: 1.2),
-                          maxLines: 2, overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 6),
-                        // Date + days
-                        Row(
-                          children: [
-                            if (startDate != null) ...[
-                              const Icon(Icons.calendar_today, size: 13, color: Colors.white70),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${_monthDay(startDate)}${endDate != null ? ' – ${_monthDay(endDate)}' : ''}',
-                                style: const TextStyle(fontSize: 13, color: Colors.white70, fontWeight: FontWeight.w500),
-                              ),
-                            ],
-                            if (days != null) ...[
-                              const SizedBox(width: 10),
-                              Text('$days days', style: const TextStyle(fontSize: 13, color: Colors.white70, fontWeight: FontWeight.w500)),
-                            ],
-                          ],
-                        ),
-                      ],
+                  // Cover image
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      width: 80, height: 84,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => Container(width: 80, height: 84, color: AppColors.border),
                     ),
                   ),
                 ],
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildCarouselEmpty(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.push('/ai-chat'),
-      child: Container(
-        height: 170,
-        margin: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
-            colors: [Color(0xFF2563EB), Color(0xFF60A5FA)],
-          ),
-        ),
-        child: Stack(
-          children: [
-            Positioned(right: 20, bottom: 20, child: Icon(Icons.flight_takeoff, size: 80, color: Colors.white.withValues(alpha: 0.15))),
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Plan Your First Trip', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
-                  const SizedBox(height: 8),
-                  Text('Let AI help you create the perfect itinerary', style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.85))),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                    child: const Text('Get Started', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
-                  ),
-                ],
-              ),
-            ),
+            // Progress pills
+            if (progress > 0) ...[
+              const SizedBox(height: 12),
+              _PillProgressBar(value: progress, segments: 6, height: 8),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCarouselSkeleton() {
+  Widget _buildUpcomingTripSkeleton() {
     return Container(
-      height: 170,
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(16)),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [_cardShadow],
+        border: Border.all(color: const Color(0xFFF0F0F0)),
+      ),
+      child: Row(
+        children: [
+          Container(width: 52, height: 52, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(12))),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(width: 120, height: 14, color: AppColors.border),
+            const SizedBox(height: 6),
+            Container(width: 160, height: 12, color: AppColors.border),
+          ])),
+        ],
+      ),
     );
   }
 
-  Widget _buildPageDots(int count) {
-    if (count <= 1) return const SizedBox.shrink();
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(count, (i) {
-        final active = i == _carouselPage;
-        return Container(
-          width: active ? 20 : 6, height: 6,
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          decoration: BoxDecoration(
-            color: active ? AppColors.brandBlue : const Color(0xFFD1D5DB),
-            borderRadius: BorderRadius.circular(3),
-          ),
-        );
-      }),
-    );
-  }
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // STAT CARDS — like Dime! stock tickers (4 cards in row)
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Widget _buildStatCards(List<Trip> trips) {
-    final totalTrips = trips.length;
+  Widget _buildBudgetReal(BuildContext context, List<Trip> trips) {
     double totalBudget = 0;
     double totalSpent = 0;
-    int? daysUntilNext;
-
-    final now = DateTime.now();
     for (final t in trips) {
       if (t.budgetTotal != null) totalBudget += t.budgetTotal!;
       if (t.budgetSpent != null) totalSpent += t.budgetSpent!;
-      if (t.startDate != null) {
-        final start = DateTime.tryParse(t.startDate!);
-        if (start != null && start.isAfter(now)) {
-          final d = start.difference(now).inDays;
-          if (daysUntilNext == null || d < daysUntilNext) daysUntilNext = d;
-        }
-      }
     }
+    if (totalBudget == 0) {
+      return _buildBudget(context); // fallback
+    }
+    final pct = (totalSpent / totalBudget).clamp(0.0, 1.0);
 
-    final pctUsed = totalBudget > 0 ? ((totalSpent / totalBudget) * 100).round() : 0;
-
-    return Row(
-      children: [
-        _StatCard(icon: Icons.flight, label: 'Trips', value: '$totalTrips', color: const Color(0xFF059669)),
-        const SizedBox(width: 10),
-        _StatCard(icon: Icons.account_balance_wallet, label: 'Budget', value: '${pctUsed}%', color: pctUsed < 50 ? const Color(0xFF059669) : pctUsed < 80 ? AppColors.brandBlue : const Color(0xFFEF4444)),
-        const SizedBox(width: 10),
-        _StatCard(icon: Icons.calendar_today, label: 'Next Trip', value: daysUntilNext != null ? '${daysUntilNext}d' : '—', color: AppColors.brandBlue),
-        const SizedBox(width: 10),
-        _StatCard(icon: Icons.savings, label: 'Spent', value: '฿${totalSpent.toStringAsFixed(0)}', color: const Color(0xFFD97706)),
-      ],
-    );
-  }
-
-  Widget _buildStatCardsSkeleton() {
-    return Row(
-      children: List.generate(4, (i) => Expanded(
-        child: Container(
-          height: 72,
-          margin: EdgeInsets.only(right: i < 3 ? 10 : 0),
-          decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
-        ),
-      )),
-    );
-  }
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // QUICK ACTIONS — horizontal scrollable pills
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Widget _buildQuickActions(BuildContext context) {
-    final actions = [
-      ('Create Trip', Icons.add_circle_outline, AppColors.brandBlue, () => context.push('/ai-chat')),
-      ('My Trips', Icons.map_outlined, const Color(0xFF059669), () => context.go('/trips')),
-      ('Budget', Icons.account_balance_wallet_outlined, const Color(0xFFD97706), () => context.push('/budget')),
-      ('Explore', Icons.explore_outlined, const Color(0xFF7C3AED), () => context.go('/explore')),
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      clipBehavior: Clip.none,
-      child: Row(
-        children: actions.asMap().entries.map((entry) {
-          final i = entry.key;
-          final a = entry.value;
-          final isFirst = i == 0;
-          return Padding(
-            padding: const EdgeInsets.only(right: 10),
-            child: GestureDetector(
-              onTap: a.$4,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isFirst ? a.$3 : Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: isFirst ? a.$3 : const Color(0xFFE5E7EB), width: 1),
-                ),
-                child: Row(
-                  children: [
-                    Icon(a.$2, size: 18, color: isFirst ? Colors.white : a.$3),
-                    const SizedBox(width: 8),
-                    Text(a.$1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isFirst ? Colors.white : AppColors.textPrimary)),
-                  ],
-                ),
+    return GestureDetector(
+      onTap: () => context.push('/budget'),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: _widgetOuter(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Status header
+            Row(
+              children: [
+                Icon(Icons.account_balance_wallet, size: 16, color: pct < 0.5 ? const Color(0xFF22C55E) : pct < 0.8 ? AppColors.brandBlue : const Color(0xFFEF4444)),
+                const SizedBox(width: 6),
+                Text('BUDGET TRACKER', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.8)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Inner card
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: _widgetInner(),
+              child: Row(
+                children: [
+                  // Progress ring
+                  SizedBox(
+                    width: 52, height: 52,
+                    child: Stack(alignment: Alignment.center, children: [
+                      SizedBox(
+                        width: 52, height: 52,
+                        child: CircularProgressIndicator(
+                          value: pct,
+                          strokeWidth: 5,
+                          strokeCap: StrokeCap.round,
+                          backgroundColor: const Color(0xFFD1D5DB),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            pct < 0.5 ? const Color(0xFF22C55E) : pct < 0.8 ? AppColors.brandBlue : const Color(0xFFEF4444),
+                          ),
+                        ),
+                      ),
+                      Text('${(pct * 100).toInt()}%', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                    ]),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text('Total Budget', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                      const SizedBox(height: 2),
+                      Text('฿${totalSpent.toStringAsFixed(0)} / ฿${totalBudget.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                    ]),
+                  ),
+                  const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 22),
+                ],
               ),
             ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // AI PICKS CAROUSEL
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Widget _buildAiPicksDynamic(BuildContext context) {
-    if (_aiPicksLoading) {
-      return SizedBox(
-        height: 190,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          children: List.generate(3, (_) => Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Container(width: 160, decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(16))),
-          )),
+            const SizedBox(height: 10),
+            // Progress pills
+            _PillProgressBar(value: pct, segments: 6, height: 8),
+          ],
         ),
-      );
-    }
-    final picks = _aiPicks ?? [];
-    if (picks.isEmpty) return const SizedBox.shrink();
-
-    return SizedBox(
-      height: 190,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        clipBehavior: Clip.none,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: picks.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (_, i) {
-          final p = picks[i];
-          return _AiPickCard(
-            imageUrl: p.imageUrl, title: p.title, subtitle: p.subtitle, badge: p.matchReason,
-            onTap: () => context.push('/ai-chat', extra: 'Tell me about ${p.destination}'),
-          );
-        },
       ),
     );
   }
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // TAILORED FOR YOU
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Widget _buildTailoredForYou() {
-    final recAsync = ref.watch(aiRecommendationsProvider);
-    return recAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
-      data: (result) {
-        final items = result.structured?.items ?? [];
-        if (items.isEmpty && result.recommendation == null) return const SizedBox.shrink();
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF9FAFB),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFF3F4F6)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Icon(Icons.auto_awesome, size: 18, color: AppColors.brandBlue),
-                const SizedBox(width: 8),
-                const Text('Tailored for You', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-              ]),
-              if (result.recommendation != null) ...[
-                const SizedBox(height: 10),
-                Text(result.recommendation!, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5)),
-              ],
-              if (items.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                ...items.map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(children: [
-                    Container(
-                      width: 32, height: 32,
-                      decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
-                      child: Icon(_emojiToIcon(item.emoji), size: 16, color: AppColors.brandBlue),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('${item.label}: ${item.value}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-                      if (item.detail != null) Text(item.detail!, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                    ])),
-                  ]),
-                )),
-              ],
-              if (result.structured?.tip != null) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(10)),
-                  child: Row(children: [
-                    const Icon(Icons.lightbulb_outline, size: 16, color: AppColors.brandBlue),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(result.structured!.tip!, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary))),
-                  ]),
-                ),
-              ],
-            ],
-          ),
-        );
-      },
+  Widget _buildBudgetSkeleton() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: const [_cardShadow], border: Border.all(color: const Color(0xFFF0F0F0))),
+      child: Row(children: [
+        Container(width: 40, height: 40, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(12))),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(width: 100, height: 14, color: AppColors.border),
+          const SizedBox(height: 4),
+          Container(width: 140, height: 12, color: AppColors.border),
+        ])),
+      ]),
     );
+  }
+
+  Widget _buildErrorCard(String message, VoidCallback onRetry) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: const [_cardShadow], border: Border.all(color: const Color(0xFFF0F0F0))),
+      child: Column(children: [
+        Text(message, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+        const SizedBox(height: 8),
+        TextButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh, size: 16), label: const Text('Retry')),
+      ]),
+    );
+  }
+
+  String _monthDay(DateTime d) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[d.month - 1]} ${d.day}';
+  }
+
+  String _monthAbbr(DateTime d) {
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    return months[d.month - 1];
   }
 
   String _tripStatus(Trip t) {
@@ -765,7 +602,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final start = t.startDate != null ? DateTime.tryParse(t.startDate!) : null;
     final end = t.endDate != null ? DateTime.tryParse(t.endDate!) : null;
     if (start != null && now.isBefore(start)) return 'UPCOMING';
-    if (start != null && end != null && now.isAfter(start) && now.isBefore(end)) return 'IN PROGRESS';
+    if (start != null && end != null && now.isAfter(start) && now.isBefore(end)) return 'IN-PROGRESS';
     if (end != null && now.isAfter(end)) return 'COMPLETED';
     return 'PLANNED';
   }
@@ -775,34 +612,374 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final user = SupabaseConfig.client.auth.currentUser;
     if (user == null || user.emailConfirmedAt != null) return const SizedBox.shrink();
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFEF3C7),
+        color: AppColors.warning.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFCD34D)),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
       ),
-      child: Row(children: [
-        const Icon(Icons.warning_amber_rounded, size: 18, color: Color(0xFFD97706)),
-        const SizedBox(width: 8),
-        const Expanded(child: Text('Please verify your email', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF92400E)))),
-        TextButton(
-          onPressed: () async {
-            try {
-              await SupabaseConfig.client.auth.resend(type: OtpType.email, email: user.email!);
-              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Verification email sent')));
-            } catch (e) {
-              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-            }
-          },
-          style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(50, 30)),
-          child: const Text('Resend', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, size: 18, color: AppColors.warning),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text('Please verify your email', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await SupabaseConfig.client.auth.resend(type: OtpType.email, email: user.email!);
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Verification email sent')));
+              } catch (e) {
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+              }
+            },
+            style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(50, 30)),
+            child: const Text('Resend', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _emailBannerDismissed = true),
+            child: const Icon(Icons.close, size: 16, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Header: clean white minimal with embedded search ──
+  Widget _buildHeader(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20, topPadding + 10, 20, 16),
+        child: Column(
+          children: [
+            // Logo row
+            Row(
+              children: [
+                SvgPicture.asset('assets/images/logo.svg', height: 28),
+                const Spacer(),
+                // Notification bell
+                IconButton(
+                  icon: const Icon(Icons.notifications_outlined,
+                      color: AppColors.textSecondary, size: 22),
+                  onPressed: () => context.push('/notifications'),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () => context.go('/profile'),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.border, width: 1.5),
+                    ),
+                    child: const CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Color(0xFFF3F4F6),
+                      child: Icon(Icons.person, color: AppColors.textSecondary, size: 20),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            // Search bar embedded in header
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color: AppColors.searchBackground,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.auto_awesome,
+                      size: 18, color: AppColors.brandBlue),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _isInputActive
+                        ? TextField(
+                            controller: _tripController,
+                            autofocus: true,
+                            style: const TextStyle(
+                                fontSize: 14, color: AppColors.textPrimary),
+                            decoration: const InputDecoration(
+                              hintText: 'Describe your dream trip...',
+                              hintStyle: TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.textSecondary),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            onSubmitted: (val) => _submitTrip(context),
+                          )
+                        : GestureDetector(
+                            onTap: () {
+                              setState(() => _isInputActive = true);
+                              _ticker.stop();
+                            },
+                            child: Row(
+                              children: [
+                                Text(
+                                  _displayText.isEmpty
+                                      ? 'Plan my trip with AI'
+                                      : _displayText,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: _displayText.isEmpty
+                                        ? AppColors.textSecondary
+                                        : AppColors.textPrimary,
+                                  ),
+                                ),
+                                if (_displayText.isNotEmpty)
+                                  _BlinkingCursor(),
+                              ],
+                            ),
+                          ),
+                  ),
+                  if (_isInputActive && _tripController.text.trim().isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => _submitTrip(context),
+                      child: const Icon(Icons.arrow_forward,
+                          color: AppColors.brandBlue, size: 20),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Budget Card (fallback) ──
+  Widget _buildBudget(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push('/budget'),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: const [_cardShadow],
+          border: Border.all(color: const Color(0xFFF0F0F0)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.brandBlue.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.account_balance_wallet_outlined,
+                  color: AppColors.brandBlue, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'No budget data yet',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Create a trip to start tracking',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── AI Picks Header ──
+  Widget _buildAiPicksHeader(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'AI Picks for You',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.brandBlue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text(
+                'NEW',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.brandBlue,
+                ),
+              ),
+            ),
+          ],
         ),
         GestureDetector(
-          onTap: () => setState(() => _emailBannerDismissed = true),
-          child: const Icon(Icons.close, size: 16, color: Color(0xFF9CA3AF)),
+          onTap: () => context.go('/explore'),
+          child: const Text(
+            'See All',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.brandBlue,
+            ),
+          ),
         ),
-      ]),
+      ],
+    );
+  }
+
+  // ── AI Picks Carousel (dynamic) ──
+  Widget _buildAiPicksDynamic(BuildContext context) {
+    if (_aiPicksLoading) {
+      return SizedBox(
+        height: 200,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          children: List.generate(3, (_) => Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Container(
+              width: 170, height: 200,
+              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(24)),
+            ),
+          )),
+        ),
+      );
+    }
+
+    final picks = _aiPicks ?? [];
+    if (picks.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 200,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        itemCount: picks.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (_, i) {
+          final p = picks[i];
+          return _AiPickCard(
+            imageUrl: p.imageUrl,
+            title: p.title,
+            subtitle: p.subtitle,
+            badge: p.matchReason,
+            onTap: () => context.push('/ai-chat', extra: 'Tell me about ${p.destination}'),
+          );
+        },
+      ),
+    );
+  }
+
+  void _submitTrip(BuildContext context) {
+    final query = _tripController.text.trim();
+    if (query.isNotEmpty) {
+      context.push('/ai-chat', extra: query);
+    }
+  }
+
+  Widget _buildTailoredForYou() {
+    final recAsync = ref.watch(aiRecommendationsProvider);
+    return recAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (result) {
+        final items = result.structured?.items ?? [];
+        if (items.isEmpty && result.recommendation == null) {
+          return const SizedBox.shrink();
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(children: [
+              Icon(Icons.auto_awesome, size: 18, color: AppColors.brandBlue),
+              SizedBox(width: 6),
+              Text('Tailored for You',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            ]),
+            const SizedBox(height: 8),
+            if (result.recommendation != null)
+              Text(result.recommendation!,
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textSecondary, height: 1.5)),
+            if (items.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              ...items.map((item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(children: [
+                      Icon(_emojiToIcon(item.emoji), size: 18, color: AppColors.brandBlue),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${item.label}: ${item.value}',
+                                style: const TextStyle(
+                                    fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+                            if (item.detail != null)
+                              Text(item.detail!,
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                    ]),
+                  )),
+            ],
+            if (result.structured?.tip != null) ...[
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.brandBlue.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.lightbulb_outline, size: 16, color: AppColors.brandBlue),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(result.structured!.tip!,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
+                  ),
+                ]),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -819,52 +996,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// STAT CARD — compact metric tile (like Dime! stock ticker)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatCard({required this.icon, required this.label, required this.value, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.12), width: 1),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 28, height: 28,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, size: 14, color: color),
-            ),
-            const SizedBox(height: 8),
-            Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color)),
-            const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w500)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// AI PICK CARD
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 class _AiPickCard extends StatelessWidget {
   final String imageUrl;
   final String title;
@@ -872,41 +1003,102 @@ class _AiPickCard extends StatelessWidget {
   final String badge;
   final VoidCallback? onTap;
 
-  const _AiPickCard({required this.imageUrl, required this.title, required this.subtitle, required this.badge, this.onTap});
+  const _AiPickCard({
+    required this.imageUrl,
+    required this.title,
+    required this.subtitle,
+    required this.badge,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 160,
+        width: 170,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFF3F4F6)),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF0F0F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
           fit: StackFit.expand,
           children: [
             CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover),
-            const DecoratedBox(decoration: BoxDecoration(
-              gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black54], stops: [0.35, 1.0]),
-            )),
-            Positioned(
-              top: 10, right: 10,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.9), borderRadius: BorderRadius.circular(8)),
-                child: Text(badge, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
+            // Gradient overlay
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Colors.black54],
+                  stops: [0.35, 1.0],
+                ),
               ),
             ),
+            // Match badge
             Positioned(
-              bottom: 12, left: 12, right: 12,
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.85))),
-              ]),
+              top: 10,
+              right: 10,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.brandBlue.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.auto_awesome,
+                        size: 10, color: Colors.white),
+                    const SizedBox(width: 3),
+                    Text(
+                      badge,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Title + subtitle
+            Positioned(
+              bottom: 12,
+              left: 12,
+              right: 12,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -915,38 +1107,108 @@ class _AiPickCard extends StatelessWidget {
   }
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// BLINKING CURSOR
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ── Blinking Cursor ──
+
 class _BlinkingCursor extends StatefulWidget {
   @override
   State<_BlinkingCursor> createState() => _BlinkingCursorState();
 }
 
-class _BlinkingCursorState extends State<_BlinkingCursor> with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))..repeat(reverse: true);
+class _BlinkingCursorState extends State<_BlinkingCursor>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 600),
+  )..repeat(reverse: true);
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _ctrl,
-      child: Container(width: 2, height: 16, margin: const EdgeInsets.only(left: 1), color: AppColors.brandBlue),
+      child: Container(
+        width: 2,
+        height: 16,
+        margin: const EdgeInsets.only(left: 1),
+        color: AppColors.brandBlue,
+      ),
     );
   }
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// PILL PROGRESS BAR (kept for other screens)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-class PillProgressBar extends StatelessWidget {
+// ── Widget-style Quick Action Button (colored) ──
+
+class _WidgetQuickAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color iconColor;
+  final Color bgColor;
+  final VoidCallback? onTap;
+
+  const _WidgetQuickAction({
+    required this.icon,
+    required this.label,
+    required this.iconColor,
+    required this.bgColor,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 76,
+        child: Column(
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: iconColor.withValues(alpha: 0.2),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: iconColor, size: 30),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Pill Segment Progress Bar ──
+
+class _PillProgressBar extends StatelessWidget {
   final double value;
   final int segments;
   final double height;
 
-  const PillProgressBar({super.key, required this.value, this.segments = 10, this.height = 6});
+  const _PillProgressBar({required this.value, this.segments = 10, this.height = 6});
 
   @override
   Widget build(BuildContext context) {

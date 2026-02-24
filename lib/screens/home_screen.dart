@@ -28,13 +28,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     offset: Offset(0, 8),
   );
 
-  // Outer widget container (frosted/tinted — more visible)
+  // Outer widget container (white on gradient bg)
   static BoxDecoration _widgetOuter() => BoxDecoration(
-    color: const Color(0xFFEEF1F5),
+    color: Colors.white.withValues(alpha: 0.85),
     borderRadius: BorderRadius.circular(28),
     boxShadow: const [
       BoxShadow(color: Color(0x12000000), blurRadius: 24, offset: Offset(0, 8)),
     ],
+    border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1),
   );
 
   // Inner card (pure white, prominent float)
@@ -151,9 +152,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final tripsAsync = ref.watch(tripsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Column(
-        children: [
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFE8F0FE), // soft blue top
+              Color(0xFFEFF8EE), // soft green middle
+              Color(0xFFF5F0FF), // soft purple
+              Color(0xFFFFFFFF), // white bottom
+            ],
+            stops: [0.0, 0.3, 0.6, 1.0],
+          ),
+        ),
+        child: Column(
+          children: [
           // ── Compact Header with embedded search ──
           _buildHeader(context),
 
@@ -311,7 +326,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -652,7 +668,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final topPadding = MediaQuery.of(context).padding.top;
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Colors.transparent,
       ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(20, topPadding + 10, 20, 16),

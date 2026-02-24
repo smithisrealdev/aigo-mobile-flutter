@@ -347,8 +347,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
         const SizedBox(height: 24),
         // Try asking
         Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.04), borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.1))),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.04), borderRadius: BorderRadius.circular(24), border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.1))),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Row(children: [Icon(Icons.auto_awesome, size: 16, color: AppColors.brandBlue), SizedBox(width: 6), Text('Try asking...', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.brandBlue))]),
             const SizedBox(height: 12),
@@ -394,9 +394,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
 
   Widget _capPill(IconData icon, String label, String query) {
     return Material(color: Colors.transparent, child: InkWell(
-      onTap: () => _send(query), borderRadius: BorderRadius.circular(20),
+      onTap: () => _send(query), borderRadius: BorderRadius.circular(24),
       child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(20)),
+        decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(24)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 14, color: AppColors.brandBlue), const SizedBox(width: 5),
           Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.brandBlue)),
@@ -407,9 +407,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
 
   Widget _promptChip(String text) {
     return Padding(padding: const EdgeInsets.only(right: 8), child: Material(color: Colors.transparent, child: InkWell(
-      onTap: () => _send(text), borderRadius: BorderRadius.circular(20),
+      onTap: () => _send(text), borderRadius: BorderRadius.circular(24),
       child: Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(color: _cardBg(context), borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.3))),
+        decoration: BoxDecoration(color: _cardBg(context), borderRadius: BorderRadius.circular(24), border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.3))),
         child: Text(text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.brandBlue)),
       ),
     )));
@@ -417,11 +417,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
 
   Widget _destCard(String url, String name, String country, String dur) {
     return Material(color: Colors.transparent, child: InkWell(
-      onTap: () => _send('Plan a trip to $name, $country for $dur'), borderRadius: BorderRadius.circular(16),
-      child: Container(width: 140, height: 140, decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))]),
+      onTap: () => _send('Plan a trip to $name, $country for $dur'), borderRadius: BorderRadius.circular(24),
+      child: Container(width: 140, height: 140, decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 8))]),
         clipBehavior: Clip.antiAlias,
         child: Stack(fit: StackFit.expand, children: [
-          CachedNetworkImage(imageUrl: url, fit: BoxFit.cover, placeholder: (_, __) => _ShimmerBox(width: 140, height: 140, borderRadius: BorderRadius.circular(16)), errorWidget: (_, __, ___) => Container(color: _surface(context), child: const Icon(Icons.image_not_supported_outlined))),
+          CachedNetworkImage(imageUrl: url, fit: BoxFit.cover, placeholder: (_, __) => _ShimmerBox(width: 140, height: 140, borderRadius: BorderRadius.circular(24)), errorWidget: (_, __, ___) => Container(color: _surface(context), child: const Icon(Icons.image_not_supported_outlined))),
           const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black54], stops: [0.35, 1.0]))),
           Positioned(top: 8, left: 8, child: Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3), decoration: BoxDecoration(color: AppColors.brandBlue, borderRadius: BorderRadius.circular(8)), child: Text(dur, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white)))),
           Positioned(bottom: 10, left: 10, right: 10, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -473,7 +473,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
         child: Center(child: SvgPicture.asset('assets/images/logo_white.svg', height: 14))),
       const SizedBox(width: 10),
       Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        decoration: BoxDecoration(color: _surface(context), borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(20), bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20))),
+        decoration: BoxDecoration(color: _surface(context), borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(24), bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24))),
         child: const _TypingDots()),
     ]));
   }
@@ -535,8 +535,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
           margin: const EdgeInsets.only(bottom: 12, left: 48),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(color: AppColors.brandBlue,
-            borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20), bottomLeft: Radius.circular(20), bottomRight: Radius.circular(4)),
-            boxShadow: [BoxShadow(color: AppColors.brandBlue.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))]),
+            borderRadius: const BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24), bottomLeft: Radius.circular(24), bottomRight: Radius.circular(4)),
+            boxShadow: [BoxShadow(color: AppColors.brandBlue.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8))]),
           child: Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4)),
         ))
       else
@@ -552,16 +552,16 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
             // Text bubble
             Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(color: _surface(context),
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(showAvatar ? 4 : 20), topRight: const Radius.circular(20), bottomLeft: const Radius.circular(20), bottomRight: const Radius.circular(20))),
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(showAvatar ? 4 : 20), topRight: const Radius.circular(24), bottomLeft: const Radius.circular(24), bottomRight: const Radius.circular(24))),
               child: _buildRichText(msg.text)),
 
             // Rich card with place thumbnails
             if (msg.richCard != null) ...[
               const SizedBox(height: 8),
-              Container(padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(color: _cardBg(context), borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.15)),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)]),
+              Container(padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(color: _cardBg(context), borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFFF0F0F0)),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 8))]),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     const Icon(Icons.auto_awesome, size: 14, color: AppColors.brandBlue), const SizedBox(width: 6),
@@ -648,9 +648,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
                 children: msg.followUps!.map((f) => Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: Material(color: Colors.transparent, child: InkWell(
-                    onTap: () => _send(f), borderRadius: BorderRadius.circular(16),
+                    onTap: () => _send(f), borderRadius: BorderRadius.circular(24),
                     child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                      decoration: BoxDecoration(color: _cardBg(context), borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.25))),
+                      decoration: BoxDecoration(color: _cardBg(context), borderRadius: BorderRadius.circular(24), border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.25))),
                       child: Text(f, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.brandBlue))),
                   )),
                 )).toList(),

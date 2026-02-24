@@ -24,8 +24,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     with SingleTickerProviderStateMixin {
   static const _cardShadow = BoxShadow(
     color: Color(0x0A000000),
-    blurRadius: 10,
-    offset: Offset(0, 2),
+    blurRadius: 24,
+    offset: Offset(0, 8),
   );
 
   final TextEditingController _tripController = TextEditingController();
@@ -306,9 +306,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: const [_cardShadow],
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: const Color(0xFFF0F0F0)),
           ),
           child: Column(
             children: [
@@ -350,12 +350,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return GestureDetector(
       onTap: () => context.push('/itinerary', extra: upcoming),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: const [_cardShadow],
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: const Color(0xFFF0F0F0)),
         ),
         child: Row(
           children: [
@@ -407,12 +407,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildUpcomingTripSkeleton() {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: const [_cardShadow],
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: const Color(0xFFF0F0F0)),
       ),
       child: Row(
         children: [
@@ -443,12 +443,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return GestureDetector(
       onTap: () => context.push('/budget'),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: const [_cardShadow],
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: const Color(0xFFF0F0F0)),
         ),
         child: Row(
           children: [
@@ -482,8 +482,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildBudgetSkeleton() {
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [_cardShadow], border: Border.all(color: AppColors.border)),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: const [_cardShadow], border: Border.all(color: const Color(0xFFF0F0F0))),
       child: Row(children: [
         Container(width: 40, height: 40, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(12))),
         const SizedBox(width: 12),
@@ -499,7 +499,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildErrorCard(String message, VoidCallback onRetry) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [_cardShadow], border: Border.all(color: AppColors.border)),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: const [_cardShadow], border: Border.all(color: const Color(0xFFF0F0F0))),
       child: Column(children: [
         Text(message, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
         const SizedBox(height: 8),
@@ -561,9 +561,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -611,7 +611,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
               decoration: BoxDecoration(
                 color: AppColors.searchBackground,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(24),
               ),
               child: Row(
                 children: [
@@ -682,12 +682,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return GestureDetector(
       onTap: () => context.push('/budget'),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: const [_cardShadow],
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: const Color(0xFFF0F0F0)),
         ),
         child: Row(
           children: [
@@ -784,7 +784,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             padding: const EdgeInsets.only(right: 12),
             child: Container(
               width: 170, height: 200,
-              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(16)),
+              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(24)),
             ),
           )),
         ),
@@ -931,13 +931,13 @@ class _AiPickCard extends StatelessWidget {
       child: Container(
         width: 170,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF0F0F0)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -1080,13 +1080,13 @@ class _QuickAction extends StatelessWidget {
               height: 48,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFF0F0F0)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
                   ),
                 ],
               ),

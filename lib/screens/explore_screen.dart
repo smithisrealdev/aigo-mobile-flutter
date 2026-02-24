@@ -137,15 +137,15 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2))],
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 8))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Stack(children: [
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 child: CachedNetworkImage(imageUrl: imageUrl, height: 120, width: double.infinity, fit: BoxFit.cover,
                   errorWidget: (_, __, ___) => Container(height: 120, color: AppColors.border)),
               ),
@@ -157,7 +157,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 )),
             ]),
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(trip.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 4),
@@ -296,12 +296,12 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
             child: Container(
               width: 260,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(24),
                 image: DecorationImage(image: NetworkImage(item['image']!), fit: BoxFit.cover),
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(24),
                   gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black54]),
                 ),
                 child: Stack(children: [
@@ -332,13 +332,13 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   Widget _buildTemplateCard(Map<String, String> t) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2))],
+        color: Colors.white, borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 8))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Stack(children: [
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             child: Image.network(t['image']!, height: 120, width: double.infinity, fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(height: 120, color: AppColors.border)),
           ),
@@ -349,7 +349,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           )),
         ]),
         Padding(
-          padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(t['name']!, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 4),
@@ -397,9 +397,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       child: Container(
         width: 160,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(24),
           color: Colors.white,
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          border: Border.all(color: const Color(0xFFF0F0F0)),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -442,7 +442,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 28, 20, 0),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(24)),
       child: Column(children: [
         const Text("Can't find what you're looking for?", style: TextStyle(color: Color(0xFF111827), fontSize: 16, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
         const SizedBox(height: 14),
@@ -451,7 +451,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.brandBlue,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
           ),
           child: const Text('Create Custom Trip', style: TextStyle(fontWeight: FontWeight.w600)),

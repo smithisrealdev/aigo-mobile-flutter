@@ -870,7 +870,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.92),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(24),
               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8)],
             ),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -953,7 +953,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(24),
                     boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4))],
                   ),
                   padding: const EdgeInsets.all(16),
@@ -1019,7 +1019,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          border: Border.all(color: const Color(0xFFF0F0F0)),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -1089,7 +1089,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
+                border: Border.all(color: const Color(0xFFF0F0F0)),
               ),
               child: Row(children: [
                 Container(
@@ -1169,8 +1169,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFFF0F0F0)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1282,7 +1282,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: const Color(0xFFF0F0F0)),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, size: 14, color: iconColor),
@@ -1337,8 +1337,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF0F0F0)),
       ),
       child: Row(children: [
         // Circle with number or icon
@@ -1421,7 +1421,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Row(children: [
             Container(
@@ -1488,8 +1488,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF0F0F0)),
         ),
         child: Row(children: [
           SizedBox(
@@ -1553,8 +1553,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF0F0F0)),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -1639,8 +1639,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF0F0F0)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -1852,8 +1852,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF0F0F0)),
         ),
         child: Row(children: [
           // DAY circle
@@ -1950,8 +1950,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       margin: const EdgeInsets.only(bottom: 2),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF0F0F0)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -1967,7 +1967,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             tag: 'activity_photo_${name}_$number',
             child: ClipRRect(
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
+                  const BorderRadius.vertical(top: Radius.circular(24)),
               child: CachedNetworkImage(
                 imageUrl: effectiveImage,
                 height: 200,
@@ -2262,8 +2262,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           color: const Color(0xFFF9FAFB),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF0F0F0)),
         ),
         child: Column(children: [
           Icon(Icons.explore_outlined,

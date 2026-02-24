@@ -371,7 +371,7 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
                         background: Container(
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: 20),
-                          decoration: BoxDecoration(color: Colors.red.shade400, borderRadius: BorderRadius.circular(16)),
+                          decoration: BoxDecoration(color: Colors.red.shade400, borderRadius: BorderRadius.circular(24)),
                           child: const Icon(Icons.delete, color: Colors.white),
                         ),
                         confirmDismiss: (_) async {
@@ -409,15 +409,7 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       const SizedBox(height: 10),
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(4),
-                                        child: LinearProgressIndicator(
-                                          value: progress,
-                                          minHeight: 6,
-                                          backgroundColor: AppColors.border,
-                                          valueColor: const AlwaysStoppedAnimation(AppColors.brandBlue),
-                                        ),
-                                      ),
+                                      _buildSegmentedProgress(progress),
                                       const SizedBox(height: 6),
                                       Row(children: [
                                         Text('${(progress * 100).toInt()}% budget used', style: _metaStyle),
@@ -456,6 +448,25 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
   }
 }
 
+Widget _buildSegmentedProgress(double progress) {
+  const totalSegments = 10;
+  final filledSegments = (progress * totalSegments).round().clamp(0, totalSegments);
+  return Row(
+    children: List.generate(totalSegments, (i) {
+      return Expanded(
+        child: Container(
+          height: 6,
+          margin: EdgeInsets.only(right: i < totalSegments - 1 ? 3 : 0),
+          decoration: BoxDecoration(
+            color: i < filledSegments ? AppColors.brandBlue : const Color(0xFFE5E7EB),
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+      );
+    }),
+  );
+}
+
 final _metaStyle = const TextStyle(fontSize: 12, color: AppColors.textSecondary);
 const _dot = Padding(
   padding: EdgeInsets.symmetric(horizontal: 6),
@@ -488,8 +499,15 @@ class _TripCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF0F0F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -497,7 +515,7 @@ class _TripCard extends StatelessWidget {
           Stack(
             children: [
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 child: CachedNetworkImage(
                   imageUrl: imageUrl,
                   height: 140,
@@ -509,7 +527,7 @@ class _TripCard extends StatelessWidget {
               Positioned.fill(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
@@ -523,9 +541,19 @@ class _TripCard extends StatelessWidget {
                 top: 12,
                 left: 12,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: badge.color, borderRadius: BorderRadius.circular(8)),
-                  child: Text(badge.label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(color: badge.color, borderRadius: BorderRadius.circular(20)),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        badge.label == 'In Progress' ? Icons.schedule : badge.label == 'Upcoming' ? Icons.flight_takeoff : badge.label == 'Completed' ? Icons.check_circle : Icons.edit_note,
+                        size: 12, color: Colors.white,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(badge.label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
+                    ],
+                  ),
                 ),
               ),
               Positioned(
@@ -543,11 +571,11 @@ class _TripCard extends StatelessWidget {
             ],
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                 const SizedBox(height: 4),
                 Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                 if (extra != null) extra!,

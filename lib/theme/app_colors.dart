@@ -17,6 +17,8 @@ class AppColors {
   static const Color error = Color(0xFFEF4444);
   static const Color border = Color(0xFFE5E7EB);           // card border
   static const Color cardShadow = Color(0x0A000000);
+  static const Color cardBorder = Color(0xFFF0F0F0);       // iOS widget border
+  static const Color mapCardBg = Color(0xFF1E1E2E);        // Map card dark bg
   static const Color cardDark = Color(0xFF2A2D35);
   static const Color surfaceDark = Color(0xFF1E2028);
 

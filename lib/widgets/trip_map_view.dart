@@ -78,6 +78,7 @@ class TripMapViewState extends State<TripMapView>
   Set<Polyline> _polylines = {};
   static final Map<String, List<LatLng>> _routeCache = {};
   MapActivity? _selected;
+  int _activeIndex = -1;
   double _currentZoom = 12;
   late final AnimationController _cardAnim;
 
@@ -178,14 +179,16 @@ class TripMapViewState extends State<TripMapView>
         // Single pin
         final a = item.activity!;
         final c = _categoryColors[a.category] ?? dayColors[a.dayIndex % dayColors.length];
-        final key = '${c.value}_${a.numberInDay}';
-        _iconCache[key] ??= await _makeIcon(a.numberInDay, c);
+        final actIdx = widget.activities.indexOf(a);
+        final isActive = actIdx == _activeIndex;
+        final key = isActive ? 'active_${c.value}_${a.numberInDay}' : '${c.value}_${a.numberInDay}';
+        _iconCache[key] ??= isActive ? await _makeActiveIcon(a.numberInDay, c) : await _makeIcon(a.numberInDay, c);
         m.add(Marker(
           markerId: MarkerId('${a.dayIndex}_${a.numberInDay}'),
           position: LatLng(a.lat, a.lng),
           icon: _iconCache[key]!,
           anchor: const Offset(0.5, 1.0),
-          zIndex: items.length - i.toDouble(),
+          zIndex: isActive ? 9999 : items.length - i.toDouble(),
           onTap: () => _selectPin(a),
         ));
       }
@@ -195,6 +198,11 @@ class TripMapViewState extends State<TripMapView>
 
   /// Public API: animate camera to a specific activity from outside.
   void animateTo(MapActivity a) async {
+    final idx = widget.activities.indexOf(a);
+    if (idx != _activeIndex) {
+      _activeIndex = idx;
+      _rebuild();
+    }
     if (_mapCtrl.isCompleted) {
       final ctrl = await _mapCtrl.future;
       ctrl.animateCamera(CameraUpdate.newLatLngZoom(
@@ -308,6 +316,61 @@ class TripMapViewState extends State<TripMapView>
     final img = await rec.endRecording().toImage(s.toInt(), h.toInt());
     final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
     return BitmapDescriptor.bytes(bytes!.buffer.asUint8List(), width: 36, height: 48);
+  }
+
+  /// Active pin: 1.5x bigger with bright blue ring
+  Future<BitmapDescriptor> _makeActiveIcon(int number, Color color) async {
+    const s = 144.0; // 1.5x of 96
+    const h = 192.0; // 1.5x of 128
+    final rec = ui.PictureRecorder();
+    final c = Canvas(rec);
+    final cx = s / 2;
+    final circleR = s * 0.42;
+    final circleY = circleR + 6;
+    final tipY = h - 6;
+
+    final path = Path();
+    final wedgeAngle = math.atan2(cx, tipY - circleY) * 0.7;
+    final startAngle = math.pi / 2 + wedgeAngle;
+    final sweepAngle = 2 * math.pi - 2 * wedgeAngle;
+    path.arcTo(
+      Rect.fromCircle(center: Offset(cx, circleY), radius: circleR),
+      startAngle, sweepAngle, false,
+    );
+    path.lineTo(cx, tipY);
+    path.close();
+
+    // Outer glow
+    c.drawPath(path.shift(const Offset(0, 4)), Paint()
+      ..color = Colors.black38
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
+    // Blue highlight ring
+    c.drawPath(path, Paint()
+      ..color = const Color(0xFF2563EB)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10);
+    // White border
+    c.drawPath(path, Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6);
+    // Fill
+    c.drawPath(path, Paint()..color = color);
+
+    final label = '$number';
+    final fs = label.length > 1 ? 54.0 : 63.0;
+    final tp = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: TextStyle(color: Colors.white, fontSize: fs, fontWeight: FontWeight.w800),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(c, Offset(cx - tp.width / 2, circleY - tp.height / 2));
+
+    final img = await rec.endRecording().toImage(s.toInt(), h.toInt());
+    final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.bytes(bytes!.buffer.asUint8List(), width: 54, height: 72);
   }
 
   // ─── Polyline decoder ──────────────────────────────────

@@ -415,19 +415,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   // Trip info
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             upcoming.title,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                            maxLines: 2, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary, height: 1.3),
+                            maxLines: 3, overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 4),
                           Text(
                             '${days ?? 0} days trip',
-                            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -528,7 +528,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           value: pct,
                           strokeWidth: 5,
                           strokeCap: StrokeCap.round,
-                          backgroundColor: const Color(0xFFE5E7EB),
+                          backgroundColor: const Color(0xFFD1D5DB),
                           valueColor: AlwaysStoppedAnimation<Color>(
                             pct < 0.5 ? const Color(0xFF22C55E) : pct < 0.8 ? AppColors.brandBlue : const Color(0xFFEF4444),
                           ),
@@ -1220,7 +1220,7 @@ class _PillProgressBar extends StatelessWidget {
             height: height,
             margin: EdgeInsets.only(right: i < segments - 1 ? 4 : 0),
             decoration: BoxDecoration(
-              color: isFilled ? const Color(0xFF22C55E) : const Color(0xFFE0E0E0),
+              color: isFilled ? const Color(0xFF22C55E) : const Color(0xFFD1D5DB),
               borderRadius: BorderRadius.circular(height / 2),
             ),
           ),

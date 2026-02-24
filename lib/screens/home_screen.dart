@@ -28,6 +28,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     offset: Offset(0, 8),
   );
 
+  // iOS widget-style colored quick action data
+  static const _quickActions = [
+    ('Create Trip', Icons.add_circle_outline, Color(0xFF2563EB), Color(0xFFDBEAFE)),
+    ('My Trips', Icons.map_outlined, Color(0xFF059669), Color(0xFFD1FAE5)),
+    ('Budget', Icons.account_balance_wallet_outlined, Color(0xFFD97706), Color(0xFFFEF3C7)),
+    ('Marketplace', Icons.public_outlined, Color(0xFF7C3AED), Color(0xFFEDE9FE)),
+  ];
+
   final TextEditingController _tripController = TextEditingController();
   bool _isInputActive = false;
   bool _emailBannerDismissed = false;
@@ -181,29 +189,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _QuickAction(
-                          icon: Icons.add_circle_outline,
-                          label: 'Create Trip',
-                          onTap: () => context.push('/ai-chat'),
-                        ),
-                        _QuickAction(
-                          icon: Icons.map_outlined,
-                          label: 'My Trips',
-                          onTap: () => context.go('/trips'),
-                        ),
-                        _QuickAction(
-                          icon: Icons.account_balance_wallet_outlined,
-                          label: 'Budget',
-                          onTap: () => context.push('/budget'),
-                        ),
-                        _QuickAction(
-                          icon: Icons.public_outlined,
-                          label: 'Marketplace',
-                          onTap: () => context.go('/explore'),
-                        ),
+                        for (var i = 0; i < _quickActions.length; i++)
+                          _WidgetQuickAction(
+                            icon: _quickActions[i].$2,
+                            label: _quickActions[i].$1,
+                            iconColor: _quickActions[i].$3,
+                            bgColor: _quickActions[i].$4,
+                            onTap: () {
+                              if (i == 0) context.push('/ai-chat');
+                              if (i == 1) context.go('/trips');
+                              if (i == 2) context.push('/budget');
+                              if (i == 3) context.go('/explore');
+                            },
+                          ),
                       ],
                     ),
-
                     const SizedBox(height: 24),
 
                     // ── Upcoming Trip ──
@@ -350,55 +350,85 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return GestureDetector(
       onTap: () => context.push('/itinerary', extra: upcoming),
       child: Container(
-        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
           boxShadow: const [_cardShadow],
           border: Border.all(color: const Color(0xFFF0F0F0)),
         ),
-        child: Row(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
-                width: 52,
-                height: 52,
-                fit: BoxFit.cover,
-                errorWidget: (_, __, ___) => Container(width: 52, height: 52, color: AppColors.border, child: const Icon(Icons.image, size: 20)),
+            // Cover image
+            SizedBox(
+              height: 120,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => Container(color: AppColors.border, child: const Icon(Icons.image, size: 32, color: AppColors.textSecondary)),
+                  ),
+                  // Date badge (iOS widget-style)
+                  if (startDate != null)
+                    Positioned(
+                      top: 12, left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.brandBlue,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(_monthAbbr(startDate), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white, height: 1)),
+                            Text('${startDate.day}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white, height: 1.1)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  // Days badge
+                  if (days != null)
+                    Positioned(
+                      top: 12, right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text('$days days', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                      ),
+                    ),
+                ],
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
+            // Info section
+            Padding(
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     upcoming.title,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 2),
-                  Text(dateStr, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  const SizedBox(height: 4),
+                  Text(dateStr, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   if (progress > 0) ...[
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 4,
-                        backgroundColor: AppColors.border,
-                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.brandBlue),
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text('${(progress * 100).toInt()}% budget used', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    const SizedBox(height: 10),
+                    // Pill-segment progress bar
+                    _PillProgressBar(value: progress),
+                    const SizedBox(height: 4),
+                    Text('${(progress * 100).toInt()}% budget used', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                   ],
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
           ],
         ),
       ),
@@ -511,6 +541,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   String _monthDay(DateTime d) {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return '${months[d.month - 1]} ${d.day}';
+  }
+
+  String _monthAbbr(DateTime d) {
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    return months[d.month - 1];
   }
 
   Widget _buildEmailVerificationBanner() {
@@ -1054,16 +1089,20 @@ class _BlinkingCursorState extends State<_BlinkingCursor>
   }
 }
 
-// ── Quick Action Button ──
+// ── Widget-style Quick Action Button (colored) ──
 
-class _QuickAction extends StatelessWidget {
+class _WidgetQuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
+  final Color iconColor;
+  final Color bgColor;
   final VoidCallback? onTap;
 
-  const _QuickAction({
+  const _WidgetQuickAction({
     required this.icon,
     required this.label,
+    required this.iconColor,
+    required this.bgColor,
     this.onTap,
   });
 
@@ -1072,33 +1111,32 @@ class _QuickAction extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
-        width: 72,
+        width: 76,
         child: Column(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFF0F0F0)),
+                color: bgColor,
+                borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
+                    color: iconColor.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: Icon(icon, color: AppColors.brandBlue, size: 22),
+              child: Icon(icon, color: iconColor, size: 26),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               label,
               style: const TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
               textAlign: TextAlign.center,
               maxLines: 1,
@@ -1107,6 +1145,35 @@ class _QuickAction extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Pill Segment Progress Bar ──
+
+class _PillProgressBar extends StatelessWidget {
+  final double value;
+  final int segments;
+
+  const _PillProgressBar({required this.value, this.segments = 10});
+
+  @override
+  Widget build(BuildContext context) {
+    final filled = (value * segments).round().clamp(0, segments);
+    return Row(
+      children: List.generate(segments, (i) {
+        final isFilled = i < filled;
+        return Expanded(
+          child: Container(
+            height: 6,
+            margin: EdgeInsets.only(right: i < segments - 1 ? 3 : 0),
+            decoration: BoxDecoration(
+              color: isFilled ? AppColors.brandBlue : const Color(0xFFE5E7EB),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+        );
+      }),
     );
   }
 }

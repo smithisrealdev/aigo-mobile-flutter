@@ -617,7 +617,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         // ── Layer 2: DraggableScrollableSheet ──
         DraggableScrollableSheet(
           initialChildSize: 0.55,
-          minChildSize: 0.35,
+          minChildSize: 0.15,
           maxChildSize: 0.95,
           builder: (context, scrollController) {
             return Container(
@@ -1629,9 +1629,9 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           )
         ],
       ),

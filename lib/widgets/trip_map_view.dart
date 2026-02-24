@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -56,6 +58,8 @@ class TripMapViewState extends State<TripMapView>
 ''';
 
   Set<Marker> _markers = {};
+  Set<Polyline> _polylines = {};
+  static final Map<String, List<LatLng>> _routeCache = {};
   MapActivity? _selected;
   double _currentZoom = 12;
   late final AnimationController _cardAnim;
@@ -66,6 +70,7 @@ class TripMapViewState extends State<TripMapView>
     _cardAnim = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 400));
     _rebuild();
+    _fetchRoutes();
   }
 
   @override
@@ -76,6 +81,7 @@ class TripMapViewState extends State<TripMapView>
       _selected = null;
       _cardAnim.reset();
       _rebuild();
+      _fetchRoutes();
       _fitBounds();
     }
   }
@@ -273,6 +279,71 @@ class TripMapViewState extends State<TripMapView>
     return BitmapDescriptor.bytes(bytes!.buffer.asUint8List(), width: 36, height: 48);
   }
 
+  // ─── Polyline decoder ──────────────────────────────────
+  static List<LatLng> _decodePolyline(String encoded) {
+    final pts = <LatLng>[];
+    int i = 0, lat = 0, lng = 0;
+    while (i < encoded.length) {
+      for (var coord = 0; coord < 2; coord++) {
+        int shift = 0, result = 0, b;
+        do { b = encoded.codeUnitAt(i++) - 63; result |= (b & 0x1F) << shift; shift += 5; } while (b >= 0x20);
+        final delta = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
+        if (coord == 0) lat += delta; else lng += delta;
+      }
+      pts.add(LatLng(lat / 1E5, lng / 1E5));
+    }
+    return pts;
+  }
+
+  // ─── Routes (Directions API) ─────────────────────────────
+  Future<void> _fetchRoutes() async {
+    final acts = _visible;
+    final byDay = <int, List<MapActivity>>{};
+    for (final a in acts) byDay.putIfAbsent(a.dayIndex, () => []).add(a);
+
+    final poly = <Polyline>{};
+    for (final e in byDay.entries) {
+      final day = e.value;
+      if (day.length < 2) continue;
+      final color = dayColors[e.key % dayColors.length];
+      final origin = '${day.first.lat},${day.first.lng}';
+      final dest = '${day.last.lat},${day.last.lng}';
+      final waypoints = day.length > 2
+          ? day.sublist(1, day.length - 1).map((a) => '${a.lat},${a.lng}').join('|')
+          : null;
+      final cacheKey = '$origin->$dest|$waypoints';
+      var route = _routeCache[cacheKey];
+      if (route == null) {
+        try {
+          var url = 'https://maps.googleapis.com/maps/api/directions/json?origin=$origin&destination=$dest&key=$_mapsKey';
+          if (waypoints != null) url += '&waypoints=$waypoints';
+          final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 12));
+          final data = jsonDecode(resp.body);
+          if (data['status'] == 'OK') {
+            final allPts = <LatLng>[];
+            for (final leg in data['routes'][0]['legs']) {
+              for (final step in leg['steps']) {
+                allPts.addAll(_decodePolyline(step['polyline']['points']));
+              }
+            }
+            route = allPts;
+          }
+        } catch (_) {}
+        route ??= [];
+        _routeCache[cacheKey] = route;
+      }
+      if (route.isEmpty) route = day.map((a) => LatLng(a.lat, a.lng)).toList();
+      poly.add(Polyline(
+        polylineId: PolylineId('day_${e.key}'),
+        points: route,
+        color: color.withValues(alpha: 0.5),
+        width: 4,
+        patterns: route.length <= day.length ? [PatternItem.dash(10), PatternItem.gap(8)] : [],
+      ));
+    }
+    if (mounted) setState(() => _polylines = poly);
+  }
+
   // ─── Camera ──────────────────────────────────────────────
   Future<void> _fitBounds() async {
     if (!_mapCtrl.isCompleted) return;
@@ -316,7 +387,7 @@ class TripMapViewState extends State<TripMapView>
       GoogleMap(
         initialCameraPosition: CameraPosition(target: _center, zoom: 12),
         markers: _markers,
-        polylines: const {},
+        polylines: _polylines,
         onMapCreated: (c) {
           c.setMapStyle(_mapStyle);
           if (!_mapCtrl.isCompleted) _mapCtrl.complete(c);

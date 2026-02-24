@@ -168,6 +168,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ),
                     const SizedBox(height: 14),
 
+                    // ── Travel Preference Chips ──
+                    _buildTravelChips(context),
+                    const SizedBox(height: 20),
+
                     // ── Quick Actions ──
                     const Text(
                       'Quick Actions',
@@ -295,6 +299,61 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         ],
       ),
+    );
+  }
+
+  // ── Travel Preference Chips ──
+  int _selectedChipIndex = 0;
+
+  Widget _buildTravelChips(BuildContext context) {
+    final chips = [
+      (Icons.location_on, 'Popular'),
+      (Icons.attach_money, 'Budget'),
+      (Icons.landscape, 'Adventure'),
+      (Icons.beach_access, 'Beach'),
+      (Icons.restaurant, 'Food'),
+      (Icons.museum, 'Culture'),
+      (Icons.nightlife, 'Nightlife'),
+      (Icons.family_restroom, 'Family'),
+    ];
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: chips.asMap().entries.map((entry) {
+        final i = entry.key;
+        final chip = entry.value;
+        final selected = i == _selectedChipIndex;
+        return GestureDetector(
+          onTap: () {
+            setState(() => _selectedChipIndex = i);
+            // Could filter AI picks or explore by preference
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.brandBlue : const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(chip.$1, size: 16, color: selected ? Colors.white : const Color(0xFF374151)),
+                const SizedBox(width: 6),
+                Text(
+                  chip.$2,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? Colors.white : const Color(0xFF374151),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 

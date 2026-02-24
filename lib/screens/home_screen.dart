@@ -660,7 +660,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             // Search bar embedded in header
             Container(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               decoration: BoxDecoration(
                 color: AppColors.searchBackground,
                 borderRadius: BorderRadius.circular(16),
@@ -668,7 +668,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: Row(
                 children: [
                   Icon(Icons.auto_awesome,
-                      size: 18, color: AppColors.brandBlue),
+                      size: 20, color: AppColors.brandBlue),
                   const SizedBox(width: 10),
                   Expanded(
                     child: _isInputActive
@@ -676,17 +676,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             controller: _tripController,
                             autofocus: true,
                             style: const TextStyle(
-                                fontSize: 14, color: AppColors.textPrimary),
+                                fontSize: 16, color: AppColors.textPrimary),
                             decoration: const InputDecoration(
                               hintText: 'Describe your dream trip...',
                               hintStyle: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 16,
                                   color: AppColors.textSecondary),
                               border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
                               isDense: true,
                               contentPadding: EdgeInsets.zero,
                             ),
                             onSubmitted: (val) => _submitTrip(context),
+                            onChanged: (_) => setState(() {}),
                           )
                         : GestureDetector(
                             onTap: () {
@@ -700,7 +703,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                       ? 'Plan my trip with AI'
                                       : _displayText,
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 16,
                                     color: _displayText.isEmpty
                                         ? AppColors.textSecondary
                                         : AppColors.textPrimary,
@@ -712,14 +715,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             ),
                           ),
                   ),
-                  if (_isInputActive && _tripController.text.trim().isNotEmpty) ...[
-                    const SizedBox(width: 8),
+                  const SizedBox(width: 8),
+                  if (_isInputActive && _tripController.text.trim().isNotEmpty)
                     GestureDetector(
                       onTap: () => _submitTrip(context),
-                      child: const Icon(Icons.arrow_forward,
-                          color: AppColors.brandBlue, size: 20),
+                      child: Container(
+                        width: 34, height: 34,
+                        decoration: BoxDecoration(
+                          color: AppColors.brandBlue,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.send, color: Colors.white, size: 16),
+                      ),
+                    )
+                  else
+                    GestureDetector(
+                      onTap: () => context.push('/ai-chat'),
+                      child: const Icon(Icons.mic_none, color: Color(0xFF9CA3AF), size: 22),
                     ),
-                  ],
                 ],
               ),
             ),

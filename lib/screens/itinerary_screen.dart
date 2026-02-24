@@ -1638,22 +1638,25 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // ── Photo section (200px) ──
         Stack(children: [
-          ClipRRect(
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(16)),
-            child: CachedNetworkImage(
-              imageUrl: effectiveImage,
-              height: 200,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              fadeInDuration: const Duration(milliseconds: 300),
-              fadeOutDuration: const Duration(milliseconds: 150),
-              placeholder: (_, __) => Container(height: 200, color: const Color(0xFFF3F4F6)),
-              errorWidget: (_, __, ___) => Container(
+          Hero(
+            tag: 'activity_photo_${name}_$number',
+            child: ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
+              child: CachedNetworkImage(
+                imageUrl: effectiveImage,
                 height: 200,
-                color: catColor.withValues(alpha: 0.08),
-                child: Icon(_icons[cat] ?? Icons.place,
-                    size: 48, color: catColor.withValues(alpha: 0.3)),
+                width: double.infinity,
+                fit: BoxFit.cover,
+                fadeInDuration: const Duration(milliseconds: 300),
+                fadeOutDuration: const Duration(milliseconds: 150),
+                placeholder: (_, __) => Container(height: 200, color: const Color(0xFFF3F4F6)),
+                errorWidget: (_, __, ___) => Container(
+                  height: 200,
+                  color: catColor.withValues(alpha: 0.08),
+                  child: Icon(_icons[cat] ?? Icons.place,
+                      size: 48, color: catColor.withValues(alpha: 0.3)),
+                ),
               ),
             ),
           ),

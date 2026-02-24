@@ -256,10 +256,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
 
-            // ── AI Picks section ──
+            // ── AI Picks section (tinted bg like Dime!) ──
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 28),
+              child: Container(
+                margin: const EdgeInsets.only(top: 28),
+                padding: const EdgeInsets.only(top: 20, bottom: 24),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF8FAFC),
+                  border: Border(
+                    top: BorderSide(color: Color(0xFFF1F5F9), width: 1),
+                    bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1),
+                  ),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -392,40 +400,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           final days = (startDate != null && endDate != null) ? endDate.difference(startDate).inDays : null;
           final imageUrl = trip.coverImage ?? 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=600&h=300&fit=crop';
 
-          // Alternating colors like Dime! (green, orange, blue, purple)
-          final colors = [
-            [const Color(0xFF059669), const Color(0xFF34D399)],
-            [const Color(0xFFEA580C), const Color(0xFFFB923C)],
-            [const Color(0xFF2563EB), const Color(0xFF60A5FA)],
-            [const Color(0xFF7C3AED), const Color(0xFFA78BFA)],
-            [const Color(0xFFDB2777), const Color(0xFFF472B6)],
+          // Overlay gradient colors (bottom gradient tint)
+          final gradientColors = [
+            const Color(0xFF059669),
+            const Color(0xFFEA580C),
+            const Color(0xFF2563EB),
+            const Color(0xFF7C3AED),
+            const Color(0xFFDB2777),
           ];
-          final colorPair = colors[i % colors.length];
+          final gradColor = gradientColors[i % gradientColors.length];
 
           return GestureDetector(
             onTap: () => context.push('/itinerary', extra: trip),
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
-                  colors: colorPair,
-                ),
-              ),
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
               child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  // Cover image (right side, clipped)
-                  Positioned(
-                    right: -10, bottom: -10, top: 10,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Opacity(
-                        opacity: 0.3,
-                        child: CachedNetworkImage(
-                          imageUrl: imageUrl, width: 140, fit: BoxFit.cover,
-                          errorWidget: (_, __, ___) => const SizedBox(),
-                        ),
+                  // Full background image
+                  CachedNetworkImage(
+                    imageUrl: imageUrl, fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => Container(color: gradColor),
+                  ),
+                  // Gradient overlay (dark bottom for text readability)
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                        colors: [
+                          gradColor.withValues(alpha: 0.15),
+                          gradColor.withValues(alpha: 0.5),
+                          gradColor.withValues(alpha: 0.85),
+                        ],
+                        stops: const [0.0, 0.5, 1.0],
                       ),
                     ),
                   ),
@@ -439,8 +448,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.25),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                           ),
                           child: Text(
                             _tripStatus(trip),
@@ -614,7 +624,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       scrollDirection: Axis.horizontal,
       clipBehavior: Clip.none,
       child: Row(
-        children: actions.map((a) {
+        children: actions.asMap().entries.map((entry) {
+          final i = entry.key;
+          final a = entry.value;
+          final isFirst = i == 0;
           return Padding(
             padding: const EdgeInsets.only(right: 10),
             child: GestureDetector(
@@ -622,15 +635,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isFirst ? a.$3 : Colors.white,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+                  border: Border.all(color: isFirst ? a.$3 : const Color(0xFFE5E7EB), width: 1),
                 ),
                 child: Row(
                   children: [
-                    Icon(a.$2, size: 18, color: a.$3),
+                    Icon(a.$2, size: 18, color: isFirst ? Colors.white : a.$3),
                     const SizedBox(width: 8),
-                    Text(a.$1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                    Text(a.$1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isFirst ? Colors.white : AppColors.textPrimary)),
                   ],
                 ),
               ),
@@ -823,18 +836,25 @@ class _StatCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFF3F4F6), width: 1),
+          color: color.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.12), width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 16, color: color),
+            Container(
+              width: 28, height: 28,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 14, color: color),
+            ),
             const SizedBox(height: 8),
-            Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: color)),
+            Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color)),
             const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
+            Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w500)),
           ],
         ),
       ),

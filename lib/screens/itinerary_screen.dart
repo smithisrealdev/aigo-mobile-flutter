@@ -40,7 +40,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   int _selectedDay = -1;
   bool _fabExpanded = false;
   bool _isBookmarked = false;
-  bool _showMap = false;
   bool _regenerating = false;
   bool _replanning = false;
   String _activeSection = 'itinerary';
@@ -48,7 +47,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   final Map<String, String> _placePhotos = {};
   static const _googleMapsKey = 'AIzaSyDvA2wmeqKw93M4v8b2Xm1uFWtIcCs46l0';
   final Set<int> _collapsedDays = {};
-  final ScrollController _scrollController = ScrollController();
+  final _mapKey = GlobalKey<TripMapViewState>();
   late AnimationController _staggerController;
   int _heroDotIndex = 0;
 
@@ -95,7 +94,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
   @override
   void dispose() {
-    _scrollController.dispose();
     _staggerController.dispose();
     super.dispose();
   }
@@ -514,9 +512,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     setState(() => _selectedDay = i);
     _staggerController.reset();
     _staggerController.forward();
-    if (_scrollController.hasClients)
-      _scrollController.animateTo(0,
-          duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
   }
 
   static String _fmt(int n) {
@@ -600,49 +595,100 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     final perm = PermissionService.instance;
     final canEdit = perm.canEditActivities(role);
     final isOwner = perm.canManageMembers(role);
+    final topPad = MediaQuery.of(context).padding.top;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      floatingActionButton: null,
       body: Stack(children: [
-        CustomScrollView(
-          controller: _scrollController,
-          slivers: [
-            // ── 1. HERO COVER PHOTO ──
-            _buildHeroAppBar(perm, role),
+        // ── Layer 1: Full-screen map ──
+        Positioned.fill(
+          child: TripMapView(
+            key: _mapKey,
+            selectedDayIndex: _selectedDay,
+            activities: _mapActivities.isNotEmpty
+                ? _mapActivities
+                : const [
+                    MapActivity(
+                        name: '', time: '', lat: 35.6762, lng: 139.6503)
+                  ],
+          ),
+        ),
 
-            // ── MAP (inline, toggleable) ──
-            if (_showMap) ...[
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 300,
-                  child: TripMapView(
-                    selectedDayIndex: _selectedDay,
-                    activities: _mapActivities.isNotEmpty
-                        ? _mapActivities
-                        : const [
-                            MapActivity(
-                                name: '', time: '', lat: 35.6762, lng: 139.6503)
-                          ],
+        // ── Layer 2: DraggableScrollableSheet ──
+        DraggableScrollableSheet(
+          initialChildSize: 0.55,
+          minChildSize: 0.35,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x1A000000),
+                    blurRadius: 16,
+                    offset: Offset(0, -4),
                   ),
-                ),
+                ],
               ),
-            ],
-
-            // ── CONTENT ──
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  if (role == 'viewer') _viewerBanner(),
-
-                  ..._buildItineraryContent(canEdit),
-
-                  const SizedBox(height: 80),
-                ]),
+              child: ListView(
+                controller: scrollController,
+                padding: EdgeInsets.zero,
+                children: [
+                  // Grab handle
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 10, bottom: 6),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD1D5DB),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  // Hero cover photo
+                  _buildHeroSection(perm, role),
+                  // Content
+                  if (role == 'viewer')
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                      child: _viewerBanner(),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: _buildItineraryContent(canEdit),
+                    ),
+                  ),
+                ],
               ),
+            );
+          },
+        ),
+
+        // ── Layer 3: Top buttons (back + bookmark) ──
+        Positioned(
+          top: topPad + 8,
+          left: 12,
+          right: 12,
+          child: Row(children: [
+            _circleBtn(Icons.arrow_back_ios_new,
+                () => Navigator.maybePop(context)),
+            const Spacer(),
+            if (_trip != null) TripMemberAvatars(tripId: _trip!.id),
+            const SizedBox(width: 8),
+            _circleBtn(
+              _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+              () => setState(() => _isBookmarked = !_isBookmarked),
             ),
-          ],
+            if (perm.canShareTrip(role)) ...[
+              const SizedBox(width: 8),
+              _circleBtn(Icons.ios_share, _showShareSheet),
+            ],
+          ]),
         ),
 
         // FAB backdrop
@@ -651,7 +697,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             onTap: () => setState(() => _fabExpanded = false),
             child: Container(color: Colors.black.withValues(alpha: 0.4)),
           ),
-        // FAB speed dial — hidden when map is showing
+        // FAB speed dial
         if (canEdit)
           Positioned(
             right: 16,
@@ -660,6 +706,111 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           ),
       ]),
     );
+  }
+
+  // ═══════════════════════════════════════════
+  // HERO SECTION (inside sheet, replaces SliverAppBar)
+  // ═══════════════════════════════════════════
+  Widget _buildHeroSection(PermissionService perm, String role) {
+    final images = _heroImages;
+    return Column(children: [
+      // Photo carousel
+      SizedBox(
+        height: 220,
+        width: double.infinity,
+        child: Stack(children: [
+          PageView.builder(
+            itemCount: images.length,
+            onPageChanged: (i) => setState(() => _heroDotIndex = i),
+            itemBuilder: (_, i) => ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              child: CachedNetworkImage(
+                imageUrl: images[i],
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: 220,
+                fadeInDuration: const Duration(milliseconds: 300),
+                fadeOutDuration: const Duration(milliseconds: 150),
+                placeholder: (_, __) =>
+                    Container(height: 220, color: const Color(0xFFF3F4F6)),
+                errorWidget: (_, __, ___) =>
+                    Container(color: AppColors.brandBlue),
+              ),
+            ),
+          ),
+          // Dot indicators
+          if (images.length > 1)
+            Positioned(
+              bottom: 12,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  images.length,
+                  (i) => Container(
+                    width: i == _heroDotIndex ? 20 : 6,
+                    height: 6,
+                    margin: const EdgeInsets.only(right: 4),
+                    decoration: BoxDecoration(
+                      color: i == _heroDotIndex
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ]),
+      ),
+      // Title + follow row
+      Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Text(
+                _tripTitle,
+                style: GoogleFonts.dmSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  height: 1.25,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 10),
+            OutlinedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.person_add_alt, size: 14),
+              label: Text('Follow',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 12, fontWeight: FontWeight.w600)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textPrimary,
+                side: const BorderSide(color: Color(0xFFE5E7EB)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: _showShareSheet,
+              child: const Icon(Icons.share,
+                  size: 20, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      ),
+    ]);
   }
 
   // ═══════════════════════════════════════════
@@ -735,140 +886,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       const SizedBox(height: 16),
       _buildInlineActions(canEdit),
     ];
-  }
-
-  // ═══════════════════════════════════════════
-  // 1. HERO COVER PHOTO
-  // ═══════════════════════════════════════════
-  SliverAppBar _buildHeroAppBar(PermissionService perm, String role) {
-    final images = _heroImages;
-    return SliverAppBar(
-      expandedHeight: 320,
-      pinned: true,
-      automaticallyImplyLeading: false,
-      backgroundColor: Colors.white,
-      flexibleSpace: FlexibleSpaceBar(
-        collapseMode: CollapseMode.parallax,
-        background: Stack(children: [
-          // Photo carousel — full height, card overlaps bottom
-          SizedBox(
-            height: 280,
-            width: double.infinity,
-            child: PageView.builder(
-              itemCount: images.length,
-              onPageChanged: (i) => setState(() => _heroDotIndex = i),
-              itemBuilder: (_, i) => CachedNetworkImage(
-                imageUrl: images[i],
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: 280,
-                fadeInDuration: const Duration(milliseconds: 300),
-                fadeOutDuration: const Duration(milliseconds: 150),
-                placeholder: (_, __) => Container(height: 280, color: const Color(0xFFF3F4F6)),
-                errorWidget: (_, __, ___) =>
-                    Container(color: AppColors.brandBlue),
-              ),
-            ),
-          ),
-          // Dot indicators on photo
-          if (images.length > 1)
-            Positioned(
-              bottom: 65,
-              left: 0,
-              right: 0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  images.length,
-                  (i) => Container(
-                    width: i == _heroDotIndex ? 20 : 6,
-                    height: 6,
-                    margin: const EdgeInsets.only(right: 4),
-                    decoration: BoxDecoration(
-                      color: i == _heroDotIndex
-                          ? Colors.white
-                          : Colors.white.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          // Top bar: back + follow/share
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            left: 12,
-            right: 12,
-            child: Row(children: [
-              _circleBtn(Icons.arrow_back_ios_new,
-                  () => Navigator.maybePop(context)),
-              const Spacer(),
-              if (_trip != null) TripMemberAvatars(tripId: _trip!.id),
-              const SizedBox(width: 8),
-              _circleBtn(
-                _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                () => setState(() => _isBookmarked = !_isBookmarked),
-              ),
-              if (perm.canShareTrip(role)) ...[
-                const SizedBox(width: 8),
-                _circleBtn(Icons.ios_share, _showShareSheet),
-              ],
-            ]),
-          ),
-          // White content card overlapping photo
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 20, 16, 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -2))],
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Text(
-                      _tripTitle,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                        height: 1.25,
-                      ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.person_add_alt, size: 14),
-                    label: Text('Follow', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textPrimary,
-                      side: const BorderSide(color: Color(0xFFE5E7EB)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: _showShareSheet,
-                    child: const Icon(Icons.share, size: 20, color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ]),
-      ),
-    );
   }
 
   // ═══════════════════════════════════════════
@@ -1396,7 +1413,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           child: GestureDetector(
             onTap: () {
               _onDaySelected(dayIdx);
-              setState(() => _showMap = true);
             },
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               const Icon(Icons.map_outlined,
@@ -1457,6 +1473,15 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             child: GestureDetector(
               onTap: () {
                 HapticFeedback.selectionClick();
+                // Animate map to this activity's location
+                final mapActs = _mapActivities;
+                final name = (a['name'] ?? a['title'] ?? '').toString();
+                for (final ma in mapActs) {
+                  if (ma.name == name) {
+                    _mapKey.currentState?.animateTo(ma);
+                    break;
+                  }
+                }
                 showActivityDetailSheet(context,
                     activity: a, tripId: _trip?.id ?? '');
               },
@@ -2050,138 +2075,6 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       );
 
 
-  Widget _toggleBtn(IconData icon, bool active, VoidCallback onTap) =>
-      GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: active ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Icon(icon,
-              size: 16,
-              color: active ? AppColors.brandBlue : Colors.white70),
-        ),
-      );
-
-  Widget _buildMapBar(String role, List<Map<String, dynamic>> days) =>
-      Container(
-        decoration: BoxDecoration(
-          color: AppColors.brandBlue,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: Row(children: [
-                GestureDetector(
-                  onTap: () => setState(() => _showMap = false),
-                  child: const Icon(Icons.arrow_back_ios,
-                      color: Colors.white, size: 20),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(_tripTitle,
-                      style: GoogleFonts.dmSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                ),
-              ]),
-            ),
-            SizedBox(
-              height: 36,
-              child: Row(children: [
-                Expanded(
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.only(left: 16),
-                    itemCount: days.length + 1, // +1 for "All"
-                    itemBuilder: (_, i) {
-                      if (i == 0) {
-                        // "All" tab
-                        final isActive = _selectedDay < 0;
-                        return GestureDetector(
-                          onTap: () => _onDaySelected(-1),
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isActive
-                                  ? Colors.white
-                                  : Colors.white.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: Text('All',
-                                style: TextStyle(
-                                    color: isActive
-                                        ? AppColors.brandBlue
-                                        : Colors.white.withValues(alpha: 0.85),
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14)),
-                          ),
-                        );
-                      }
-                      final dayIdx = i - 1;
-                      final isActive = _selectedDay == dayIdx;
-                      final dayColor =
-                          dayColors[dayIdx % dayColors.length];
-                      return GestureDetector(
-                        onTap: () => _onDaySelected(dayIdx),
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isActive
-                                ? dayColor
-                                : Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Text('Day ${dayIdx + 1}',
-                              style: TextStyle(
-                                  color: isActive
-                                      ? Colors.white
-                                      : Colors.white.withValues(alpha: 0.85),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14)),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Container(
-                  margin: const EdgeInsets.only(right: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    _toggleBtn(Icons.view_list, !_showMap,
-                        () => setState(() => _showMap = false)),
-                    _toggleBtn(Icons.map_outlined, _showMap,
-                        () => setState(() => _showMap = true)),
-                  ]),
-                ),
-              ]),
-            ),
-            const SizedBox(height: 12),
-          ]),
-        ),
-      );
-
   void _showShareSheet() {
     if (_trip == null) return;
     showModalBottomSheet(
@@ -2246,7 +2139,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                     onPressed: () {
                       setState(() => _fabExpanded = false);
                       if (item.$1 == 'AI Chat') context.push('/ai-chat');
-                      if (item.$1 == 'Map') setState(() => _showMap = true);
+                      if (item.$1 == 'Map') {} // map always visible
                       if (item.$1 == 'Travel Tips')
                         context.push('/travel-tips', extra: _tripDestination);
                       if (item.$1 == 'Summary')

@@ -31,10 +31,10 @@ class TripMapView extends StatefulWidget {
   });
 
   @override
-  State<TripMapView> createState() => _TripMapViewState();
+  State<TripMapView> createState() => TripMapViewState();
 }
 
-class _TripMapViewState extends State<TripMapView>
+class TripMapViewState extends State<TripMapView>
     with SingleTickerProviderStateMixin {
   final Completer<GoogleMapController> _mapCtrl = Completer();
   final Map<String, BitmapDescriptor> _iconCache = {};
@@ -169,6 +169,9 @@ class _TripMapViewState extends State<TripMapView>
     }
     if (mounted) setState(() => _markers = m);
   }
+
+  /// Public API: animate camera to a specific activity from outside.
+  void animateTo(MapActivity a) => _selectPin(a);
 
   void _selectPin(MapActivity a) async {
     HapticFeedback.selectionClick();

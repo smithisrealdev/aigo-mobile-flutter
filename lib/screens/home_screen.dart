@@ -28,6 +28,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     offset: Offset(0, 8),
   );
 
+  // Outer widget container (frosted/tinted)
+  static BoxDecoration _widgetOuter() => BoxDecoration(
+    color: const Color(0xFFF5F7FA),
+    borderRadius: BorderRadius.circular(28),
+    boxShadow: const [
+      BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6)),
+    ],
+  );
+
+  // Inner card (pure white, floating)
+  static BoxDecoration _widgetInner() => BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(20),
+    boxShadow: const [
+      BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3)),
+    ],
+  );
+
   // iOS widget-style colored quick action data
   static const _quickActions = [
     ('Create Trip', Icons.add_circle_outline, Color(0xFF2563EB), Color(0xFFDBEAFE)),
@@ -350,85 +368,92 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return GestureDetector(
       onTap: () => context.push('/itinerary', extra: upcoming),
       child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: const [_cardShadow],
-          border: Border.all(color: const Color(0xFFF0F0F0)),
-        ),
-        clipBehavior: Clip.antiAlias,
+        padding: const EdgeInsets.all(16),
+        decoration: _widgetOuter(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cover image
-            SizedBox(
-              height: 120,
-              width: double.infinity,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => Container(color: AppColors.border, child: const Icon(Icons.image, size: 32, color: AppColors.textSecondary)),
-                  ),
-                  // Date badge (iOS widget-style)
-                  if (startDate != null)
-                    Positioned(
-                      top: 12, left: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.brandBlue,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(_monthAbbr(startDate), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white, height: 1)),
-                            Text('${startDate.day}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white, height: 1.1)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  // Days badge
-                  if (days != null)
-                    Positioned(
-                      top: 12, right: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.92),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text('$days days', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            // Info section
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    upcoming.title,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                    maxLines: 2, overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
+            // Status header row (like "SHOPPER" / "IN-PROGRESS")
+            Row(
+              children: [
+                Icon(Icons.flight_takeoff, size: 16, color: AppColors.brandBlue),
+                const SizedBox(width: 6),
+                Text(
+                  _tripStatus(upcoming),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.8),
+                ),
+                const Spacer(),
+                if (startDate != null)
                   Text(dateStr, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                  if (progress > 0) ...[
-                    const SizedBox(height: 10),
-                    // Pill-segment progress bar
-                    _PillProgressBar(value: progress),
-                    const SizedBox(height: 4),
-                    Text('${(progress * 100).toInt()}% budget used', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                  ],
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Inner card
+            Container(
+              decoration: _widgetInner(),
+              child: Row(
+                children: [
+                  // Date badge (green like reference)
+                  if (startDate != null)
+                    Container(
+                      width: 60, height: 60,
+                      margin: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF22C55E),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(_monthAbbr(startDate), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white, height: 1)),
+                          Text('${startDate.day}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white, height: 1.1)),
+                        ],
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 12),
+                  // Trip info
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            upcoming.title,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                            maxLines: 2, overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${days ?? 0} days trip',
+                            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Cover image
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      width: 80, height: 84,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => Container(width: 80, height: 84, color: AppColors.border),
+                    ),
+                  ),
                 ],
               ),
             ),
+            // Progress pills
+            if (progress > 0) ...[
+              const SizedBox(height: 12),
+              _PillProgressBar(value: progress, segments: 6, height: 8),
+            ],
           ],
         ),
       ),
@@ -473,49 +498,60 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return GestureDetector(
       onTap: () => context.push('/budget'),
       child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: const [_cardShadow],
-          border: Border.all(color: const Color(0xFFF0F0F0)),
-        ),
-        child: Row(
+        padding: const EdgeInsets.all(16),
+        decoration: _widgetOuter(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Large progress ring
-            SizedBox(
-              width: 56, height: 56,
-              child: Stack(alignment: Alignment.center, children: [
-                SizedBox(
-                  width: 56, height: 56,
-                  child: CircularProgressIndicator(
-                    value: pct,
-                    strokeWidth: 5,
-                    strokeCap: StrokeCap.round,
-                    backgroundColor: const Color(0xFFE5E7EB),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      pct < 0.5 ? const Color(0xFF10B981) : pct < 0.8 ? AppColors.brandBlue : const Color(0xFFEF4444),
-                    ),
+            // Status header
+            Row(
+              children: [
+                Icon(Icons.account_balance_wallet, size: 16, color: pct < 0.5 ? const Color(0xFF22C55E) : pct < 0.8 ? AppColors.brandBlue : const Color(0xFFEF4444)),
+                const SizedBox(width: 6),
+                Text('BUDGET TRACKER', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.8)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Inner card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: _widgetInner(),
+              child: Row(
+                children: [
+                  // Progress ring
+                  SizedBox(
+                    width: 52, height: 52,
+                    child: Stack(alignment: Alignment.center, children: [
+                      SizedBox(
+                        width: 52, height: 52,
+                        child: CircularProgressIndicator(
+                          value: pct,
+                          strokeWidth: 5,
+                          strokeCap: StrokeCap.round,
+                          backgroundColor: const Color(0xFFE5E7EB),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            pct < 0.5 ? const Color(0xFF22C55E) : pct < 0.8 ? AppColors.brandBlue : const Color(0xFFEF4444),
+                          ),
+                        ),
+                      ),
+                      Text('${(pct * 100).toInt()}%', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                    ]),
                   ),
-                ),
-                Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text('${(pct * 100).toInt()}%', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                  const Text('used', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
-                ]),
-              ]),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text('Total Budget', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                      const SizedBox(height: 2),
+                      Text('฿${totalSpent.toStringAsFixed(0)} / ฿${totalBudget.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                    ]),
+                  ),
+                  const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 22),
+                ],
+              ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Total Budget', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                const SizedBox(height: 4),
-                Text('฿${totalSpent.toStringAsFixed(0)} / ฿${totalBudget.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                const SizedBox(height: 8),
-                _PillProgressBar(value: pct),
-              ]),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+            const SizedBox(height: 10),
+            // Progress pills
+            _PillProgressBar(value: pct, segments: 6, height: 8),
           ],
         ),
       ),
@@ -558,6 +594,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   String _monthAbbr(DateTime d) {
     const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
     return months[d.month - 1];
+  }
+
+  String _tripStatus(Trip t) {
+    final now = DateTime.now();
+    final start = t.startDate != null ? DateTime.tryParse(t.startDate!) : null;
+    final end = t.endDate != null ? DateTime.tryParse(t.endDate!) : null;
+    if (start != null && now.isBefore(start)) return 'UPCOMING';
+    if (start != null && end != null && now.isAfter(start) && now.isBefore(end)) return 'IN-PROGRESS';
+    if (end != null && now.isAfter(end)) return 'COMPLETED';
+    return 'PLANNED';
   }
 
   Widget _buildEmailVerificationBanner() {
@@ -1159,8 +1205,9 @@ class _WidgetQuickAction extends StatelessWidget {
 class _PillProgressBar extends StatelessWidget {
   final double value;
   final int segments;
+  final double height;
 
-  const _PillProgressBar({required this.value, this.segments = 10});
+  const _PillProgressBar({required this.value, this.segments = 10, this.height = 6});
 
   @override
   Widget build(BuildContext context) {
@@ -1170,11 +1217,11 @@ class _PillProgressBar extends StatelessWidget {
         final isFilled = i < filled;
         return Expanded(
           child: Container(
-            height: 6,
-            margin: EdgeInsets.only(right: i < segments - 1 ? 3 : 0),
+            height: height,
+            margin: EdgeInsets.only(right: i < segments - 1 ? 4 : 0),
             decoration: BoxDecoration(
-              color: isFilled ? AppColors.brandBlue : const Color(0xFFE5E7EB),
-              borderRadius: BorderRadius.circular(3),
+              color: isFilled ? const Color(0xFF22C55E) : const Color(0xFFE0E0E0),
+              borderRadius: BorderRadius.circular(height / 2),
             ),
           ),
         );

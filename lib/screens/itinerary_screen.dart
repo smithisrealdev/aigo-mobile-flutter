@@ -813,7 +813,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     return Stack(
       key: const ValueKey('map_mode'),
       children: [
-        // Map takes full screen
+        // Full-screen map
         Positioned.fill(
           child: TripMapView(
             key: _mapKey,
@@ -827,105 +827,39 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           ),
         ),
 
-        // DraggableScrollableSheet from bottom
-        DraggableScrollableSheet(
-          controller: _sheetController,
-          initialChildSize: 0.45,
-          minChildSize: 0.15,
-          maxChildSize: 0.90,
-          builder: (context, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x1A000000),
-                    blurRadius: 16,
-                    offset: Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: ListView(
-                controller: scrollController,
-                padding: EdgeInsets.zero,
-                children: [
-                  // Drag handle pill
-                  Center(
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 10, bottom: 6),
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD1D5DB),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  // Title
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-                    child: Text(
-                      _tripTitle,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  // Day filter chips
-                  SizedBox(
-                    height: 36,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      children: [
-                        _dayFilterChip(-1, 'All Days'),
-                        for (var i = 0; i < _days.length; i++)
-                          _dayFilterChip(i, 'Day ${i + 1}'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Simplified activity list
-                  ..._buildMapModeActivityList(),
-                  const SizedBox(height: 80),
-                ],
-              ),
-            );
-          },
-        ),
-
         // Back arrow (top-left)
         Positioned(
           top: topPad + 8,
           left: 12,
           child: _circleBtn(Icons.arrow_back_ios_new,
-              () => Navigator.maybePop(context)),
+              () => setState(() => _mapMode = false)),
         ),
 
-        // X close button (bottom-right) → returns to Content Mode
+        // Title + Day filter chips (top center)
         Positioned(
-          bottom: 16 + MediaQuery.of(context).padding.bottom,
-          right: 16,
-          child: FloatingActionButton(
-            heroTag: 'close_map',
-            backgroundColor: Colors.white,
-            elevation: 4,
-            onPressed: () {
-              HapticFeedback.mediumImpact();
-              setState(() => _mapMode = false);
-            },
-            child: const Icon(Icons.close, color: AppColors.textPrimary, size: 24),
-          ),
+          top: topPad + 8,
+          left: 56,
+          right: 56,
+          child: Column(children: [
+            Text(_tripTitle, style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 32,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _dayFilterChip(-1, 'All'),
+                  for (var i = 0; i < _days.length; i++)
+                    _dayFilterChip(i, 'Day ${i + 1}'),
+                ],
+              ),
+            ),
+          ]),
         ),
 
-        // Zoom into search pill (bottom-left)
+        // Zoom into pill (bottom-left, above carousel)
         Positioned(
-          bottom: 24 + MediaQuery.of(context).padding.bottom,
+          bottom: 200 + MediaQuery.of(context).padding.bottom,
           left: 16,
           child: GestureDetector(
             onTap: () {
@@ -948,88 +882,108 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           ),
         ),
 
-        // ── Card carousel (when sheet is at minimum) ──
-        if (_cardCarouselMode)
-          Positioned(
-            bottom: 16 + MediaQuery.of(context).padding.bottom,
-            left: 0,
-            right: 0,
-            height: 180,
-            child: PageView.builder(
-              controller: _carouselController,
-              itemCount: _mapActivities.length,
-              onPageChanged: (idx) {
-                if (idx < _mapActivities.length) {
-                  final ma = _mapActivities[idx];
-                  _mapKey.currentState?.animateTo(ma);
-                  HapticFeedback.selectionClick();
-                }
-              },
-              itemBuilder: (context, idx) {
-                final ma = _mapActivities[idx];
-                final color = dayColors[ma.dayIndex % dayColors.length];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4))],
-                    ),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          Container(
-                            width: 28, height: 28,
-                            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                            alignment: Alignment.center,
-                            child: Text('${ma.numberInDay}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(ma.name, style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
-                          ),
-                        ]),
-                        const SizedBox(height: 10),
-                        if (ma.rating != null) ...[
-                          Row(children: [
-                            const Icon(Icons.star, size: 16, color: Color(0xFFF59E0B)),
-                            const SizedBox(width: 4),
-                            Text('${ma.rating}', style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                            const SizedBox(width: 6),
-                            Container(
-                              width: 16, height: 16,
-                              decoration: BoxDecoration(
-                                image: const DecorationImage(image: NetworkImage('https://www.google.com/favicon.ico'), fit: BoxFit.contain),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                          ]),
-                          const SizedBox(height: 4),
-                        ],
-                        if (ma.category != null && ma.category!.isNotEmpty)
-                          Row(children: [
-                            Icon(Icons.access_time, size: 14, color: AppColors.textSecondary),
-                            const SizedBox(width: 4),
-                            Text(ma.category!, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
-                          ]),
-                        const Spacer(),
-                        Row(children: [
-                          _carouselActionBtn('Directions', Icons.directions),
-                          const SizedBox(width: 8),
-                          _carouselActionBtn('Details', Icons.info_outline),
-                          const SizedBox(width: 8),
-                          _carouselActionBtn('Google Maps', Icons.map_outlined),
-                        ]),
-                      ],
-                    ),
-                  ),
-                );
-              },
+        // X close button (bottom-right, above carousel)
+        Positioned(
+          bottom: 200 + MediaQuery.of(context).padding.bottom,
+          right: 16,
+          child: GestureDetector(
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              setState(() => _mapMode = false);
+            },
+            child: Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 8, offset: const Offset(0, 2))],
+              ),
+              child: const Icon(Icons.close, color: AppColors.textPrimary, size: 20),
             ),
           ),
+        ),
+
+        // Card carousel at bottom (always visible in map mode)
+        Positioned(
+          bottom: 16 + MediaQuery.of(context).padding.bottom,
+          left: 0,
+          right: 0,
+          height: 170,
+          child: PageView.builder(
+            controller: _carouselController,
+            itemCount: _mapActivities.length,
+            onPageChanged: (idx) {
+              if (idx < _mapActivities.length) {
+                final ma = _mapActivities[idx];
+                _mapKey.currentState?.animateTo(ma);
+                HapticFeedback.selectionClick();
+              }
+            },
+            itemBuilder: (context, idx) {
+              final ma = _mapActivities[idx];
+              final color = dayColors[ma.dayIndex % dayColors.length];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4))],
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        Container(
+                          width: 28, height: 28,
+                          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                          alignment: Alignment.center,
+                          child: Text('${ma.numberInDay}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(ma.name, style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ),
+                      ]),
+                      const SizedBox(height: 8),
+                      if (ma.rating != null) ...[
+                        Row(children: [
+                          const Icon(Icons.star, size: 16, color: Color(0xFFF59E0B)),
+                          const SizedBox(width: 4),
+                          Text('${ma.rating}', style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                          const SizedBox(width: 6),
+                          Container(
+                            width: 16, height: 16,
+                            decoration: BoxDecoration(
+                              image: const DecorationImage(image: NetworkImage('https://www.google.com/favicon.ico'), fit: BoxFit.contain),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ]),
+                        const SizedBox(height: 4),
+                      ],
+                      if (ma.category != null && ma.category!.isNotEmpty)
+                        Row(children: [
+                          Icon(Icons.access_time, size: 14, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(ma.category!, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
+                        ]),
+                      const Spacer(),
+                      Row(children: [
+                        _carouselActionBtn('Directions', Icons.directions),
+                        const SizedBox(width: 8),
+                        _carouselActionBtn('Details', Icons.info_outline),
+                        const SizedBox(width: 8),
+                        _carouselActionBtn('Google Maps', Icons.map_outlined),
+                      ]),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ],
     );
   }

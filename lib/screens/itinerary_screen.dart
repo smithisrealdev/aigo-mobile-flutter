@@ -45,6 +45,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   String _activeSection = 'itinerary';
   bool _tipsExpanded = false;
   bool _mapMode = false;
+  bool _cardCarouselMode = false;
+  final PageController _carouselController = PageController(viewportFraction: 0.88);
   final DraggableScrollableController _sheetController = DraggableScrollableController();
   final Map<String, String> _placePhotos = {};
   static const _googleMapsKey = 'AIzaSyDvA2wmeqKw93M4v8b2Xm1uFWtIcCs46l0';
@@ -98,6 +100,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   @override
   void dispose() {
     _staggerController.dispose();
+    _carouselController.dispose();
     _sheetController.removeListener(_onSheetChanged);
     _sheetController.dispose();
     super.dispose();
@@ -106,6 +109,12 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   void _onSheetChanged() {
     if (_sheetController.size >= 0.88 && _mapMode) {
       setState(() => _mapMode = false);
+    }
+    // Switch to card carousel when sheet is at minimum
+    if (_sheetController.size <= 0.18 && _mapMode && !_cardCarouselMode) {
+      setState(() => _cardCarouselMode = true);
+    } else if (_sheetController.size > 0.20 && _cardCarouselMode) {
+      setState(() => _cardCarouselMode = false);
     }
   }
 
@@ -938,7 +947,107 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             ),
           ),
         ),
+
+        // ── Card carousel (when sheet is at minimum) ──
+        if (_cardCarouselMode)
+          Positioned(
+            bottom: 16 + MediaQuery.of(context).padding.bottom,
+            left: 0,
+            right: 0,
+            height: 180,
+            child: PageView.builder(
+              controller: _carouselController,
+              itemCount: _mapActivities.length,
+              onPageChanged: (idx) {
+                if (idx < _mapActivities.length) {
+                  final ma = _mapActivities[idx];
+                  _mapKey.currentState?.animateTo(ma);
+                  HapticFeedback.selectionClick();
+                }
+              },
+              itemBuilder: (context, idx) {
+                final ma = _mapActivities[idx];
+                final color = dayColors[ma.dayIndex % dayColors.length];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4))],
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Container(
+                            width: 28, height: 28,
+                            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                            alignment: Alignment.center,
+                            child: Text('${ma.numberInDay}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(ma.name, style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ),
+                        ]),
+                        const SizedBox(height: 10),
+                        if (ma.rating != null) ...[
+                          Row(children: [
+                            const Icon(Icons.star, size: 16, color: Color(0xFFF59E0B)),
+                            const SizedBox(width: 4),
+                            Text('${ma.rating}', style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                            const SizedBox(width: 6),
+                            Container(
+                              width: 16, height: 16,
+                              decoration: BoxDecoration(
+                                image: const DecorationImage(image: NetworkImage('https://www.google.com/favicon.ico'), fit: BoxFit.contain),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ]),
+                          const SizedBox(height: 4),
+                        ],
+                        if (ma.category != null && ma.category!.isNotEmpty)
+                          Row(children: [
+                            Icon(Icons.access_time, size: 14, color: AppColors.textSecondary),
+                            const SizedBox(width: 4),
+                            Text(ma.category!, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
+                          ]),
+                        const Spacer(),
+                        Row(children: [
+                          _carouselActionBtn('Directions', Icons.directions),
+                          const SizedBox(width: 8),
+                          _carouselActionBtn('Details', Icons.info_outline),
+                          const SizedBox(width: 8),
+                          _carouselActionBtn('Google Maps', Icons.map_outlined),
+                        ]),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
       ],
+    );
+  }
+
+  Widget _carouselActionBtn(String label, IconData icon) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, size: 14, color: AppColors.textSecondary),
+          const SizedBox(width: 4),
+          Flexible(child: Text(label, style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary), overflow: TextOverflow.ellipsis)),
+        ]),
+      ),
     );
   }
 

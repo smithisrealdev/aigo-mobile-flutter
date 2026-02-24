@@ -405,11 +405,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   ];
 
   String _inferCat(Map<String, dynamic> a) {
-    final explicit =
-        (a['type'] ?? a['category'] ?? '').toString().toLowerCase();
-    for (final c in _kw.keys) {
-      if (explicit.contains(c)) return c;
-    }
+    // 1. Name-based keywords FIRST (most specific)
     final text =
         '${a['name'] ?? ''} ${a['title'] ?? ''} ${a['description'] ?? ''}'
             .toLowerCase();
@@ -417,6 +413,12 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       for (final k in e.value) {
         if (text.contains(k)) return e.key;
       }
+    }
+    // 2. Explicit type/category field (fallback — often generic "attraction")
+    final explicit =
+        (a['type'] ?? a['category'] ?? '').toString().toLowerCase();
+    for (final c in _kw.keys) {
+      if (explicit.contains(c)) return c;
     }
     return 'attraction';
   }

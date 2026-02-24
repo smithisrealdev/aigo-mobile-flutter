@@ -162,19 +162,40 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const SizedBox(height: 16),
                 // Stats row
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 8))],
+                    color: const Color(0xFFF5F7FA),
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))],
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _statItem('$tripCount', 'Trips'),
-                      _divider(),
-                      _statItem('$placesCount', 'Places'),
-                      _divider(),
-                      _statItem('${countries.length}', 'Countries'),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, bottom: 8),
+                        child: Row(children: [
+                          const Icon(Icons.bar_chart, size: 14, color: AppColors.textSecondary),
+                          const SizedBox(width: 6),
+                          Text('STATS', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.8)),
+                        ]),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))],
+                        ),
+                        child: Row(
+                          children: [
+                            _statItem('$tripCount', 'Trips'),
+                            _divider(),
+                            _statItem('$placesCount', 'Places'),
+                            _divider(),
+                            _statItem('${countries.length}', 'Countries'),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -322,13 +343,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         final barColor = pct < 0.6 ? AppColors.success : (pct < 0.85 ? AppColors.warning : AppColors.error);
 
         return Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFF0F0F0)),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 8))],
+            color: const Color(0xFFF5F7FA),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))],
           ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 8),
+                child: Row(children: [
+                  const Icon(Icons.auto_awesome, size: 14, color: AppColors.textSecondary),
+                  const SizedBox(width: 6),
+                  Text('AI USAGE', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.8)),
+                ]),
+              ),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))],
+                ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -349,14 +387,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Text('Used $currentUsage of $monthlyLimit requests', style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textSecondary)),
               const SizedBox(height: 8),
               Row(
-                children: List.generate(10, (i) {
-                  final filledSegments = (pct * 10).round().clamp(0, 10);
+                children: List.generate(6, (i) {
+                  final filledSegments = (pct * 6).round().clamp(0, 6);
                   return Expanded(
                     child: Container(
                       height: 8,
-                      margin: EdgeInsets.only(right: i < 9 ? 3 : 0),
+                      margin: EdgeInsets.only(right: i < 5 ? 4 : 0),
                       decoration: BoxDecoration(
-                        color: i < filledSegments ? barColor : Colors.grey.shade200,
+                        color: i < filledSegments ? const Color(0xFF22C55E) : const Color(0xFFD1D5DB),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
@@ -366,6 +404,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               const SizedBox(height: 6),
               Text('$remaining remaining this month', style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
             ],
+          ),
+          ),
+          ],
           ),
         );
       },
@@ -388,42 +429,68 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _menuItem(IconData icon, String label, {VoidCallback? onTap}) {
     return Container(
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 8))],
+        color: const Color(0xFFF5F7FA),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))],
       ),
-      child: ListTile(
-        leading: Container(
-          width: 36, height: 36,
-          decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
-          child: Icon(icon, size: 18, color: AppColors.brandBlue),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))],
         ),
-        title: Text(label, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-        trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        onTap: onTap,
+        child: ListTile(
+          leading: Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, size: 18, color: AppColors.brandBlue),
+          ),
+          title: Text(label, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+          trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          onTap: onTap,
+        ),
       ),
     );
   }
 
   Widget _sectionCard({String? title, String? subtitle, required Widget child}) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 8))],
+        color: const Color(0xFFF5F7FA),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (title != null) ...[
-            Text(title, style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-            if (subtitle != null) ...[const SizedBox(height: 2), Text(subtitle, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary))],
-            const SizedBox(height: 12),
-          ],
-          child,
+          if (title != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Row(children: [
+                const Icon(Icons.tune, size: 14, color: AppColors.textSecondary),
+                const SizedBox(width: 6),
+                Text(title.toUpperCase(), style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.8)),
+              ]),
+            ),
+          if (subtitle != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Text(subtitle, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
+            ),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))],
+            ),
+            child: child,
+          ),
         ],
       ),
     );

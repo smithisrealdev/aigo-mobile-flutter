@@ -28,30 +28,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     offset: Offset(0, 8),
   );
 
-  // Outer widget container (frosted/tinted)
+  // Outer widget container (frosted/tinted — more visible)
   static BoxDecoration _widgetOuter() => BoxDecoration(
-    color: const Color(0xFFF5F7FA),
+    color: const Color(0xFFEEF1F5),
     borderRadius: BorderRadius.circular(28),
     boxShadow: const [
-      BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6)),
+      BoxShadow(color: Color(0x12000000), blurRadius: 24, offset: Offset(0, 8)),
     ],
   );
 
-  // Inner card (pure white, floating)
+  // Inner card (pure white, prominent float)
   static BoxDecoration _widgetInner() => BoxDecoration(
     color: Colors.white,
     borderRadius: BorderRadius.circular(20),
     boxShadow: const [
-      BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3)),
+      BoxShadow(color: Color(0x14000000), blurRadius: 16, offset: Offset(0, 4)),
     ],
   );
 
   // iOS widget-style colored quick action data
   static const _quickActions = [
-    ('Create Trip', Icons.add_circle_outline, Color(0xFF2563EB), Color(0xFFDBEAFE)),
-    ('My Trips', Icons.map_outlined, Color(0xFF059669), Color(0xFFD1FAE5)),
-    ('Budget', Icons.account_balance_wallet_outlined, Color(0xFFD97706), Color(0xFFFEF3C7)),
-    ('Marketplace', Icons.public_outlined, Color(0xFF7C3AED), Color(0xFFEDE9FE)),
+    ('Create Trip', Icons.add_circle_rounded, Color(0xFF2563EB), Color(0xFFDBEAFE)),
+    ('My Trips', Icons.map_rounded, Color(0xFF059669), Color(0xFFD1FAE5)),
+    ('Budget', Icons.account_balance_wallet_rounded, Color(0xFFD97706), Color(0xFFFEF3C7)),
+    ('Marketplace', Icons.public_rounded, Color(0xFF7C3AED), Color(0xFFEDE9FE)),
   ];
 
   final TextEditingController _tripController = TextEditingController();
@@ -368,7 +368,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return GestureDetector(
       onTap: () => context.push('/itinerary', extra: upcoming),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: _widgetOuter(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,17 +396,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   // Date badge (green like reference)
                   if (startDate != null)
                     Container(
-                      width: 60, height: 60,
-                      margin: const EdgeInsets.all(12),
+                      width: 68, height: 68,
+                      margin: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: const Color(0xFF22C55E),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: const [BoxShadow(color: Color(0x3022C55E), blurRadius: 12, offset: Offset(0, 4))],
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(_monthAbbr(startDate), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white, height: 1)),
-                          Text('${startDate.day}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white, height: 1.1)),
+                          Text(_monthAbbr(startDate), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white, height: 1)),
+                          Text('${startDate.day}', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: Colors.white, height: 1.1)),
                         ],
                       ),
                     )
@@ -498,7 +499,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return GestureDetector(
       onTap: () => context.push('/budget'),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: _widgetOuter(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -514,7 +515,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             const SizedBox(height: 12),
             // Inner card
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: _widgetInner(),
               child: Row(
                 children: [
@@ -576,7 +577,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildErrorCard(String message, VoidCallback onRetry) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: const [_cardShadow], border: Border.all(color: const Color(0xFFF0F0F0))),
       child: Column(children: [
         Text(message, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
@@ -1166,20 +1167,20 @@ class _WidgetQuickAction extends StatelessWidget {
         child: Column(
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
                 color: bgColor,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(22),
                 boxShadow: [
                   BoxShadow(
-                    color: iconColor.withValues(alpha: 0.15),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    color: iconColor.withValues(alpha: 0.2),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
-              child: Icon(icon, color: iconColor, size: 26),
+              child: Icon(icon, color: iconColor, size: 30),
             ),
             const SizedBox(height: 8),
             Text(

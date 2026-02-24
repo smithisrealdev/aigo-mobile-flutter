@@ -135,40 +135,48 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     return GestureDetector(
       onTap: () => context.push('/itinerary', extra: trip),
       child: Container(
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 8))],
+          color: const Color(0xFFF5F7FA),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                child: CachedNetworkImage(imageUrl: imageUrl, height: 120, width: double.infinity, fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) => Container(height: 120, color: AppColors.border)),
-              ),
-              if (days.isNotEmpty)
-                Positioned(top: 8, right: 8, child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(12)),
-                  child: Text(days, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-                )),
-            ]),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(trip.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                Row(children: [
-                  const Icon(Icons.location_on, size: 14, color: AppColors.textSecondary),
-                  const SizedBox(width: 4),
-                  Expanded(child: Text(trip.destination, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                ]),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  child: CachedNetworkImage(imageUrl: imageUrl, height: 100, width: double.infinity, fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => Container(height: 100, color: AppColors.border)),
+                ),
+                if (days.isNotEmpty)
+                  Positioned(top: 8, right: 8, child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(10)),
+                    child: Text(days, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                  )),
               ]),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(trip.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  Row(children: [
+                    const Icon(Icons.location_on, size: 14, color: AppColors.textSecondary),
+                    const SizedBox(width: 4),
+                    Expanded(child: Text(trip.destination, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  ]),
+                ]),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -295,16 +303,24 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
             },
             child: Container(
               width: 260,
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                image: DecorationImage(image: NetworkImage(item['image']!), fit: BoxFit.cover),
+                color: const Color(0xFFF5F7FA),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))],
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black54]),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))],
+                  image: DecorationImage(image: NetworkImage(item['image']!), fit: BoxFit.cover),
                 ),
-                child: Stack(children: [
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black54]),
+                  ),
+                  child: Stack(children: [
                   Positioned(top: 10, left: 10, child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(color: AppColors.brandBlue, borderRadius: BorderRadius.circular(12)),
@@ -323,6 +339,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 ]),
               ),
             ),
+            ),
           );
         },
       ),
@@ -331,36 +348,45 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
   Widget _buildTemplateCard(Map<String, String> t) {
     return Container(
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 8))],
+        color: const Color(0xFFF5F7FA),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))],
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Stack(children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: Image.network(t['image']!, height: 120, width: double.infinity, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(height: 120, color: AppColors.border)),
-          ),
-          Positioned(top: 8, right: 8, child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(12)),
-            child: Text(t['days']!, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-          )),
-        ]),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(t['name']!, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 4),
-            Row(children: [
-              const Icon(Icons.location_on, size: 14, color: AppColors.textSecondary),
-              const SizedBox(width: 4),
-              Text(t['country']!, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-            ]),
-          ]),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))],
         ),
-      ]),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Stack(children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              child: Image.network(t['image']!, height: 100, width: double.infinity, fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(height: 100, color: AppColors.border)),
+            ),
+            Positioned(top: 8, right: 8, child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(10)),
+              child: Text(t['days']!, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+            )),
+          ]),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(t['name']!, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 4),
+              Row(children: [
+                const Icon(Icons.location_on, size: 14, color: AppColors.textSecondary),
+                const SizedBox(width: 4),
+                Text(t['country']!, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              ]),
+            ]),
+          ),
+        ]),
+      ),
     );
   }
 
@@ -396,43 +422,51 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       },
       child: Container(
         width: 160,
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFF0F0F0)),
+          color: const Color(0xFFF5F7FA),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (guide.coverImage != null)
-              CachedNetworkImage(
-                imageUrl: guide.coverImage!,
-                height: 100,
-                width: 160,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => Container(height: 100, color: const Color(0xFFF3F4F6)),
-                errorWidget: (_, __, ___) => Container(height: 100, color: const Color(0xFFF3F4F6), child: const Icon(Icons.image, color: AppColors.textSecondary)),
-              )
-            else
-              Container(height: 100, color: const Color(0xFFF3F4F6), child: const Icon(Icons.map, color: AppColors.textSecondary, size: 32)),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(guide.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF111827), fontWeight: FontWeight.w600, fontSize: 13)),
-                  const SizedBox(height: 4),
-                  Row(children: [
-                    const Icon(Icons.location_on, size: 12, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
-                    Expanded(child: Text(guide.destination, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11))),
-                    if (guide.totalDays > 0) Text('${guide.totalDays}d', style: const TextStyle(color: AppColors.brandBlue, fontSize: 11, fontWeight: FontWeight.w600)),
-                  ]),
-                ],
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (guide.coverImage != null)
+                CachedNetworkImage(
+                  imageUrl: guide.coverImage!,
+                  height: 90,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(height: 90, color: const Color(0xFFF3F4F6)),
+                  errorWidget: (_, __, ___) => Container(height: 90, color: const Color(0xFFF3F4F6), child: const Icon(Icons.image, color: AppColors.textSecondary)),
+                )
+              else
+                Container(height: 90, color: const Color(0xFFF3F4F6), child: const Icon(Icons.map, color: AppColors.textSecondary, size: 32)),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(guide.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF111827), fontWeight: FontWeight.w600, fontSize: 13)),
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      const Icon(Icons.location_on, size: 12, color: AppColors.textSecondary),
+                      const SizedBox(width: 4),
+                      Expanded(child: Text(guide.destination, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11))),
+                      if (guide.totalDays > 0) Text('${guide.totalDays}d', style: const TextStyle(color: AppColors.brandBlue, fontSize: 11, fontWeight: FontWeight.w600)),
+                    ]),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

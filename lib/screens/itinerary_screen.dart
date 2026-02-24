@@ -1948,17 +1948,17 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
     return Container(
       margin: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F7FA),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))],
+      ),
+      child: Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF0F0F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          )
-        ],
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // ── Photo section (200px) ──
@@ -2182,6 +2182,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           ),
         ),
       ]),
+    ),
     );
   }
 

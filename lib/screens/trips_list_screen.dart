@@ -65,9 +65,9 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
     if (trip.status == 'draft' || trip.startDate == null) return const _Badge('Draft', Color(0xFF9CA3AF));
     final start = DateTime.tryParse(trip.startDate!);
     final end = trip.endDate != null ? DateTime.tryParse(trip.endDate!) : null;
-    if (end != null && now.isAfter(end)) return const _Badge('Completed', Color(0xFF374151));
-    if (start != null && end != null && now.isAfter(start) && now.isBefore(end)) return const _Badge('In Progress', Color(0xFF10B981));
-    return const _Badge('Upcoming', AppColors.brandBlue);
+    if (end != null && now.isAfter(end)) return const _Badge('COMPLETED', Color(0xFF374151));
+    if (start != null && end != null && now.isAfter(start) && now.isBefore(end)) return const _Badge('IN-PROGRESS', Color(0xFF2563EB));
+    return const _Badge('UPCOMING', Color(0xFF22C55E));
   }
 
   void _showCreateTripSheet(BuildContext context) {
@@ -449,17 +449,17 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
 }
 
 Widget _buildSegmentedProgress(double progress) {
-  const totalSegments = 10;
+  const totalSegments = 6;
   final filledSegments = (progress * totalSegments).round().clamp(0, totalSegments);
   return Row(
     children: List.generate(totalSegments, (i) {
       return Expanded(
         child: Container(
-          height: 6,
-          margin: EdgeInsets.only(right: i < totalSegments - 1 ? 3 : 0),
+          height: 8,
+          margin: EdgeInsets.only(right: i < totalSegments - 1 ? 4 : 0),
           decoration: BoxDecoration(
-            color: i < filledSegments ? AppColors.brandBlue : const Color(0xFFE5E7EB),
-            borderRadius: BorderRadius.circular(3),
+            color: i < filledSegments ? const Color(0xFF22C55E) : const Color(0xFFD1D5DB),
+            borderRadius: BorderRadius.circular(4),
           ),
         ),
       );
@@ -496,89 +496,100 @@ class _TripCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Outer frosted container
     return Container(
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF0F0F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: const Color(0xFFF5F7FA),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                child: CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  height: 140,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) => Container(height: 140, color: AppColors.border, child: const Center(child: Icon(Icons.image, color: AppColors.textSecondary))),
-                ),
-              ),
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Colors.black.withOpacity(0.3)],
-                      stops: const [0.5, 1.0],
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(color: badge.color, borderRadius: BorderRadius.circular(20)),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        badge.label == 'In Progress' ? Icons.schedule : badge.label == 'Upcoming' ? Icons.flight_takeoff : badge.label == 'Completed' ? Icons.check_circle : Icons.edit_note,
-                        size: 12, color: Colors.white,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(badge.label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
-                    ],
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 12,
-                right: 12,
-                child: GestureDetector(
-                  onTap: () {},
-                  child: Container(
-                    width: 32, height: 32,
-                    decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
-                    child: const Icon(Icons.info_outline, color: Colors.white, size: 16),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          // Status header row
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.only(bottom: 10, left: 4, right: 4),
+            child: Row(children: [
+              Icon(
+                badge.label == 'IN-PROGRESS' ? Icons.schedule : badge.label == 'UPCOMING' ? Icons.flight_takeoff : badge.label == 'COMPLETED' ? Icons.check_circle : Icons.edit_note,
+                size: 14, color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              Text(badge.label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.8)),
+              const Spacer(),
+              // Date badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: badge.label == 'UPCOMING' ? const Color(0xFF22C55E) : badge.label == 'IN-PROGRESS' ? const Color(0xFF2563EB) : const Color(0xFF374151),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(badge.label == 'UPCOMING' ? 'SOON' : badge.label == 'IN-PROGRESS' ? 'LIVE' : 'DONE', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5)),
+              ),
+            ]),
+          ),
+          // Inner white card
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                const SizedBox(height: 4),
-                Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                if (extra != null) extra!,
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        height: 140,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => Container(height: 140, color: AppColors.border, child: const Center(child: Icon(Icons.image, color: AppColors.textSecondary))),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.transparent, Colors.black.withOpacity(0.3)],
+                            stops: const [0.5, 1.0],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: GestureDetector(
+                        onTap: () {},
+                        child: Container(
+                          width: 32, height: 32,
+                          decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
+                          child: const Icon(Icons.info_outline, color: Colors.white, size: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                      const SizedBox(height: 4),
+                      Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                      if (extra != null) extra!,
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

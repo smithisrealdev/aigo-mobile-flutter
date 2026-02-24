@@ -550,18 +550,25 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             // Text bubble
-            Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(color: _surface(context),
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(showAvatar ? 4 : 20), topRight: const Radius.circular(24), bottomLeft: const Radius.circular(24), bottomRight: const Radius.circular(24))),
-              child: _buildRichText(msg.text)),
+            Container(padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(color: const Color(0xFFF5F7FA),
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(showAvatar ? 8 : 24), topRight: const Radius.circular(28), bottomLeft: const Radius.circular(28), bottomRight: const Radius.circular(28)),
+                boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))]),
+              child: Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(color: Colors.white,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(showAvatar ? 4 : 20), topRight: const Radius.circular(24), bottomLeft: const Radius.circular(24), bottomRight: const Radius.circular(24)),
+                boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))]),
+              child: _buildRichText(msg.text))),
 
             // Rich card with place thumbnails
             if (msg.richCard != null) ...[
               const SizedBox(height: 8),
-              Container(padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(color: _cardBg(context), borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFF0F0F0)),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 8))]),
+              Container(padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: const Color(0xFFF5F7FA), borderRadius: BorderRadius.circular(28),
+                  boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))]),
+                child: Container(padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20),
+                  boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))]),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     const Icon(Icons.auto_awesome, size: 14, color: AppColors.brandBlue), const SizedBox(width: 6),
@@ -625,6 +632,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> with TickerProvider
                     )),
                   ],
                 ]),
+              ),
               ),
             ],
 

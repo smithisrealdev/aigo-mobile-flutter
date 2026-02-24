@@ -1166,11 +1166,18 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       // 6.5 Checklist (inline, wrapped in card)
       if (_trip != null) ...[
         Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F7FA),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))],
+          ),
+          child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFF0F0F0)),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1193,6 +1200,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
               TripChecklistWidget(tripId: _trip!.id),
             ],
           ),
+        ),
         ),
         const SizedBox(height: 16),
       ],
@@ -1334,11 +1342,18 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     }
 
     return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F7FA),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))],
+      ),
+      child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF0F0F0)),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))],
       ),
       child: Row(children: [
         // Circle with number or icon
@@ -1397,6 +1412,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           ),
         ),
       ]),
+    ),
     );
   }
 
@@ -1967,7 +1983,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             tag: 'activity_photo_${name}_$number',
             child: ClipRRect(
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(24)),
+                  const BorderRadius.vertical(top: Radius.circular(20)),
               child: CachedNetworkImage(
                 imageUrl: effectiveImage,
                 height: 200,

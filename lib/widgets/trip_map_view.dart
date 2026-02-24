@@ -194,7 +194,14 @@ class TripMapViewState extends State<TripMapView>
   }
 
   /// Public API: animate camera to a specific activity from outside.
-  void animateTo(MapActivity a) => _selectPin(a);
+  void animateTo(MapActivity a) async {
+    if (_mapCtrl.isCompleted) {
+      final ctrl = await _mapCtrl.future;
+      ctrl.animateCamera(CameraUpdate.newLatLngZoom(
+        LatLng(a.lat, a.lng), 14,
+      ));
+    }
+  }
 
   /// Public API: fit bounds from outside.
   void fitBoundsPublic() => _fitBounds();

@@ -557,15 +557,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildHeader(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(20, topPadding + 10, 20, 16),
@@ -574,7 +567,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             // Logo row
             Row(
               children: [
-                SvgPicture.asset('assets/images/logo.svg', height: 28),
+                SvgPicture.asset('assets/images/logo.svg', height: 36, colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn)),
                 const Spacer(),
                 // Notification bell
                 IconButton(

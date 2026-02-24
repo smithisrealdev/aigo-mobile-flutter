@@ -153,7 +153,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -482,27 +482,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ),
         child: Row(
           children: [
-            Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.account_balance_wallet_outlined, color: AppColors.brandBlue, size: 20),
+            // Large progress ring
+            SizedBox(
+              width: 56, height: 56,
+              child: Stack(alignment: Alignment.center, children: [
+                SizedBox(
+                  width: 56, height: 56,
+                  child: CircularProgressIndicator(
+                    value: pct,
+                    strokeWidth: 5,
+                    strokeCap: StrokeCap.round,
+                    backgroundColor: const Color(0xFFE5E7EB),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      pct < 0.5 ? const Color(0xFF10B981) : pct < 0.8 ? AppColors.brandBlue : const Color(0xFFEF4444),
+                    ),
+                  ),
+                ),
+                Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text('${(pct * 100).toInt()}%', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                  const Text('used', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
+                ]),
+              ]),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Total Budget', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                const SizedBox(height: 2),
-                Text('฿${totalSpent.toStringAsFixed(0)} / ฿${totalBudget.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                const Text('Total Budget', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                const SizedBox(height: 4),
+                Text('฿${totalSpent.toStringAsFixed(0)} / ฿${totalBudget.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                const SizedBox(height: 8),
+                _PillProgressBar(value: pct),
               ]),
             ),
-            SizedBox(
-              width: 40, height: 40,
-              child: Stack(alignment: Alignment.center, children: [
-                CircularProgressIndicator(value: pct, strokeWidth: 3, backgroundColor: AppColors.border, valueColor: const AlwaysStoppedAnimation<Color>(AppColors.brandBlue)),
-                Text('${(pct * 100).toInt()}%', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.brandBlue)),
-              ]),
-            ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 8),
             const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
           ],
         ),
@@ -592,15 +604,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildHeader(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(20, topPadding + 10, 20, 16),

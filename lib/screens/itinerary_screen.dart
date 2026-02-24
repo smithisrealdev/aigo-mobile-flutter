@@ -327,32 +327,47 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     'restaurant': [
       'restaurant', 'food', 'eat', 'dining', 'cafe', 'coffee', 'lunch',
       'dinner', 'breakfast', 'brunch', 'bistro', 'ramen', 'sushi', 'noodle',
-      'trattoria', 'osteria', 'pizz', 'gelat', 'wine', 'vinaio', 'sandwich'
+      'trattoria', 'osteria', 'pizz', 'gelat', 'wine', 'vinaio', 'sandwich',
+      'อาหาร', 'ร้าน', 'กาแฟ', 'ข้าว', 'ก๋วยเตี๋ยว', 'street food', 'seafood',
+      'bbq', 'grill', 'bakery', 'dessert', 'ice cream', 'bar', 'pub',
+      'cocktail', 'rooftop', 'cruise', 'buffet', 'dim sum', 'steak',
     ],
     'temple': [
       'temple', 'shrine', 'wat', 'pagoda', 'mosque', 'church', 'cathedral',
-      'duomo', 'basilica', 'chapel'
+      'duomo', 'basilica', 'chapel', 'วัด', 'monastery', 'sanctuary',
+      'grand palace', 'palace',
     ],
-    'museum': ['museum', 'gallery', 'art', 'exhibition', 'uffizi', 'palazzo'],
+    'museum': ['museum', 'gallery', 'art', 'exhibition', 'uffizi', 'palazzo',
+      'พิพิธภัณฑ์', 'history', 'memorial', 'monument',
+    ],
     'park': [
       'park', 'garden', 'nature', 'forest', 'hiking', 'trail', 'mountain',
-      'waterfall', 'lake', 'piazza'
+      'waterfall', 'lake', 'piazza', 'volcano', 'canyon', 'cliff', 'cave',
+      'trek', 'camping', 'ภูเขา', 'น้ำตก', 'อุทยาน', 'ป่า', 'national park',
+      'safari', 'zoo', 'elephant', 'sanctuary', 'wildlife',
     ],
     'shopping': [
       'shopping', 'mall', 'market', 'bazaar', 'outlet', 'souvenir', 'shop',
-      'store', 'mercato'
+      'store', 'mercato', 'ตลาด', 'night market', 'floating market',
+      'chatuchak', 'plaza', 'center', 'centre',
     ],
     'beach': [
       'beach', 'coast', 'island', 'snorkel', 'diving', 'surf', 'seaside',
-      'bay', 'thermal', 'bath', 'spa'
+      'bay', 'thermal', 'bath', 'spa', 'เกาะ', 'ทะเล', 'หาด', 'coral',
+      'kayak', 'boat', 'pier', 'marina', 'lagoon', 'hot spring',
     ],
     'hotel': [
       'hotel', 'resort', 'hostel', 'check-in', 'check-out', 'accommodation',
-      'stay', 'airbnb'
+      'stay', 'airbnb', 'ที่พัก', 'โรงแรม', 'guesthouse', 'villa', 'lodge',
     ],
     'transport': [
       'airport', 'station', 'transfer', 'taxi', 'train', 'bus', 'ferry',
-      'flight', 'drive', 'transport'
+      'flight', 'drive', 'transport', 'สนามบิน', 'รถไฟ', 'terminal',
+      'departure', 'arrival', 'transit', 'pickup',
+    ],
+    'nightlife': [
+      'nightlife', 'club', 'disco', 'karaoke', 'night show', 'cabaret',
+      'lounge', 'jazz', 'live music',
     ],
   };
   static const _icons = <String, IconData>{
@@ -364,16 +379,18 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     'beach': Icons.beach_access,
     'hotel': Icons.hotel,
     'transport': Icons.directions_car,
+    'nightlife': Icons.nightlife,
   };
   static const _catBadgeColors = <String, Color>{
     'restaurant': Color(0xFFEF4444),
     'temple': Color(0xFFF59E0B),
-    'museum': Color(0xFF8B5CF6),
+    'museum': Color(0xFFFF6D00),
     'park': Color(0xFF10B981),
     'shopping': Color(0xFFEC4899),
     'beach': Color(0xFF06B6D4),
     'hotel': Color(0xFF6366F1),
     'transport': Color(0xFF64748B),
+    'nightlife': Color(0xFFAB47BC),
     'attraction': Color(0xFF2563EB),
   };
   static const _numberColors = <Color>[

@@ -10,15 +10,16 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 /// Category-based marker colors (Wanderlog style)
 const _categoryColors = <String, Color>{
-  'restaurant': Color(0xFFEA4335), // Red
-  'temple': Color(0xFF34A853),     // Green (attraction)
-  'museum': Color(0xFF34A853),     // Green (attraction)
-  'park': Color(0xFF34A853),       // Green (attraction)
-  'attraction': Color(0xFF34A853), // Green
-  'shopping': Color(0xFF4285F4),   // Blue
-  'hotel': Color(0xFF9334E6),      // Purple
-  'beach': Color(0xFF00ACC1),      // Teal
-  'transport': Color(0xFF64748B),  // Gray
+  'restaurant': Color(0xFFEA4335), // Red — food/dining
+  'temple': Color(0xFF34A853),     // Green — temples/shrines
+  'museum': Color(0xFFFF6D00),     // Orange — museums/galleries
+  'park': Color(0xFF2E7D32),       // Dark green — nature/hiking/mountain
+  'attraction': Color(0xFF4285F4), // Blue — general attractions
+  'shopping': Color(0xFFE91E63),   // Pink — shopping/markets
+  'hotel': Color(0xFF9334E6),      // Purple — accommodation
+  'beach': Color(0xFF00ACC1),      // Teal — beach/sea/island
+  'transport': Color(0xFF64748B),  // Gray — airport/station/transfer
+  'nightlife': Color(0xFFAB47BC), // Light purple — bars/clubs
 };
 
 /// Day colors — matches Wanderlog palette (vibrant, saturated)

@@ -517,6 +517,7 @@ class TripMapViewState extends State<TripMapView>
       ),
 
       // ── Fit all places pill ──
+      if (!widget.hideInfoCard)
       Positioned(
         bottom: _selected != null ? 170 : 20,
         left: 0, right: 0,

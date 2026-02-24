@@ -179,8 +179,8 @@ class TripMapViewState extends State<TripMapView>
         // Single pin
         final a = item.activity!;
         final c = _categoryColors[a.category] ?? dayColors[a.dayIndex % dayColors.length];
-        final actIdx = widget.activities.indexOf(a);
-        final isActive = actIdx == _activeIndex;
+        final actIdx = widget.activities.indexWhere((x) => x.lat == a.lat && x.lng == a.lng && x.name == a.name);
+        final isActive = actIdx >= 0 && actIdx == _activeIndex;
         final key = isActive ? 'active_${c.value}_${a.numberInDay}' : '${c.value}_${a.numberInDay}';
         _iconCache[key] ??= isActive ? await _makeActiveIcon(a.numberInDay, c) : await _makeIcon(a.numberInDay, c);
         m.add(Marker(
@@ -198,8 +198,8 @@ class TripMapViewState extends State<TripMapView>
 
   /// Public API: animate camera to a specific activity from outside.
   void animateTo(MapActivity a) async {
-    final idx = widget.activities.indexOf(a);
-    if (idx != _activeIndex) {
+    final idx = widget.activities.indexWhere((x) => x.lat == a.lat && x.lng == a.lng && x.name == a.name);
+    if (idx >= 0 && idx != _activeIndex) {
       _activeIndex = idx;
       _rebuild();
     }

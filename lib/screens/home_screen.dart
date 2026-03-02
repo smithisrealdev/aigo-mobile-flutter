@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import '../services/trip_service.dart';
-import '../services/expense_service.dart';
 import '../services/recommendation_service.dart';
 import '../services/ai_picks_service.dart';
 import '../config/supabase_config.dart';
@@ -107,7 +107,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   String _getUserName() {
-    final user = SupabaseConfig.client.auth.currentUser;
+    final user = AuthService.instance.currentUser;
     if (user == null) return 'Traveler';
     final meta = user.userMetadata;
     if (meta != null && meta['full_name'] != null) {
@@ -123,9 +123,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final tripsAsync = ref.watch(tripsProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.background,
       body: Column(
         children: [
           // ── Compact Header with embedded search ──
@@ -145,49 +146,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+                padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).padding.bottom + 80),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Greeting ──
-                    Text(
-                      '${_greeting()}, ${_getUserName()}',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Where to next?',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
                     // ── Travel Preference Chips ──
                     _buildTravelChips(context),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
 
                     // ── Quick Actions ──
-                    const Text(
+                    Text(
                       'Quick Actions',
-                      style: TextStyle(
-                        fontSize: 15,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                        letterSpacing: isDark ? 0.2 : 0,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _QuickAction(
                           icon: Icons.add_circle_outline,
                           label: 'Create Trip',
+                          isPrimary: true,
                           onTap: () => context.push('/ai-chat'),
                         ),
                         _QuickAction(
@@ -214,19 +198,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Upcoming Trip',
-                          style: TextStyle(
+                          style: GoogleFonts.dmSans(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                            letterSpacing: isDark ? 0.2 : 0,
                           ),
                         ),
                         GestureDetector(
                           onTap: () => context.go('/trips'),
-                          child: const Text(
+                          child: Text(
                             'See All',
-                            style: TextStyle(
+                            style: GoogleFonts.dmSans(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: AppColors.brandBlue,
@@ -242,7 +227,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       error: (e, _) => _buildErrorCard('Failed to load trips', () => ref.invalidate(tripsProvider)),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
 
                     // ── Budget Overview (only if trips exist) ──
                     tripsAsync.when(
@@ -251,12 +236,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           : Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Your Budget',
-                                  style: TextStyle(
+                                  style: GoogleFonts.dmSans(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
+                                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                                    letterSpacing: isDark ? 0.2 : 0,
                                   ),
                                 ),
                                 const SizedBox(height: 10),
@@ -267,21 +253,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       loading: () => Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Your Budget', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                          Text('Your Budget', style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary, letterSpacing: isDark ? 0.2 : 0)),
                           const SizedBox(height: 10),
                           _buildBudgetSkeleton(),
                           const SizedBox(height: 24),
                         ],
                       ),
-                      error: (_, __) => const SizedBox.shrink(),
+                      error: (_, _) => const SizedBox.shrink(),
                     ),
 
                     // ── AI Picks for You ──
                     _buildAiPicksHeader(context),
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       'Based on your travel style',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: GoogleFonts.dmSans(fontSize: 12, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary),
                     ),
                     const SizedBox(height: 12),
                     _buildAiPicksDynamic(context),
@@ -291,7 +277,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     // ── Tailored for You (AI Recommendations) ──
                     _buildTailoredForYou(),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -302,9 +288,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  // ── Travel Preference Chips ──
-  int _selectedChipIndex = 0;
-
+  // ── Travel Preference Chips (display-only until filter is implemented) ──
   Widget _buildTravelChips(BuildContext context) {
     final chips = [
       (Icons.location_on, 'Popular'),
@@ -320,37 +304,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: chips.asMap().entries.map((entry) {
-        final i = entry.key;
-        final chip = entry.value;
-        final selected = i == _selectedChipIndex;
-        return GestureDetector(
-          onTap: () {
-            setState(() => _selectedChipIndex = i);
-            // Could filter AI picks or explore by preference
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: selected ? AppColors.brandBlue : const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(chip.$1, size: 16, color: selected ? Colors.white : const Color(0xFF374151)),
-                const SizedBox(width: 6),
-                Text(
-                  chip.$2,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: selected ? Colors.white : const Color(0xFF374151),
-                  ),
+      children: chips.map((chip) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDarkMode : AppColors.searchBg,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(chip.$1, size: 16, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary),
+              const SizedBox(width: 6),
+              Text(
+                chip.$2,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       }).toList(),
@@ -358,24 +333,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildUpcomingTripReal(BuildContext context, List<Trip> trips) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (trips.isEmpty) {
       return GestureDetector(
         onTap: () => context.push('/ai-chat'),
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? AppColors.cardDarkMode : Colors.white,
             borderRadius: BorderRadius.circular(16),
             boxShadow: const [_cardShadow],
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: isDark ? AppColors.borderDark : AppColors.border),
           ),
           child: Column(
             children: [
               Icon(Icons.flight_takeoff, size: 40, color: AppColors.brandBlue.withValues(alpha: 0.5)),
               const SizedBox(height: 8),
-              const Text('No trips yet', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              Text('No trips yet', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w600, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary)),
               const SizedBox(height: 4),
-              const Text('Tap to plan your first trip with AI!', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              Text('Tap to plan your first trip with AI!', style: GoogleFonts.dmSans(fontSize: 13, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary)),
             ],
           ),
         ),
@@ -411,10 +387,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: isDark ? AppColors.cardDarkMode : Colors.white,
+          borderRadius: BorderRadius.circular(24),
           boxShadow: const [_cardShadow],
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: isDark ? AppColors.borderDark : AppColors.border),
         ),
         child: Row(
           children: [
@@ -435,10 +411,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 children: [
                   Text(
                     upcoming.title,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w600, color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimaryDark : AppColors.textPrimary),
                   ),
                   const SizedBox(height: 2),
-                  Text(dateStr, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  Text(dateStr, style: GoogleFonts.dmSans(fontSize: 12, color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondary)),
                   if (progress > 0) ...[
                     const SizedBox(height: 8),
                     ClipRRect(
@@ -451,13 +427,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ),
                     ),
                     const SizedBox(height: 3),
-                    Text('${(progress * 100).toInt()}% budget used', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    Text('${(progress * 100).toInt()}% budget used', style: GoogleFonts.dmSans(fontSize: 12, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary)),
                   ],
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+            Icon(Icons.chevron_right, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary, size: 20),
           ],
         ),
       ),
@@ -465,13 +441,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildUpcomingTripSkeleton() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: isDark ? AppColors.cardDarkMode : Colors.white,
+        borderRadius: BorderRadius.circular(24),
         boxShadow: const [_cardShadow],
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: isDark ? AppColors.borderDark : AppColors.border),
       ),
       child: Row(
         children: [
@@ -498,13 +475,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       return _buildBudget(context); // fallback
     }
     final pct = (totalSpent / totalBudget).clamp(0.0, 1.0);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: () => context.push('/budget'),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppColors.cardDarkMode : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: const [_cardShadow],
           border: Border.all(color: AppColors.border),
@@ -519,9 +497,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Total Budget', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                Text('Total Budget', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary)),
                 const SizedBox(height: 2),
-                Text('฿${totalSpent.toStringAsFixed(0)} / ฿${totalBudget.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                Text('฿${_fmtNum(totalSpent)} / ฿${_fmtNum(totalBudget)}', style: TextStyle(fontSize: 12, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary)),
               ]),
             ),
             SizedBox(
@@ -532,7 +510,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ]),
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+            Icon(Icons.chevron_right, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary, size: 20),
           ],
         ),
       ),
@@ -540,9 +518,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildBudgetSkeleton() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [_cardShadow], border: Border.all(color: AppColors.border)),
+      decoration: BoxDecoration(color: isDark ? AppColors.cardDarkMode : Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [_cardShadow], border: Border.all(color: isDark ? AppColors.borderDark : AppColors.border)),
       child: Row(children: [
         Container(width: 40, height: 40, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(12))),
         const SizedBox(width: 12),
@@ -556,11 +535,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildErrorCard(String message, VoidCallback onRetry) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [_cardShadow], border: Border.all(color: AppColors.border)),
+      decoration: BoxDecoration(color: isDark ? AppColors.cardDarkMode : Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [_cardShadow], border: Border.all(color: isDark ? AppColors.borderDark : AppColors.border)),
       child: Column(children: [
-        Text(message, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+        Text(message, style: TextStyle(fontSize: 14, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary)),
         const SizedBox(height: 8),
         TextButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh, size: 16), label: const Text('Retry')),
       ]),
@@ -570,6 +550,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   String _monthDay(DateTime d) {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return '${months[d.month - 1]} ${d.day}';
+  }
+
+  /// Format number with comma separators (e.g. 6500 → "6,500")
+  static String _fmtNum(num n) {
+    final s = n.toInt().toString();
+    final b = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) b.write(',');
+      b.write(s[i]);
+    }
+    return b.toString();
   }
 
   Widget _buildEmailVerificationBanner() {
@@ -615,28 +606,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // ── Header: clean white minimal with embedded search ──
   Widget _buildHeader(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDarkMode : Colors.white,
       ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(20, topPadding + 10, 20, 16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Logo row
             Row(
               children: [
-                SvgPicture.asset('assets/images/logo.svg', height: 48, colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn)),
+                SvgPicture.asset('assets/images/logo.svg', height: 48, colorFilter: ColorFilter.mode(isDark ? Colors.white : Colors.black, BlendMode.srcIn)),
                 const Spacer(),
-                // Notification bell
-                IconButton(
-                  icon: const Icon(Icons.notifications_outlined,
-                      color: AppColors.textSecondary, size: 22),
-                  onPressed: () => context.push('/notifications'),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 36,
-                    minHeight: 36,
+                // Notification bell — 44px touch target
+                Semantics(
+                  label: 'Notifications',
+                  button: true,
+                  child: IconButton(
+                    icon: Icon(Icons.notifications_outlined,
+                        color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary, size: 22),
+                    onPressed: () => context.push('/notifications'),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -645,24 +642,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   child: Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.border, width: 1.5),
+                      border: Border.all(color: isDark ? AppColors.borderDark : AppColors.border, width: 1.5),
                     ),
-                    child: const CircleAvatar(
+                    child: CircleAvatar(
                       radius: 18,
-                      backgroundColor: Color(0xFFF3F4F6),
-                      child: Icon(Icons.person, color: AppColors.textSecondary, size: 20),
+                      backgroundColor: isDark ? AppColors.cardDarkMode : AppColors.searchBg,
+                      child: Icon(Icons.person, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary, size: 20),
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
+            // Greeting moved into header for better visual hierarchy
+            Text(
+              '${_greeting()}, ${_getUserName()}',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Where to next?',
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 12),
             // Search bar embedded in header
             Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               decoration: BoxDecoration(
-                color: AppColors.searchBackground,
+                color: isDark ? AppColors.cardDarkMode : AppColors.searchBackground,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -675,13 +690,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         ? TextField(
                             controller: _tripController,
                             autofocus: true,
-                            style: const TextStyle(
-                                fontSize: 16, color: AppColors.textPrimary),
-                            decoration: const InputDecoration(
+                            style: TextStyle(
+                                fontSize: 16, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary),
+                            decoration: InputDecoration(
                               hintText: 'Describe your dream trip...',
                               hintStyle: TextStyle(
                                   fontSize: 16,
-                                  color: AppColors.textSecondary),
+                                  color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary),
                               border: InputBorder.none,
                               enabledBorder: InputBorder.none,
                               focusedBorder: InputBorder.none,
@@ -705,8 +720,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: _displayText.isEmpty
-                                        ? AppColors.textSecondary
-                                        : AppColors.textPrimary,
+                                        ? (isDark ? AppColors.textSecondaryDark : AppColors.textSecondary)
+                                        : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimary),
                                   ),
                                 ),
                                 if (_displayText.isNotEmpty)
@@ -717,21 +732,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   ),
                   const SizedBox(width: 8),
                   if (_isInputActive && _tripController.text.trim().isNotEmpty)
-                    GestureDetector(
-                      onTap: () => _submitTrip(context),
-                      child: Container(
-                        width: 34, height: 34,
-                        decoration: BoxDecoration(
-                          color: AppColors.brandBlue,
-                          borderRadius: BorderRadius.circular(10),
+                    Semantics(
+                      label: 'Send trip query',
+                      button: true,
+                      child: GestureDetector(
+                        onTap: () => _submitTrip(context),
+                        child: SizedBox(
+                          width: 44, height: 44,
+                          child: Center(
+                            child: Container(
+                              width: 34, height: 34,
+                              decoration: BoxDecoration(
+                                color: AppColors.brandBlue,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.send, color: Colors.white, size: 16),
+                            ),
+                          ),
                         ),
-                        child: const Icon(Icons.send, color: Colors.white, size: 16),
                       ),
                     )
                   else
-                    GestureDetector(
-                      onTap: () => context.push('/ai-chat'),
-                      child: const Icon(Icons.mic_none, color: Color(0xFF9CA3AF), size: 22),
+                    Semantics(
+                      label: 'Voice search',
+                      button: true,
+                      child: GestureDetector(
+                        onTap: () => context.push('/ai-chat'),
+                        child: SizedBox(
+                          width: 44, height: 44,
+                          child: Center(
+                            child: Icon(Icons.mic_none, color: isDark ? AppColors.textSecondaryDark : AppColors.iconInactive, size: 22),
+                          ),
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -744,15 +777,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   // ── Budget Card (fallback) ──
   Widget _buildBudget(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () => context.push('/budget'),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppColors.cardDarkMode : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: const [_cardShadow],
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: isDark ? AppColors.borderDark : AppColors.border),
         ),
         child: Row(
           children: [
@@ -771,19 +805,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'No budget data yet',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'Create a trip to start tracking',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 12, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+            Icon(Icons.chevron_right, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary, size: 20),
           ],
         ),
       ),
@@ -792,17 +826,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   // ── AI Picks Header ──
   Widget _buildAiPicksHeader(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
           children: [
-            const Text(
+            Text(
               'AI Picks for You',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                letterSpacing: isDark ? 0.2 : 0,
               ),
             ),
             const SizedBox(width: 8),
@@ -865,7 +901,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,
         itemCount: picks.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (_, i) {
           final p = picks[i];
           return _AiPickCard(
@@ -900,17 +936,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(children: [
-              Icon(Icons.auto_awesome, size: 18, color: AppColors.brandBlue),
-              SizedBox(width: 6),
+            Row(children: [
+              const Icon(Icons.auto_awesome, size: 18, color: AppColors.brandBlue),
+              const SizedBox(width: 6),
               Text('Tailored for You',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimaryDark : AppColors.textPrimary)),
             ]),
             const SizedBox(height: 8),
             if (result.recommendation != null)
               Text(result.recommendation!,
-                  style: const TextStyle(
-                      fontSize: 13, color: AppColors.textSecondary, height: 1.5)),
+                  style: TextStyle(
+                      fontSize: 13, color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondary, height: 1.5)),
             if (items.isNotEmpty) ...[
               const SizedBox(height: 8),
               ...items.map((item) => Padding(
@@ -923,13 +959,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('${item.label}: ${item.value}',
-                                style: const TextStyle(
-                                    fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+                                style: TextStyle(
+                                    fontSize: 13, fontWeight: FontWeight.w500, color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimaryDark : AppColors.textPrimary)),
                             if (item.detail != null)
                               Text(item.detail!,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 11,
-                                      color: AppColors.textSecondary)),
+                                      color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondary)),
                           ],
                         ),
                       ),
@@ -949,8 +985,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(result.structured!.tip!,
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary)),
+                        style: TextStyle(
+                            fontSize: 12, color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondary)),
                   ),
                 ]),
               ),
@@ -1125,51 +1161,60 @@ class _QuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
+  final bool isPrimary;
 
   const _QuickAction({
     required this.icon,
     required this.label,
     this.onTap,
+    this.isPrimary = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 72,
-        child: Column(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.border),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: SizedBox(
+          width: 72,
+          child: Column(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: isPrimary ? AppColors.brandBlue : (isDark ? AppColors.brandBlue.withValues(alpha: 0.12) : AppColors.brandBlue.withValues(alpha: 0.08)),
+                  borderRadius: BorderRadius.circular(14),
+                  border: isPrimary ? null : Border.all(color: isDark ? AppColors.brandBlue.withValues(alpha: 0.2) : AppColors.brandBlue.withValues(alpha: 0.15)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isPrimary
+                          ? AppColors.brandBlue.withValues(alpha: 0.3)
+                          : Colors.black.withValues(alpha: 0.04),
+                      blurRadius: isPrimary ? 8 : 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: isPrimary ? Colors.white : AppColors.brandBlue, size: 22),
               ),
-              child: Icon(icon, color: AppColors.brandBlue, size: 22),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textSecondary,
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isPrimary ? FontWeight.w600 : FontWeight.w500,
+                  color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

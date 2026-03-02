@@ -116,11 +116,11 @@ class TripService {
           'destination': destination,
           'itinerary_data': itineraryData,
           'status': 'completed',
-          if (startDate != null) 'start_date': startDate,
-          if (endDate != null) 'end_date': endDate,
-          if (budgetTotal != null) 'budget_total': budgetTotal,
-          if (budgetCurrency != null) 'budget_currency': budgetCurrency,
-          if (coverImage != null) 'cover_image': coverImage,
+          'start_date': ?startDate,
+          'end_date': ?endDate,
+          'budget_total': ?budgetTotal,
+          'budget_currency': ?budgetCurrency,
+          'cover_image': ?coverImage,
         })
         .select()
         .single();

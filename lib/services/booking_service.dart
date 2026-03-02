@@ -80,8 +80,8 @@ class BookingService {
         'search-booking',
         body: {
           'placeName': placeName,
-          if (placeAddress != null) 'placeAddress': placeAddress,
-          if (activityType != null) 'activityType': activityType,
+          'placeAddress': ?placeAddress,
+          'activityType': ?activityType,
         },
       );
 
@@ -139,6 +139,7 @@ class BookingService {
   }
 
   /// Load affiliate marker from edge function.
+  // ignore: unused_element
   Future<String?> _getMarker() async {
     if (_affiliateMarker != null) return _affiliateMarker;
     try {

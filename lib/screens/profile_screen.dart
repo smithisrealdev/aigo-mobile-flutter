@@ -8,7 +8,6 @@ import '../widgets/plan_card.dart';
 import '../widgets/payment_history_list.dart';
 import '../services/auth_service.dart';
 import '../services/trip_service.dart';
-import '../services/billing_service.dart';
 import '../services/rate_limit_service.dart';
 import '../services/saved_search_service.dart';
 import '../config/supabase_config.dart';
@@ -22,7 +21,6 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _notificationsEnabled = true;
-  bool _darkModeEnabled = false;
   bool _loggingOut = false;
 
   final Map<String, bool> _preferences = {
@@ -65,7 +63,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final pad = MediaQuery.of(context).padding;
-    final sw = MediaQuery.of(context).size.width;
     final tripsAsync = ref.watch(tripsProvider);
 
     final userName = _getUserName();
@@ -233,6 +230,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _menuItem(Icons.receipt_long_outlined, 'Payment History', onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PaymentHistoryScreen()));
                 }),
+                const SizedBox(height: 8),
+
+                // User Journey
+                _menuItem(Icons.auto_awesome, 'AiGo Journey 2026', onTap: () => context.push('/user-journey')),
                 const SizedBox(height: 20),
 
                 // Travel Preferences section
@@ -340,7 +341,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         final remaining = quota['remaining'] as int? ?? 0;
         final tier = quota['tier'] as String? ?? 'free';
         final pct = monthlyLimit > 0 ? (currentUsage / monthlyLimit).clamp(0.0, 1.0) : 0.0;
-        final barColor = pct < 0.6 ? AppColors.success : (pct < 0.85 ? AppColors.warning : AppColors.error);
 
         return Container(
           padding: const EdgeInsets.all(14),
@@ -538,7 +538,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final searchesAsync = ref.watch(savedFlightSearchesProvider);
     return searchesAsync.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (searches) {
         if (searches.isEmpty) return const SizedBox.shrink();
         return Column(

@@ -60,7 +60,7 @@ class DestinationImageGallery extends ConsumerWidget {
         mainAxisSpacing: spacing,
       ),
       itemCount: 4,
-      itemBuilder: (_, __) => Shimmer.fromColors(
+      itemBuilder: (_, _) => Shimmer.fromColors(
         baseColor: Colors.grey.shade300,
         highlightColor: Colors.grey.shade100,
         child: Container(
@@ -94,12 +94,12 @@ class _ImageTile extends StatelessWidget {
         child: CachedNetworkImage(
           imageUrl: image.imageUrl,
           fit: BoxFit.cover,
-          placeholder: (_, __) => Shimmer.fromColors(
+          placeholder: (_, _) => Shimmer.fromColors(
             baseColor: Colors.grey.shade300,
             highlightColor: Colors.grey.shade100,
             child: Container(color: Colors.white),
           ),
-          errorWidget: (_, __, ___) => Container(
+          errorWidget: (_, _, _) => Container(
             color: const Color(0xFFE6E6E6),
             child: const Icon(Icons.image_not_supported, color: Colors.grey),
           ),

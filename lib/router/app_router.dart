@@ -33,6 +33,7 @@ import '../screens/activity_feed_screen.dart';
 import '../screens/referral_screen.dart';
 import '../screens/reviews_screen.dart';
 import '../screens/destination_guide_screen.dart';
+import '../screens/user_journey_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../models/models.dart';
 
@@ -63,19 +64,19 @@ final appRouter = GoRouter(
     return null;
   },
   routes: [
-    GoRoute(path: '/', builder: (_, __) => const SplashScreen()),
-    GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
-    GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+    GoRoute(path: '/', builder: (_, _) => const SplashScreen()),
+    GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
+    GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
     ShellRoute(
       navigatorKey: _shellNavigatorKey,
       builder: (context, state, child) => ScaffoldWithNav(child: child),
       routes: [
-        GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
-        GoRoute(path: '/explore', builder: (_, __) => const ExploreScreen()),
+        GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+        GoRoute(path: '/explore', builder: (_, _) => const ExploreScreen()),
         GoRoute(path: '/ai-chat', builder: (_, state) => AIChatScreen(initialMessage: state.extra as String?)),
-        GoRoute(path: '/trips', builder: (_, __) => const TripsListScreen()),
-        GoRoute(path: '/saved', builder: (_, __) => const SavedPlacesScreen()),
-        GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+        GoRoute(path: '/trips', builder: (_, _) => const TripsListScreen()),
+        GoRoute(path: '/saved', builder: (_, _) => const SavedPlacesScreen()),
+        GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
       ],
     ),
     GoRoute(path: '/itinerary', pageBuilder: (_, state) => CustomTransitionPage(
@@ -94,26 +95,27 @@ final appRouter = GoRouter(
       key: state.pageKey, child: const BudgetScreen(),
       transitionsBuilder: (c, a, s, child) => FadeTransition(opacity: a, child: child),
     )),
-    GoRoute(path: '/booking', builder: (_, __) => const BookingScreen()),
-    GoRoute(path: '/flight-search', builder: (_, __) => const FlightSearchScreen()),
-    GoRoute(path: '/hotel-search', builder: (_, __) => const HotelSearchScreen()),
+    GoRoute(path: '/booking', builder: (_, _) => const BookingScreen()),
+    GoRoute(path: '/flight-search', builder: (_, _) => const FlightSearchScreen()),
+    GoRoute(path: '/hotel-search', builder: (_, _) => const HotelSearchScreen()),
     GoRoute(path: '/trip-summary', pageBuilder: (_, state) => CustomTransitionPage(
       key: state.pageKey, child: TripSummaryScreen(trip: state.extra as Trip?),
       transitionsBuilder: (c, a, s, child) => FadeTransition(opacity: a, child: child),
     )),
-    GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
-    GoRoute(path: '/saved-places', builder: (_, __) => const SavedPlacesScreen()),
-    GoRoute(path: '/map-view', builder: (_, __) => const MapViewScreen()),
-    GoRoute(path: '/search-results', builder: (_, __) => const SearchResultsScreen()),
-    GoRoute(path: '/pricing', builder: (_, __) => const PricingScreen()),
-    GoRoute(path: '/account-settings', builder: (_, __) => const AccountSettingsScreen()),
-    GoRoute(path: '/progress', builder: (_, __) => const ProgressScreen()),
-    GoRoute(path: '/dashboard-stats', builder: (_, __) => const DashboardStatsScreen()),
+    GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
+    GoRoute(path: '/saved-places', builder: (_, _) => const SavedPlacesScreen()),
+    GoRoute(path: '/map-view', builder: (_, _) => const MapViewScreen()),
+    GoRoute(path: '/search-results', builder: (_, _) => const SearchResultsScreen()),
+    GoRoute(path: '/pricing', builder: (_, _) => const PricingScreen()),
+    GoRoute(path: '/account-settings', builder: (_, _) => const AccountSettingsScreen()),
+    GoRoute(path: '/progress', builder: (_, _) => const ProgressScreen()),
+    GoRoute(path: '/dashboard-stats', builder: (_, _) => const DashboardStatsScreen()),
     GoRoute(path: '/shared-trip/:token', builder: (_, state) => SharedTripScreen(token: state.pathParameters['token']!)),
-    GoRoute(path: '/expense-splitter', builder: (_, __) => const ExpenseSplitterScreen()),
-    GoRoute(path: '/budget-categories', builder: (_, __) => const BudgetCategoriesScreen()),
-    GoRoute(path: '/activity-feed', builder: (_, __) => const ActivityFeedScreen()),
-    GoRoute(path: '/referral', builder: (_, __) => const ReferralScreen()),
+    GoRoute(path: '/expense-splitter', builder: (_, _) => const ExpenseSplitterScreen()),
+    GoRoute(path: '/budget-categories', builder: (_, _) => const BudgetCategoriesScreen()),
+    GoRoute(path: '/activity-feed', builder: (_, _) => const ActivityFeedScreen()),
+    GoRoute(path: '/referral', builder: (_, _) => const ReferralScreen()),
+    GoRoute(path: '/user-journey', builder: (_, _) => const UserJourneyScreen()),
     GoRoute(path: '/reviews', builder: (_, state) {
       final extra = state.extra as Map<String, String?>? ?? {};
       return ReviewsScreen(

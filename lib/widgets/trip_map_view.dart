@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 /// Category-based marker colors (Wanderlog style)
 const _categoryColors = <String, Color>{
@@ -93,10 +92,10 @@ class TripMapViewState extends State<TripMapView>
   }
 
   @override
-  void didUpdateWidget(covariant TripMapView old) {
-    super.didUpdateWidget(old);
-    if (old.activities != widget.activities ||
-        old.selectedDayIndex != widget.selectedDayIndex) {
+  void didUpdateWidget(covariant TripMapView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.activities != widget.activities ||
+        oldWidget.selectedDayIndex != widget.selectedDayIndex) {
       _selected = null;
       _cardAnim.reset();
       _rebuild();
@@ -123,7 +122,9 @@ class TripMapViewState extends State<TripMapView>
   /// At zoom >= 13, show all individual pins.
   List<_MarkerItem> _clusterActivities() {
     final acts = _visible;
-    if (acts.isEmpty) return [];
+    if (acts.isEmpty) {
+      return [];
+    }
     if (_currentZoom >= 13 || acts.length <= 8) {
       // No clustering needed — show all pins individually
       return acts.map((a) => _MarkerItem.single(a)).toList();
@@ -166,7 +167,7 @@ class TripMapViewState extends State<TripMapView>
           position: LatLng(item.lat, item.lng),
           icon: _iconCache[key]!,
           anchor: const Offset(0.5, 0.5),
-          zIndex: 1000,
+          zIndexInt: 1000,
           onTap: () async {
             // Zoom in to expand cluster
             if (_mapCtrl.isCompleted) {
@@ -182,14 +183,14 @@ class TripMapViewState extends State<TripMapView>
         final c = _categoryColors[a.category] ?? dayColors[a.dayIndex % dayColors.length];
         final actIdx = widget.activities.indexWhere((x) => x.lat == a.lat && x.lng == a.lng && x.name == a.name);
         final isActive = actIdx >= 0 && actIdx == _activeIndex;
-        final key = isActive ? 'active_${c.value}_${a.numberInDay}' : '${c.value}_${a.numberInDay}';
+        final key = isActive ? 'active_${c.toARGB32()}_${a.numberInDay}' : '${c.toARGB32()}_${a.numberInDay}';
         _iconCache[key] ??= isActive ? await _makeActiveIcon(a.numberInDay, c) : await _makeIcon(a.numberInDay, c);
         m.add(Marker(
           markerId: MarkerId('${a.dayIndex}_${a.numberInDay}'),
           position: LatLng(a.lat, a.lng),
           icon: _iconCache[key]!,
           anchor: const Offset(0.5, 1.0),
-          zIndex: isActive ? 9999 : items.length - i.toDouble(),
+          zIndexInt: isActive ? 9999 : items.length - i,
           onTap: () => _selectPin(a),
         ));
       }
@@ -410,7 +411,9 @@ class TripMapViewState extends State<TripMapView>
     final poly = <Polyline>{};
     for (final e in byDay.entries) {
       final day = e.value;
-      if (day.length < 2) continue;
+      if (day.length < 2) {
+        continue;
+      }
       final color = dayColors[e.key % dayColors.length];
       final origin = '${day.first.lat},${day.first.lng}';
       final dest = '${day.last.lat},${day.last.lng}';
@@ -438,7 +441,9 @@ class TripMapViewState extends State<TripMapView>
         route ??= [];
         _routeCache[cacheKey] = route;
       }
-      if (route.isEmpty) route = day.map((a) => LatLng(a.lat, a.lng)).toList();
+      if (route.isEmpty) {
+        route = day.map((a) => LatLng(a.lat, a.lng)).toList();
+      }
       poly.add(Polyline(
         polylineId: PolylineId('day_${e.key}'),
         points: route,
@@ -452,10 +457,14 @@ class TripMapViewState extends State<TripMapView>
 
   // ─── Camera ──────────────────────────────────────────────
   Future<void> _fitBounds() async {
-    if (!_mapCtrl.isCompleted) return;
+    if (!_mapCtrl.isCompleted) {
+      return;
+    }
     final ctrl = await _mapCtrl.future;
     final acts = _visible;
-    if (acts.isEmpty) return;
+    if (acts.isEmpty) {
+      return;
+    }
     if (acts.length == 1) {
       ctrl.animateCamera(
           CameraUpdate.newLatLngZoom(LatLng(acts[0].lat, acts[0].lng), 15));
@@ -464,10 +473,18 @@ class TripMapViewState extends State<TripMapView>
     var minLat = acts[0].lat, maxLat = acts[0].lat;
     var minLng = acts[0].lng, maxLng = acts[0].lng;
     for (final a in acts) {
-      if (a.lat < minLat) minLat = a.lat;
-      if (a.lat > maxLat) maxLat = a.lat;
-      if (a.lng < minLng) minLng = a.lng;
-      if (a.lng > maxLng) maxLng = a.lng;
+      if (a.lat < minLat) {
+        minLat = a.lat;
+      }
+      if (a.lat > maxLat) {
+        maxLat = a.lat;
+      }
+      if (a.lng < minLng) {
+        minLng = a.lng;
+      }
+      if (a.lng > maxLng) {
+        maxLng = a.lng;
+      }
     }
     ctrl.animateCamera(CameraUpdate.newLatLngBounds(
       LatLngBounds(
@@ -479,7 +496,9 @@ class TripMapViewState extends State<TripMapView>
 
   LatLng get _center {
     final a = _visible;
-    if (a.isEmpty) return const LatLng(13.7563, 100.5018);
+    if (a.isEmpty) {
+      return const LatLng(13.7563, 100.5018);
+    }
     return LatLng(
       a.map((x) => x.lat).reduce((a, b) => a + b) / a.length,
       a.map((x) => x.lng).reduce((a, b) => a + b) / a.length,
@@ -494,8 +513,8 @@ class TripMapViewState extends State<TripMapView>
         initialCameraPosition: CameraPosition(target: _center, zoom: 12),
         markers: _markers,
         polylines: _polylines,
+        style: _mapStyle,
         onMapCreated: (c) {
-          c.setMapStyle(_mapStyle);
           if (!_mapCtrl.isCompleted) _mapCtrl.complete(c);
           Future.delayed(const Duration(milliseconds: 500), _fitBounds);
         },
@@ -546,7 +565,7 @@ class TripMapViewState extends State<TripMapView>
       if (_selected != null && !widget.hideInfoCard)
         AnimatedBuilder(
           animation: _cardAnim,
-          builder: (_, __) {
+          builder: (_, _) {
             final slide = Tween<double>(begin: 80, end: 0)
                 .animate(CurvedAnimation(parent: _cardAnim, curve: Curves.easeOutBack))
                 .value;
@@ -597,7 +616,7 @@ class TripMapViewState extends State<TripMapView>
               if (a.rating != null) ...[
                 const Icon(Icons.star, size: 14, color: Color(0xFFFBBC04)),
                 const SizedBox(width: 3),
-                Text('${a.rating!.toStringAsFixed(1)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A))),
+                Text(a.rating!.toStringAsFixed(1), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A))),
                 const SizedBox(width: 6),
                 Container(
                   width: 18, height: 18,
@@ -648,14 +667,6 @@ class TripMapViewState extends State<TripMapView>
       ),
     );
   }
-
-  Widget _dot() => Padding(padding: const EdgeInsets.symmetric(horizontal: 5), child: Text('·', style: TextStyle(color: Colors.grey.shade500, fontSize: 14)));
-  Widget _chip(String text, Color c) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(color: c.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
-    child: Text(text, style: TextStyle(color: c, fontSize: 11, fontWeight: FontWeight.w700)),
-  );
-  Widget _photoPlaceholder(Color c) => Container(color: c.withValues(alpha: 0.15), child: Icon(Icons.place, color: c, size: 22));
 }
 
 // ─── Cluster helper ────────────────────────────────────────

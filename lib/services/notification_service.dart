@@ -76,6 +76,7 @@ class NotificationService {
   }
 
   /// Store FCM token in Supabase user metadata.
+  // ignore: unused_element
   Future<void> _storeFcmToken(String token) async {
     try {
       final user = SupabaseConfig.client.auth.currentUser;
@@ -108,6 +109,7 @@ class NotificationService {
   }
 
   /// Handle notification tap — navigate based on type.
+  // ignore: unused_element
   void _handleNotificationTap(dynamic message) {
     // When Firebase is configured, message will be RemoteMessage:
     //
@@ -139,9 +141,11 @@ class NotificationService {
   }
 
   /// Show a local notification (foreground).
+  // ignore: unused_element
   Future<void> _showLocalNotification({
     required String title,
     required String body,
+    // ignore: unused_element_parameter
     String? payload,
   }) async {
     // When flutter_local_notifications is configured:

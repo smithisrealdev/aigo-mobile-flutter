@@ -249,7 +249,7 @@ class _FlightAlertTile extends ConsumerWidget {
         ),
         Switch(
           value: alert.isActive,
-          activeColor: AppColors.brandBlue,
+          activeThumbColor: AppColors.brandBlue,
           onChanged: (v) async {
             await PriceAlertService.instance
                 .toggleFlightAlert(alert.id, v);
@@ -294,7 +294,7 @@ class _HotelAlertTile extends ConsumerWidget {
         ),
         Switch(
           value: alert.isActive,
-          activeColor: AppColors.brandBlue,
+          activeThumbColor: AppColors.brandBlue,
           onChanged: (v) async {
             await PriceAlertService.instance
                 .toggleHotelAlert(alert.id, v);

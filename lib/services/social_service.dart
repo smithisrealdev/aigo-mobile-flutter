@@ -107,7 +107,7 @@ class SocialService {
         'place-mentions-multi',
         body: {
           'placeName': placeName,
-          if (placeAddress != null) 'placeAddress': placeAddress,
+          'placeAddress': ?placeAddress,
         },
       );
 
@@ -132,7 +132,7 @@ class SocialService {
         'place-mentions',
         body: {
           'placeName': placeName,
-          if (platform != null) 'platform': platform,
+          'platform': ?platform,
         },
       );
 
@@ -158,7 +158,7 @@ class SocialService {
         'social-media-search',
         body: {
           'query': query,
-          if (platform != null) 'platform': platform,
+          'platform': ?platform,
           'limit': limit,
         },
       );

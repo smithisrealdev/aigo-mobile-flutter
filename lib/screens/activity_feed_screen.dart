@@ -100,7 +100,7 @@ class ActivityFeedScreen extends ConsumerWidget {
               return SliverFillRemaining(
                 child: Center(
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.history, size: 48, color: AppColors.brandBlue.withOpacity(0.3)),
+                    Icon(Icons.history, size: 48, color: AppColors.brandBlue.withValues(alpha: 0.3)),
                     const SizedBox(height: 12),
                     Text('No activity yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600,
                         color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary)),
@@ -163,12 +163,12 @@ class _TimelineItem extends StatelessWidget {
             decoration: BoxDecoration(
               color: isDark ? AppColors.cardDarkMode : Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
             ),
             child: Row(children: [
               Container(
                 width: 40, height: 40,
-                decoration: BoxDecoration(color: item.color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: item.color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                 child: Icon(item.icon, size: 20, color: item.color),
               ),
               const SizedBox(width: 12),

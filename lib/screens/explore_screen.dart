@@ -291,7 +291,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         itemCount: _featured.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        separatorBuilder: (_, _) => const SizedBox(width: 14),
         itemBuilder: (_, i) {
           final item = _featured[i];
           return GestureDetector(
@@ -365,7 +365,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               child: Image.network(t['image']!, height: 100, width: double.infinity, fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(height: 100, color: AppColors.border)),
+                errorBuilder: (_, _, _) => Container(height: 100, color: AppColors.border)),
             ),
             Positioned(top: 8, right: 8, child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -397,7 +397,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         padding: EdgeInsets.all(20),
         child: Center(child: CircularProgressIndicator(color: AppColors.brandBlue)),
       ),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (guides) {
         if (guides.isEmpty) return const SizedBox.shrink();
         return SizedBox(
@@ -406,7 +406,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             scrollDirection: Axis.horizontal,
             itemCount: guides.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
+            separatorBuilder: (_, _) => const SizedBox(width: 14),
             itemBuilder: (context, i) => _buildGuideCard(guides[i]),
           ),
         );
@@ -444,8 +444,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   height: 90,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(height: 90, color: const Color(0xFFF3F4F6)),
-                  errorWidget: (_, __, ___) => Container(height: 90, color: const Color(0xFFF3F4F6), child: const Icon(Icons.image, color: AppColors.textSecondary)),
+                  placeholder: (_, _) => Container(height: 90, color: const Color(0xFFF3F4F6)),
+                  errorWidget: (_, _, _) => Container(height: 90, color: const Color(0xFFF3F4F6), child: const Icon(Icons.image, color: AppColors.textSecondary)),
                 )
               else
                 Container(height: 90, color: const Color(0xFFF3F4F6), child: const Icon(Icons.map, color: AppColors.textSecondary, size: 32)),

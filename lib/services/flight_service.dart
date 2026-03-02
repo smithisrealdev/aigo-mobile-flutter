@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/supabase_config.dart';
@@ -154,7 +153,7 @@ class SearchFlightsParams {
         'origin': origin,
         'destination': destination,
         'departureDate': departureDate,
-        if (returnDate != null) 'returnDate': returnDate,
+        'returnDate': ?returnDate,
         'adults': adults,
         'travelClass': travelClass,
       };

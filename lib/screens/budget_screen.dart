@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
 import '../theme/app_colors.dart';
 import '../services/trip_service.dart' hide tripExpensesProvider;
 import '../services/expense_service.dart';
 import '../services/exchange_rate_service.dart';
-import '../services/auth_service.dart';
 import '../models/models.dart';
-import '../config/supabase_config.dart';
 
 class BudgetScreen extends ConsumerStatefulWidget {
   const BudgetScreen({super.key});
@@ -107,7 +104,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: trips.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
                       itemBuilder: (_, i) {
                         final t = trips[i];
                         final selected = t.id == (selectedTrip?.id ?? '');
@@ -239,7 +236,7 @@ class _TripBudgetDetail extends ConsumerWidget {
           TextField(controller: amountCtrl, decoration: const InputDecoration(labelText: 'Amount (฿)'), keyboardType: TextInputType.number),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: category,
+            initialValue: category,
             items: ['food', 'accommodation', 'transport', 'activities', 'shopping', 'other'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
             onChanged: (v) => setDState(() => category = v ?? 'food'),
             decoration: const InputDecoration(labelText: 'Category'),
@@ -406,7 +403,7 @@ class _CurrencyConverterSheetState
           Row(children: [
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _from,
+                initialValue: _from,
                 items: _currencies
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),
@@ -433,7 +430,7 @@ class _CurrencyConverterSheetState
             ),
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _to,
+                initialValue: _to,
                 items: _currencies
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),

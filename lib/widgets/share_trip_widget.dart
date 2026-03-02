@@ -62,7 +62,7 @@ class _ShareTripWidgetState extends ConsumerState<ShareTripWidget> {
                   else
                     Switch.adaptive(
                       value: info.isPublic,
-                      activeColor: AppColors.brandBlue,
+                      activeThumbColor: AppColors.brandBlue,
                       onChanged: (val) => _toggleSharing(val),
                     ),
                 ],

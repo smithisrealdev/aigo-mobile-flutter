@@ -25,7 +25,7 @@ class TripMembersWidget extends ConsumerWidget {
 
     return membersAsync.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (members) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,7 +187,7 @@ class TripMemberAvatars extends ConsumerWidget {
     final membersAsync = ref.watch(tripMembersProvider(tripId));
     return membersAsync.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (members) {
         if (members.isEmpty) return const SizedBox.shrink();
         final show = members.take(3).toList();

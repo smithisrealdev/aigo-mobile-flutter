@@ -5,8 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:ui';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../theme/app_colors.dart';
 import '../widgets/trip_map_view.dart';
 import '../widgets/upgrade_dialog.dart';
@@ -18,13 +16,12 @@ import '../services/replan_service.dart';
 import '../services/permission_service.dart';
 import '../services/rate_limit_service.dart' as quota;
 import '../widgets/trip_checklist_widget.dart';
-import '../widgets/trip_reservations_widget.dart';
 import '../widgets/trip_members_widget.dart';
 import '../widgets/share_trip_widget.dart';
-import '../widgets/trip_alerts_widget.dart';
 import '../models/review_model.dart';
 import '../services/review_service.dart';
 import '../widgets/review_summary.dart';
+import '../services/image_search_service.dart';
 import '../widgets/review_list.dart';
 import '../widgets/activity_detail_sheet.dart';
 
@@ -42,14 +39,14 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   bool _isBookmarked = false;
   bool _regenerating = false;
   bool _replanning = false;
-  String _activeSection = 'itinerary';
-  bool _tipsExpanded = false;
   bool _mapMode = false;
   bool _cardCarouselMode = false;
-  final PageController _carouselController = PageController(viewportFraction: 0.88);
-  final DraggableScrollableController _sheetController = DraggableScrollableController();
-  final Map<String, String> _placePhotos = {};
-  static const _googleMapsKey = 'AIzaSyDvA2wmeqKw93M4v8b2Xm1uFWtIcCs46l0';
+  final PageController _carouselController = PageController(
+    viewportFraction: 0.88,
+  );
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
+  final Map<String, List<String>> _placePhotosGallery = {};
   final Set<int> _collapsedDays = {};
   final _mapKey = GlobalKey<TripMapViewState>();
   late AnimationController _staggerController;
@@ -59,42 +56,46 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   void initState() {
     super.initState();
     _staggerController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
     _staggerController.forward();
     _sheetController.addListener(_onSheetChanged);
     // Fetch place photos after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) => _fetchPlacePhotos());
   }
 
-  /// Fetch Google Places photos for activities missing images
+  /// Fetch images for activities missing images, getting up to 3 using ImageSearchService
   Future<void> _fetchPlacePhotos() async {
     for (final a in _allActivities) {
       final name = (a['name'] ?? a['title'] ?? '').toString();
       if (name.isEmpty) continue;
+
       final existingImg =
           (a['image'] ?? a['photo'] ?? a['image_url'] ?? a['imageUrl'] ?? '')
               .toString();
-      if (existingImg.isNotEmpty || _placePhotos.containsKey(name)) continue;
+
+      // We will fetch more photos if there isn't a gallery yet, even if there's 1 existing image,
+      // so we can build a gallery! But to save API calls, maybe only IF there are no photos at all OR we just want a gallery?
+      // Since it's a gallery, if it has no images, we definitely fetch it.
+      if (existingImg.isNotEmpty || _placePhotosGallery.containsKey(name))
+        continue;
 
       try {
-        final q = Uri.encodeComponent('$name ${_tripDestination}');
-        final searchUrl = Uri.parse(
-            'https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=$q&inputtype=textquery&fields=photos&key=$_googleMapsKey');
-        final resp = await http.get(searchUrl);
-        final data = jsonDecode(resp.body);
-        final candidates = data['candidates'] as List? ?? [];
-        if (candidates.isNotEmpty) {
-          final photos = candidates[0]['photos'] as List? ?? [];
-          if (photos.isNotEmpty) {
-            final ref = photos[0]['photo_reference'];
-            final photoUrl =
-                'https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=$ref&key=$_googleMapsKey';
-            _placePhotos[name] = photoUrl;
-          }
+        final query = '$name $_tripDestination';
+        final urls = await ImageSearchService.instance.searchImageGallery(
+          query,
+          limit: 3,
+        );
+
+        if (urls.isNotEmpty) {
+          _placePhotosGallery[name] = urls;
+          if (mounted) setState(() {});
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Failed to fetch gallery for $name: $e');
+      }
     }
-    if (mounted && _placePhotos.isNotEmpty) setState(() {});
   }
 
   @override
@@ -121,15 +122,13 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   // ─── Data helpers ───
   Trip? get _trip => widget.trip;
 
-  Map<String, dynamic>? get _travelIntel =>
-      _trip?.itineraryData?['travelIntel'] as Map<String, dynamic>?;
-
   List<Map<String, dynamic>> get _days {
     final data = _trip?.itineraryData;
-    if (data == null)
+    if (data == null) {
       return [
-        {'title': 'Day 1', 'date': '', 'activities': []}
+        {'title': 'Day 1', 'date': '', 'activities': []},
       ];
+    }
     final daysList = data['days'] ?? data['itinerary']?['days'];
     if (daysList is List && daysList.isNotEmpty) {
       return daysList
@@ -137,7 +136,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           .toList();
     }
     return [
-      {'title': 'Day 1', 'date': '', 'activities': []}
+      {'title': 'Day 1', 'date': '', 'activities': []},
     ];
   }
 
@@ -145,13 +144,15 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     if (dayIndex >= _days.length) return [];
     final day = _days[dayIndex];
     final acts = day['activities'] ?? day['places'] ?? [];
-    if (acts is List)
+    if (acts is List) {
       return acts
           .map((a) => a is Map<String, dynamic> ? a : <String, dynamic>{})
           .toList();
+    }
     return [];
   }
 
+  // ignore: unused_element
   List<Map<String, dynamic>> get _currentActivities =>
       _selectedDay < 0 ? _allActivities : _activitiesForDay(_selectedDay);
 
@@ -161,7 +162,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       final acts = day['activities'] ?? day['places'] ?? [];
       if (acts is List) {
         all.addAll(
-            acts.map((a) => a is Map<String, dynamic> ? a : <String, dynamic>{}));
+          acts.map((a) => a is Map<String, dynamic> ? a : <String, dynamic>{}),
+        );
       }
     }
     return all;
@@ -179,26 +181,37 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       for (final a in acts) {
         if (a is! Map<String, dynamic>) continue;
         final coords = a['coordinates'] as Map<String, dynamic>?;
-        final lat = (a['lat'] as num?)?.toDouble() ??
+        final lat =
+            (a['lat'] as num?)?.toDouble() ??
             (coords?['lat'] as num?)?.toDouble();
-        final lng = (a['lng'] as num?)?.toDouble() ??
+        final lng =
+            (a['lng'] as num?)?.toDouble() ??
             (coords?['lng'] as num?)?.toDouble();
         if (lat == null || lng == null) continue;
         numInDay++;
         final name = (a['name'] ?? a['title'] ?? '').toString();
-        final imgUrl = (a['image'] ?? a['photo'] ?? a['image_url'] ?? a['imageUrl'] ?? '').toString();
-        result.add(MapActivity(
-          name: name,
-          time: (a['startTime'] ?? a['start_time'] ?? a['time'] ?? '').toString(),
-          lat: lat,
-          lng: lng,
-          dayIndex: dayIdx,
-          numberInDay: numInDay,
-          imageUrl: imgUrl.isNotEmpty ? imgUrl : _placePhotos[name],
-          category: _inferCat(a),
-          rating: (a['rating'] as num?)?.toDouble(),
-          cost: _formatCost(a['cost'] ?? a['estimated_cost']),
-        ));
+        final imgUrl =
+            (a['image'] ?? a['photo'] ?? a['image_url'] ?? a['imageUrl'] ?? '')
+                .toString();
+        result.add(
+          MapActivity(
+            name: name,
+            time: (a['startTime'] ?? a['start_time'] ?? a['time'] ?? '')
+                .toString(),
+            lat: lat,
+            lng: lng,
+            dayIndex: dayIdx,
+            numberInDay: numInDay,
+            imageUrl: imgUrl.isNotEmpty
+                ? imgUrl
+                : (_placePhotosGallery[name]?.isNotEmpty == true
+                      ? _placePhotosGallery[name]!.first
+                      : null),
+            category: _inferCat(a),
+            rating: (a['rating'] as num?)?.toDouble(),
+            cost: _formatCost(a['cost'] ?? a['estimated_cost']),
+          ),
+        );
       }
     }
     return result;
@@ -206,31 +219,27 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
   String get _tripTitle => _trip?.title ?? 'Trip Itinerary';
   String get _tripDestination => _trip?.destination ?? '';
-  String get _tripDateRange {
-    if (_trip?.startDate == null) return '';
-    final start = DateTime.tryParse(_trip!.startDate!);
-    final end =
-        _trip!.endDate != null ? DateTime.tryParse(_trip!.endDate!) : null;
-    if (start == null) return '';
-    const m = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    final s = '${start.day} ${m[start.month - 1]}';
-    if (end != null)
-      return '$s - ${end.day} ${m[end.month - 1]} ${end.year}';
-    return '$s, ${start.year}';
-  }
 
   String get _tripDateRangeShort {
     if (_trip?.startDate == null) return '';
     final start = DateTime.tryParse(_trip!.startDate!);
-    final end =
-        _trip!.endDate != null ? DateTime.tryParse(_trip!.endDate!) : null;
+    final end = _trip!.endDate != null
+        ? DateTime.tryParse(_trip!.endDate!)
+        : null;
     if (start == null) return '';
     const m = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final s = '${start.day} ${m[start.month - 1]}';
     if (end != null) return '$s - ${end.day} ${m[end.month - 1]} ${end.year}';
@@ -272,18 +281,10 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     if (start == null) return 0;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    return today.difference(DateTime(start.year, start.month, start.day)).inDays + 1;
-  }
-
-  String get _seasonTag {
-    if (_trip?.startDate == null) return '';
-    final start = DateTime.tryParse(_trip!.startDate!);
-    if (start == null) return '';
-    final m = start.month;
-    if (m >= 3 && m <= 5) return 'Spring';
-    if (m >= 6 && m <= 8) return 'Summer';
-    if (m >= 9 && m <= 11) return 'Autumn';
-    return 'Winter';
+    return today
+            .difference(DateTime(start.year, start.month, start.day))
+            .inDays +
+        1;
   }
 
   List<String> get _heroImages {
@@ -293,7 +294,9 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     }
     // Add first few activity images
     for (final a in _allActivities.take(4)) {
-      final img = (a['image'] ?? a['photo'] ?? a['image_url'] ?? a['imageUrl'] ?? '').toString();
+      final img =
+          (a['image'] ?? a['photo'] ?? a['image_url'] ?? a['imageUrl'] ?? '')
+              .toString();
       if (img.isNotEmpty && !images.contains(img)) images.add(img);
     }
     if (images.isEmpty) images.add(_fallbackCoverImage);
@@ -302,72 +305,237 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
   String get _fallbackCoverImage {
     final dest = _tripDestination.toLowerCase();
-    if (dest.contains('japan') || dest.contains('tokyo'))
-      return 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&q=80';
-    if (dest.contains('italy') || dest.contains('tuscan') ||
-        dest.contains('florence') || dest.contains('rome'))
-      return 'https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=800&q=80';
-    if (dest.contains('thai') || dest.contains('bangkok'))
-      return 'https://images.unsplash.com/photo-1563492065599-3520f775eeed?w=800&q=80';
-    if (dest.contains('paris') || dest.contains('france'))
-      return 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80';
-    if (dest.contains('london') || dest.contains('uk'))
-      return 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&q=80';
-    if (dest.contains('bali') || dest.contains('indonesia'))
-      return 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800&q=80';
-    if (dest.contains('korea') || dest.contains('seoul'))
-      return 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800&q=80';
-    if (dest.contains('swiss') || dest.contains('zurich'))
-      return 'https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?w=800&q=80';
+    const _coverMap = <List<String>, String>{
+      [
+        'japan',
+        'tokyo',
+      ]: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&q=80',
+      [
+        'italy',
+        'tuscan',
+        'florence',
+        'rome',
+      ]: 'https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=800&q=80',
+      [
+        'thai',
+        'bangkok',
+      ]: 'https://images.unsplash.com/photo-1563492065599-3520f775eeed?w=800&q=80',
+      [
+        'paris',
+        'france',
+      ]: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80',
+      [
+        'london',
+        'uk',
+      ]: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&q=80',
+      [
+        'bali',
+        'indonesia',
+      ]: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800&q=80',
+      [
+        'korea',
+        'seoul',
+      ]: 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800&q=80',
+      [
+        'swiss',
+        'zurich',
+      ]: 'https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?w=800&q=80',
+    };
+    for (final entry in _coverMap.entries) {
+      if (entry.key.any((k) => dest.contains(k))) {
+        return entry.value;
+      }
+    }
     return 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&q=80';
   }
 
   // ─── Category inference ───
   static const _kw = <String, List<String>>{
     'restaurant': [
-      'restaurant', 'food', 'eat', 'dining', 'cafe', 'coffee', 'lunch',
-      'dinner', 'breakfast', 'brunch', 'bistro', 'ramen', 'sushi', 'noodle',
-      'trattoria', 'osteria', 'pizz', 'gelat', 'wine', 'vinaio', 'sandwich',
-      'อาหาร', 'ร้าน', 'กาแฟ', 'ข้าว', 'ก๋วยเตี๋ยว', 'street food', 'seafood',
-      'bbq', 'grill', 'bakery', 'dessert', 'ice cream', 'bar', 'pub',
-      'cocktail', 'rooftop', 'cruise', 'buffet', 'dim sum', 'steak',
+      'restaurant',
+      'food',
+      'eat',
+      'dining',
+      'cafe',
+      'coffee',
+      'lunch',
+      'dinner',
+      'breakfast',
+      'brunch',
+      'bistro',
+      'ramen',
+      'sushi',
+      'noodle',
+      'trattoria',
+      'osteria',
+      'pizz',
+      'gelat',
+      'wine',
+      'vinaio',
+      'sandwich',
+      'อาหาร',
+      'ร้าน',
+      'กาแฟ',
+      'ข้าว',
+      'ก๋วยเตี๋ยว',
+      'street food',
+      'seafood',
+      'bbq',
+      'grill',
+      'bakery',
+      'dessert',
+      'ice cream',
+      'bar',
+      'pub',
+      'cocktail',
+      'rooftop',
+      'cruise',
+      'buffet',
+      'dim sum',
+      'steak',
     ],
     'temple': [
-      'temple', 'shrine', 'wat', 'pagoda', 'mosque', 'church', 'cathedral',
-      'duomo', 'basilica', 'chapel', 'วัด', 'monastery', 'sanctuary',
-      'grand palace', 'palace',
+      'temple',
+      'shrine',
+      'wat',
+      'pagoda',
+      'mosque',
+      'church',
+      'cathedral',
+      'duomo',
+      'basilica',
+      'chapel',
+      'วัด',
+      'monastery',
+      'sanctuary',
+      'grand palace',
+      'palace',
     ],
-    'museum': ['museum', 'gallery', 'art', 'exhibition', 'uffizi', 'palazzo',
-      'พิพิธภัณฑ์', 'history', 'memorial', 'monument',
+    'museum': [
+      'museum',
+      'gallery',
+      'art',
+      'exhibition',
+      'uffizi',
+      'palazzo',
+      'พิพิธภัณฑ์',
+      'history',
+      'memorial',
+      'monument',
     ],
     'park': [
-      'park', 'garden', 'nature', 'forest', 'hiking', 'trail', 'mountain',
-      'waterfall', 'lake', 'piazza', 'volcano', 'canyon', 'cliff', 'cave',
-      'trek', 'camping', 'ภูเขา', 'น้ำตก', 'อุทยาน', 'ป่า', 'national park',
-      'safari', 'zoo', 'elephant', 'sanctuary', 'wildlife',
+      'park',
+      'garden',
+      'nature',
+      'forest',
+      'hiking',
+      'trail',
+      'mountain',
+      'waterfall',
+      'lake',
+      'piazza',
+      'volcano',
+      'canyon',
+      'cliff',
+      'cave',
+      'trek',
+      'camping',
+      'ภูเขา',
+      'น้ำตก',
+      'อุทยาน',
+      'ป่า',
+      'national park',
+      'safari',
+      'zoo',
+      'elephant',
+      'sanctuary',
+      'wildlife',
     ],
     'shopping': [
-      'shopping', 'mall', 'market', 'bazaar', 'outlet', 'souvenir', 'shop',
-      'store', 'mercato', 'ตลาด', 'night market', 'floating market',
-      'chatuchak', 'plaza', 'center', 'centre',
+      'shopping',
+      'mall',
+      'market',
+      'bazaar',
+      'outlet',
+      'souvenir',
+      'shop',
+      'store',
+      'mercato',
+      'ตลาด',
+      'night market',
+      'floating market',
+      'chatuchak',
+      'plaza',
+      'center',
+      'centre',
     ],
     'beach': [
-      'beach', 'coast', 'island', 'snorkel', 'diving', 'surf', 'seaside',
-      'bay', 'thermal', 'bath', 'spa', 'เกาะ', 'ทะเล', 'หาด', 'coral',
-      'kayak', 'boat', 'pier', 'marina', 'lagoon', 'hot spring',
+      'beach',
+      'coast',
+      'island',
+      'snorkel',
+      'diving',
+      'surf',
+      'seaside',
+      'bay',
+      'thermal',
+      'bath',
+      'spa',
+      'เกาะ',
+      'ทะเล',
+      'หาด',
+      'coral',
+      'kayak',
+      'boat',
+      'pier',
+      'marina',
+      'lagoon',
+      'hot spring',
     ],
     'hotel': [
-      'hotel', 'resort', 'hostel', 'check-in', 'check-out', 'accommodation',
-      'stay', 'airbnb', 'ที่พัก', 'โรงแรม', 'guesthouse', 'villa', 'lodge',
+      'hotel',
+      'resort',
+      'hostel',
+      'check-in',
+      'check-out',
+      'accommodation',
+      'stay',
+      'airbnb',
+      'ที่พัก',
+      'โรงแรม',
+      'guesthouse',
+      'villa',
+      'lodge',
     ],
     'transport': [
-      'airport', 'station', 'transfer', 'taxi', 'train', 'bus', 'ferry',
-      'flight', 'drive', 'transport', 'สนามบิน', 'รถไฟ', 'terminal',
-      'departure', 'arrival', 'transit', 'pickup',
+      'airport',
+      'station',
+      'transfer',
+      'taxi',
+      'train',
+      'bus',
+      'ferry',
+      'flight',
+      'drive',
+      'transport',
+      'สนามบิน',
+      'รถไฟ',
+      'terminal',
+      'departure',
+      'arrival',
+      'transit',
+      'pickup',
     ],
     'nightlife': [
-      'nightlife', 'club', 'disco', 'karaoke', 'night show', 'cabaret',
-      'lounge', 'jazz', 'live music',
+      'nightlife',
+      'club',
+      'disco',
+      'karaoke',
+      'night show',
+      'cabaret',
+      'lounge',
+      'jazz',
+      'live music',
     ],
   };
   static const _icons = <String, IconData>{
@@ -415,8 +583,9 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       }
     }
     // 2. Explicit type/category field (fallback — often generic "attraction")
-    final explicit =
-        (a['type'] ?? a['category'] ?? '').toString().toLowerCase();
+    final explicit = (a['type'] ?? a['category'] ?? '')
+        .toString()
+        .toLowerCase();
     for (final c in _kw.keys) {
       if (explicit.contains(c)) return c;
     }
@@ -427,10 +596,13 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   Future<bool> _checkAiQuota() async {
     final r = await quota.RateLimitService.instance.canUseAi();
     if (r['can_use'] != true && mounted) {
-      showUpgradeDialog(context, ref,
-          currentUsage: r['current_usage'] as int? ?? 0,
-          monthlyLimit: r['monthly_limit'] as int? ?? 10,
-          planName: 'Free');
+      showUpgradeDialog(
+        context,
+        ref,
+        currentUsage: r['current_usage'] as int? ?? 0,
+        monthlyLimit: r['monthly_limit'] as int? ?? 10,
+        planName: 'Free',
+      );
       return false;
     }
     return true;
@@ -442,25 +614,30 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     setState(() => _regenerating = true);
     try {
       final itinerary = await ItineraryService.instance.generateItinerary(
-          params: GenerateItineraryParams(
-              destination: _trip!.destination,
-              startDate: _trip!.startDate ?? '',
-              endDate: _trip!.endDate ?? ''));
+        params: GenerateItineraryParams(
+          destination: _trip!.destination,
+          startDate: _trip!.startDate ?? '',
+          endDate: _trip!.endDate ?? '',
+        ),
+      );
       await SupabaseConfig.client
           .from('trips')
-          .update({'itinerary_data': itinerary, 'status': 'published'}).eq(
-              'id', _trip!.id);
+          .update({'itinerary_data': itinerary, 'status': 'published'})
+          .eq('id', _trip!.id);
       await quota.RateLimitService.instance.incrementAiUsage();
       ref.invalidate(quota.aiQuotaProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Itinerary regenerated!')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Itinerary regenerated!')));
         ref.invalidate(tripProvider(_trip!.id));
       }
     } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Failed: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      }
     } finally {
       if (mounted) setState(() => _regenerating = false);
     }
@@ -472,78 +649,106 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     setState(() => _replanning = true);
     try {
       final result = await ReplanService.instance.replanDay(
-          tripId: _trip!.id,
-          tripData: _trip!.itineraryData ?? {},
-          dayIndex: _selectedDay);
+        tripId: _trip!.id,
+        tripData: _trip!.itineraryData ?? {},
+        dayIndex: _selectedDay,
+      );
       await quota.RateLimitService.instance.incrementAiUsage();
       ref.invalidate(quota.aiQuotaProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(result.summary)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(result.summary)));
         if (result.success) ref.invalidate(tripProvider(_trip!.id));
       }
     } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Replan failed: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Replan failed: $e')));
+      }
     } finally {
       if (mounted) setState(() => _replanning = false);
     }
   }
 
+  // ignore: unused_element
   Future<void> _handleSwapPlace(Map<String, dynamic> activity) async {
     if (_trip == null) return;
     final alternatives = await ReplanService.instance.suggestAlternatives(
-        placeId: activity['id']?.toString() ?? '',
-        placeName: (activity['name'] ?? activity['title'] ?? '').toString(),
-        category: (activity['category'] ?? activity['type'] ?? '').toString(),
-        destination: _trip!.destination,
-        lat: (activity['lat'] as num?)?.toDouble(),
-        lng: (activity['lng'] as num?)?.toDouble());
+      placeId: activity['id']?.toString() ?? '',
+      placeName: (activity['name'] ?? activity['title'] ?? '').toString(),
+      category: (activity['category'] ?? activity['type'] ?? '').toString(),
+      destination: _trip!.destination,
+      lat: (activity['lat'] as num?)?.toDouble(),
+      lng: (activity['lng'] as num?)?.toDouble(),
+    );
     if (!mounted || alternatives.isEmpty) {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No alternatives found')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('No alternatives found')));
+      }
       return;
     }
     showModalBottomSheet(
-        context: context,
-        shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-        builder: (ctx) => Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Alternative Places',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 12),
-                  ...alternatives.take(5).map((alt) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: CircleAvatar(
-                            backgroundColor:
-                                AppColors.brandBlue.withValues(alpha: 0.1),
-                            child: const Icon(Icons.place,
-                                color: AppColors.brandBlue, size: 20)),
-                        title: Text(alt.name,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Text(alt.category,
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Alternative Places',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            ...alternatives
+                .take(5)
+                .map(
+                  (alt) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      backgroundColor: AppColors.brandBlue.withValues(
+                        alpha: 0.1,
+                      ),
+                      child: const Icon(
+                        Icons.place,
+                        color: AppColors.brandBlue,
+                        size: 20,
+                      ),
+                    ),
+                    title: Text(
+                      alt.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      alt.category,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    trailing: alt.cost != null
+                        ? Text(
+                            '${alt.currency ?? '\u0E3F'}${alt.cost!.toStringAsFixed(0)}',
                             style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary)),
-                        trailing: alt.cost != null
-                            ? Text(
-                                '${alt.currency ?? '\u0E3F'}${alt.cost!.toStringAsFixed(0)}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.brandBlue))
-                            : null,
-                        onTap: () => Navigator.pop(ctx),
-                      )),
-                ])));
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.brandBlue,
+                            ),
+                          )
+                        : null,
+                    onTap: () => Navigator.pop(ctx),
+                  ),
+                ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _onDaySelected(int i) {
@@ -567,22 +772,29 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     final d = DateTime.tryParse(raw);
     if (d == null) return raw;
     const m = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
-    const wd = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const wd = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
     return '${wd[d.weekday - 1]} ${d.day} ${m[d.month - 1]}';
-  }
-
-  static String _friendlyDateShort(String raw) {
-    final d = DateTime.tryParse(raw);
-    if (d == null) return raw;
-    const m = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    const wd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return '${wd[d.weekday - 1]}, ${m[d.month - 1]} ${d.day}';
   }
 
   String _formatCost(dynamic cost) {
@@ -594,10 +806,10 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       final symbol = currency == 'THB'
           ? '\u0E3F'
           : currency == 'EUR'
-              ? '\u20AC'
-              : currency == 'USD'
-                  ? '\$'
-                  : '$currency ';
+          ? '\u20AC'
+          : currency == 'USD'
+          ? '\$'
+          : '$currency ';
       return '$symbol${amount is num ? amount.toStringAsFixed(0) : amount}';
     }
     if (cost is num) {
@@ -626,18 +838,18 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   // ═══════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
-    final days = _days;
     final roleAsync = _trip != null
         ? ref.watch(tripRoleProvider(_trip!.id))
         : const AsyncData<String>('owner');
     final role = roleAsync.value ?? 'viewer';
     final perm = PermissionService.instance;
     final canEdit = perm.canEditActivities(role);
-    final isOwner = perm.canManageMembers(role);
     final topPad = MediaQuery.of(context).padding.top;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? AppColors.backgroundDark : Colors.white,
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         child: _mapMode
@@ -650,7 +862,13 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   // ═══════════════════════════════════════════
   // MODE 1: CONTENT MODE (default on open)
   // ═══════════════════════════════════════════
-  Widget _buildContentMode(double topPad, PermissionService perm, String role, bool canEdit) {
+  Widget _buildContentMode(
+    double topPad,
+    PermissionService perm,
+    String role,
+    bool canEdit,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Stack(
       key: const ValueKey('content_mode'),
       children: [
@@ -661,14 +879,12 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
               expandedHeight: 260,
               pinned: true,
               automaticallyImplyLeading: false,
-              backgroundColor: Colors.white,
-              flexibleSpace: FlexibleSpaceBar(
-                background: _buildHeroImage(),
-              ),
+              backgroundColor: isDark ? AppColors.backgroundDark : Colors.white,
+              flexibleSpace: FlexibleSpaceBar(background: _buildHeroImage()),
             ),
             SliverToBoxAdapter(
               child: Container(
-                color: Colors.white,
+                color: isDark ? AppColors.backgroundDark : Colors.white,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -698,21 +914,25 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           top: topPad + 8,
           left: 12,
           right: 12,
-          child: Row(children: [
-            _circleBtn(Icons.arrow_back_ios_new,
-                () => Navigator.maybePop(context)),
-            const Spacer(),
-            if (_trip != null) TripMemberAvatars(tripId: _trip!.id),
-            const SizedBox(width: 8),
-            _circleBtn(
-              _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-              () => setState(() => _isBookmarked = !_isBookmarked),
-            ),
-            if (perm.canShareTrip(role)) ...[
+          child: Row(
+            children: [
+              _circleBtn(
+                Icons.arrow_back_ios_new,
+                () => Navigator.maybePop(context),
+              ),
+              const Spacer(),
+              if (_trip != null) TripMemberAvatars(tripId: _trip!.id),
               const SizedBox(width: 8),
-              _circleBtn(Icons.ios_share, _showShareSheet),
+              _circleBtn(
+                _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                () => setState(() => _isBookmarked = !_isBookmarked),
+              ),
+              if (perm.canShareTrip(role)) ...[
+                const SizedBox(width: 8),
+                _circleBtn(Icons.ios_share, _showShareSheet),
+              ],
             ],
-          ]),
+          ),
         ),
 
         // FAB backdrop
@@ -734,50 +954,52 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
   Widget _buildHeroImage() {
     final images = _heroImages;
-    return Stack(children: [
-      PageView.builder(
-        itemCount: images.length,
-        onPageChanged: (i) => setState(() => _heroDotIndex = i),
-        itemBuilder: (_, i) => CachedNetworkImage(
-          imageUrl: images[i],
-          fit: BoxFit.cover,
-          width: double.infinity,
-          height: 260,
-          fadeInDuration: const Duration(milliseconds: 300),
-          fadeOutDuration: const Duration(milliseconds: 150),
-          placeholder: (_, __) =>
-              Container(height: 260, color: const Color(0xFFF3F4F6)),
-          errorWidget: (_, __, ___) =>
-              Container(color: AppColors.brandBlue),
+    return Stack(
+      children: [
+        PageView.builder(
+          itemCount: images.length,
+          onPageChanged: (i) => setState(() => _heroDotIndex = i),
+          itemBuilder: (_, i) => CachedNetworkImage(
+            imageUrl: images[i],
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: 260,
+            fadeInDuration: const Duration(milliseconds: 300),
+            fadeOutDuration: const Duration(milliseconds: 150),
+            placeholder: (_, _) =>
+                Container(height: 260, color: const Color(0xFFF3F4F6)),
+            errorWidget: (_, _, _) => Container(color: AppColors.brandBlue),
+          ),
         ),
-      ),
-      if (images.length > 1)
-        Positioned(
-          bottom: 12,
-          left: 0,
-          right: 0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              images.length,
-              (i) => Container(
-                width: i == _heroDotIndex ? 20 : 6,
-                height: 6,
-                margin: const EdgeInsets.only(right: 4),
-                decoration: BoxDecoration(
-                  color: i == _heroDotIndex
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(3),
+        if (images.length > 1)
+          Positioned(
+            bottom: 12,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                images.length,
+                (i) => Container(
+                  width: i == _heroDotIndex ? 20 : 6,
+                  height: 6,
+                  margin: const EdgeInsets.only(right: 4),
+                  decoration: BoxDecoration(
+                    color: i == _heroDotIndex
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-    ]);
+      ],
+    );
   }
 
   Widget _buildTitleRow(PermissionService perm, String role) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
       child: Row(
@@ -789,7 +1011,9 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
               style: GoogleFonts.dmSans(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+                color: isDark
+                    ? AppColors.textPrimaryDark
+                    : AppColors.textPrimary,
                 height: 1.25,
               ),
               maxLines: 3,
@@ -800,16 +1024,20 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           OutlinedButton.icon(
             onPressed: () {},
             icon: const Icon(Icons.person_add_alt, size: 14),
-            label: Text('Follow',
-                style: GoogleFonts.dmSans(
-                    fontSize: 12, fontWeight: FontWeight.w600)),
+            label: Text(
+              'Follow',
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.textPrimary,
               side: const BorderSide(color: Color(0xFFE5E7EB)),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24)),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
@@ -817,8 +1045,11 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           const SizedBox(width: 8),
           GestureDetector(
             onTap: _showShareSheet,
-            child: const Icon(Icons.share,
-                size: 20, color: AppColors.textSecondary),
+            child: const Icon(
+              Icons.share,
+              size: 20,
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
       ),
@@ -828,7 +1059,12 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   // ═══════════════════════════════════════════
   // MODE 2: MAP MODE (activated by FAB)
   // ═══════════════════════════════════════════
-  Widget _buildMapMode(double topPad, PermissionService perm, String role, bool canEdit) {
+  Widget _buildMapMode(
+    double topPad,
+    PermissionService perm,
+    String role,
+    bool canEdit,
+  ) {
     return Stack(
       key: const ValueKey('map_mode'),
       children: [
@@ -841,14 +1077,22 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             onPinTap: (ma) {
               final idx = _mapActivities.indexOf(ma);
               if (idx >= 0) {
-                _carouselController.animateToPage(idx, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+                _carouselController.animateToPage(
+                  idx,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
               }
             },
             activities: _mapActivities.isNotEmpty
                 ? _mapActivities
                 : const [
                     MapActivity(
-                        name: '', time: '', lat: 35.6762, lng: 139.6503)
+                      name: '',
+                      time: '',
+                      lat: 35.6762,
+                      lng: 139.6503,
+                    ),
                   ],
           ),
         ),
@@ -857,8 +1101,10 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         Positioned(
           top: topPad + 8,
           left: 12,
-          child: _circleBtn(Icons.arrow_back_ios_new,
-              () => setState(() => _mapMode = false)),
+          child: _circleBtn(
+            Icons.arrow_back_ios_new,
+            () => setState(() => _mapMode = false),
+          ),
         ),
 
         // Title + Day filter chips (top center) with frosted background
@@ -871,23 +1117,41 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.92),
               borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8)],
-            ),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text(_tripTitle, style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 32,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    _dayFilterChip(-1, 'All'),
-                    for (var i = 0; i < _days.length; i++)
-                      _dayFilterChip(i, 'Day ${i + 1}'),
-                  ],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 8,
                 ),
-              ),
-            ]),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _tripTitle,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 32,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      _dayFilterChip(-1, 'All'),
+                      for (var i = 0; i < _days.length; i++)
+                        _dayFilterChip(i, 'Day ${i + 1}'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
 
@@ -903,17 +1167,42 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 _mapKey.currentState?.fitBoundsPublic();
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2))],
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
                 ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.zoom_out_map, size: 14, color: Color(0xFF5F6368)),
-                  const SizedBox(width: 6),
-                  Text('Fit all places', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF5F6368))),
-                ]),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.cardDarkMode
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.zoom_out_map,
+                      size: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Fit all places',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -950,61 +1239,134 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
               final color = dayColors[ma.dayIndex % dayColors.length];
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4))],
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [
-                        Container(
-                          width: 28, height: 28,
-                          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                          alignment: Alignment.center,
-                          child: Text('${ma.numberInDay}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(ma.name, style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary), maxLines: 2, overflow: TextOverflow.ellipsis),
-                        ),
-                      ]),
-                      const SizedBox(height: 8),
-                      if (ma.rating != null) ...[
-                        Row(children: [
-                          const Icon(Icons.star, size: 16, color: Color(0xFFF59E0B)),
-                          const SizedBox(width: 4),
-                          Text('${ma.rating}', style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                          const SizedBox(width: 6),
-                          Container(
-                            width: 16, height: 16,
-                            decoration: BoxDecoration(
-                              image: const DecorationImage(image: NetworkImage('https://www.google.com/favicon.ico'), fit: BoxFit.contain),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
+                child: Builder(
+                  builder: (context) {
+                    final isDark =
+                        Theme.of(context).brightness == Brightness.dark;
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.cardDarkMode : Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
                           ),
-                        ]),
-                        const SizedBox(height: 4),
-                      ],
-                      if (ma.category != null && ma.category!.isNotEmpty)
-                        Row(children: [
-                          Icon(Icons.access_time, size: 14, color: AppColors.textSecondary),
-                          const SizedBox(width: 4),
-                          Text(ma.category!, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textSecondary)),
-                        ]),
-                      const Spacer(),
-                      Row(children: [
-                        _carouselActionBtn('Directions', Icons.directions),
-                        const SizedBox(width: 8),
-                        _carouselActionBtn('Details', Icons.info_outline),
-                        const SizedBox(width: 8),
-                        _carouselActionBtn('Google Maps', Icons.map_outlined),
-                      ]),
-                    ],
-                  ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '${ma.numberInDay}',
+                                  style: GoogleFonts.dmSans(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  ma.name,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          if (ma.rating != null) ...[
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.star,
+                                  size: 16,
+                                  color: Color(0xFFF59E0B),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${ma.rating}',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    image: const DecorationImage(
+                                      image: NetworkImage(
+                                        'https://www.google.com/favicon.ico',
+                                      ),
+                                      fit: BoxFit.contain,
+                                    ),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                          ],
+                          if (ma.category != null && ma.category!.isNotEmpty)
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.access_time,
+                                  size: 14,
+                                  color: AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  ma.category!,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          const Spacer(),
+                          Row(
+                            children: [
+                              _carouselActionBtn(
+                                'Directions',
+                                Icons.directions,
+                              ),
+                              const SizedBox(width: 8),
+                              _carouselActionBtn('Details', Icons.info_outline),
+                              const SizedBox(width: 8),
+                              _carouselActionBtn(
+                                'Google Maps',
+                                Icons.map_outlined,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               );
             },
@@ -1019,14 +1381,27 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFF0F0F0)),
+          border: Border.all(color: AppColors.border),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 14, color: AppColors.textSecondary),
-          const SizedBox(width: 4),
-          Flexible(child: Text(label, style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary), overflow: TextOverflow.ellipsis)),
-        ]),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 14, color: AppColors.textSecondary),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1054,8 +1429,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     );
   }
 
+  // ignore: unused_element
   List<Widget> _buildMapModeActivityList() {
-    final activities = _currentActivities;
     final widgets = <Widget>[];
     int globalNum = 0;
     for (var dayIdx = 0; dayIdx < _days.length; dayIdx++) {
@@ -1068,7 +1443,8 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         globalNum++;
         final a = dayActs[i];
         final name = (a['name'] ?? a['title'] ?? 'Activity').toString();
-        final time = (a['startTime'] ?? a['start_time'] ?? a['time'] ?? '').toString();
+        final time = (a['startTime'] ?? a['start_time'] ?? a['time'] ?? '')
+            .toString();
         final cat = _inferCat(a);
         final numColor = _numberColors[dayIdx % _numberColors.length];
         widgets.add(
@@ -1087,49 +1463,69 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
               margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.cardDarkMode
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFF0F0F0)),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.borderDark
+                      : AppColors.border,
+                ),
               ),
-              child: Row(children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: numColor,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Center(
-                    child: Text('$globalNum',
+              child: Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: numColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$globalNum',
                         style: GoogleFonts.dmSans(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700)),
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(name,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
                           style: GoogleFonts.dmSans(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                           maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                      if (time.isNotEmpty)
-                        Text(time,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (time.isNotEmpty)
+                          Text(
+                            time,
                             style: GoogleFonts.dmSans(
-                                fontSize: 12,
-                                color: AppColors.textSecondary)),
-                    ],
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-                Icon(_icons[cat] ?? Icons.place,
-                    size: 18, color: AppColors.textSecondary),
-              ]),
+                  Icon(
+                    _icons[cat] ?? Icons.place,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -1165,42 +1561,88 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
       // 6.5 Checklist (inline, wrapped in card)
       if (_trip != null) ...[
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF5F7FA),
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))],
-          ),
-          child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.brandBlue.withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.checklist, size: 22, color: AppColors.brandBlue),
+        Builder(
+          builder: (context) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppColors.surfaceDarkMode
+                    : const Color(0xFFF5F7FA),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: isDark
+                    ? null
+                    : const [
+                        BoxShadow(
+                          color: Color(0x0D000000),
+                          blurRadius: 20,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardDarkMode : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: isDark
+                      ? null
+                      : const [
+                          BoxShadow(
+                            color: Color(0x08000000),
+                            blurRadius: 12,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
                 ),
-                const SizedBox(width: 14),
-                Expanded(child: Text('Checklist', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary))),
-                const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
-              ]),
-              const SizedBox(height: 12),
-              TripChecklistWidget(tripId: _trip!.id),
-            ],
-          ),
-        ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.brandBlue.withValues(alpha: 0.08),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.checklist,
+                            size: 22,
+                            color: AppColors.brandBlue,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            'Checklist',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? AppColors.textPrimaryDark
+                                  : AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right,
+                          color: isDark
+                              ? AppColors.textSecondaryDark
+                              : AppColors.textSecondary,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TripChecklistWidget(tripId: _trip!.id),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 16),
       ],
@@ -1227,54 +1669,58 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   Widget _tripInfoPills() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: Row(children: [
-        // Location
-        if (_tripDestination.isNotEmpty)
-          _infoPill(
-            icon: Icons.location_on,
-            label: _tripDestination,
-            textColor: AppColors.brandBlue,
-            bgColor: const Color(0xFFEFF6FF),
-            iconColor: AppColors.brandBlue,
+      child: Row(
+        children: [
+          // Location
+          if (_tripDestination.isNotEmpty)
+            _infoPill(
+              icon: Icons.location_on,
+              label: _tripDestination,
+              textColor: AppColors.brandBlue,
+              bgColor: const Color(0xFFEFF6FF),
+              iconColor: AppColors.brandBlue,
+            ),
+          if (_tripDestination.isNotEmpty) const SizedBox(width: 8),
+          // Date range
+          if (_tripDateRangeShort.isNotEmpty)
+            _infoPill(
+              icon: Icons.calendar_today,
+              label: _tripDateRangeShort,
+              textColor: AppColors.textPrimary,
+              bgColor: const Color(0xFFF3F4F6),
+              iconColor: AppColors.textSecondary,
+            ),
+          const SizedBox(width: 8),
+          // Days badge (outline style)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.brandBlue.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: AppColors.brandBlue.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Text(
+              '$_dayCount ${_dayCount == 1 ? 'day' : 'days'}',
+              style: GoogleFonts.dmSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.brandBlue,
+              ),
+            ),
           ),
-        if (_tripDestination.isNotEmpty) const SizedBox(width: 8),
-        // Date range
-        if (_tripDateRangeShort.isNotEmpty)
+          const SizedBox(width: 8),
+          // Currency converter placeholder
           _infoPill(
-            icon: Icons.calendar_today,
-            label: _tripDateRangeShort,
-            textColor: AppColors.textPrimary,
+            icon: Icons.swap_horiz,
+            label: '\$1,000 = \u20AC849',
+            textColor: AppColors.textSecondary,
             bgColor: const Color(0xFFF3F4F6),
             iconColor: AppColors.textSecondary,
           ),
-        const SizedBox(width: 8),
-        // Days badge (outline style)
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.brandBlue.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.3)),
-          ),
-          child: Text(
-            '$_dayCount ${_dayCount == 1 ? 'day' : 'days'}',
-            style: GoogleFonts.dmSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.brandBlue,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Currency converter placeholder
-        _infoPill(
-          icon: Icons.swap_horiz,
-          label: '\$1,000 = \u20AC849',
-          textColor: AppColors.textSecondary,
-          bgColor: const Color(0xFFF3F4F6),
-          iconColor: AppColors.textSecondary,
-        ),
-      ]),
+        ],
+      ),
     );
   }
 
@@ -1290,15 +1736,23 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF0F0F0)),
+        border: Border.all(color: AppColors.border),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 14, color: iconColor),
-        const SizedBox(width: 6),
-        Text(label,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: iconColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
             style: GoogleFonts.dmSans(
-                fontSize: 13, fontWeight: FontWeight.w500, color: textColor)),
-      ]),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1331,8 +1785,18 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       final start = DateTime.tryParse(startStr);
       if (start != null) {
         const m = [
-          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
         ];
         subtitle = 'Your trip begins ${m[start.month - 1]} ${start.day}';
       } else {
@@ -1341,78 +1805,109 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       circleColor = AppColors.brandBlue;
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FA),
+        color: isDark ? AppColors.surfaceDarkMode : const Color(0xFFF5F7FA),
         borderRadius: BorderRadius.circular(28),
-        boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))],
-      ),
-      child: Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))],
-      ),
-      child: Row(children: [
-        // Circle with number or icon
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: circleColor.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (completedIcon != null)
-                Icon(completedIcon, color: circleColor, size: 28)
-              else if (ongoing)
-                Icon(Icons.flight_takeoff, color: circleColor, size: 28)
-              else ...[
-                Text(
-                  '${daysLeft.clamp(0, 9999)}',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: circleColor,
-                    height: 1,
-                  ),
-                ),
-                Text(
-                  'DAYS',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    color: circleColor,
-                    letterSpacing: 0.5,
-                  ),
+        boxShadow: isDark
+            ? null
+            : const [
+                BoxShadow(
+                  color: Color(0x0D000000),
+                  blurRadius: 20,
+                  offset: Offset(0, 6),
                 ),
               ],
-            ],
-          ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.cardDarkMode : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: isDark
+              ? null
+              : const [
+                  BoxShadow(
+                    color: Color(0x08000000),
+                    blurRadius: 12,
+                    offset: Offset(0, 3),
+                  ),
+                ],
         ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title,
-                  style: GoogleFonts.dmSans(
+        child: Row(
+          children: [
+            // Circle with number or icon
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: circleColor.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (completedIcon != null)
+                    Icon(completedIcon, color: circleColor, size: 28)
+                  else if (ongoing)
+                    Icon(Icons.flight_takeoff, color: circleColor, size: 28)
+                  else ...[
+                    Text(
+                      '${daysLeft.clamp(0, 9999)}',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: circleColor,
+                        height: 1,
+                      ),
+                    ),
+                    Text(
+                      'DAYS',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: circleColor,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.dmSans(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
-              const SizedBox(height: 2),
-              Text(subtitle,
-                  style: GoogleFonts.dmSans(
-                      fontSize: 13, color: AppColors.textSecondary)),
-            ],
-          ),
+                      color: isDark
+                          ? AppColors.textPrimaryDark
+                          : AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ]),
-    ),
+      ),
     );
   }
 
@@ -1420,10 +1915,12 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   // 4. ADD ACTIVITY CARD
   // ═══════════════════════════════════════════
   Widget _addActivityCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Add activity coming soon')));
+          const SnackBar(content: Text('Add activity coming soon')),
+        );
       },
       child: CustomPaint(
         painter: _DashedBorderPainter(
@@ -1436,55 +1933,84 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? AppColors.cardDarkMode : Colors.white,
             borderRadius: BorderRadius.circular(24),
           ),
-          child: Row(children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.brandBlue.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.brandBlue.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.add_rounded,
+                  size: 24,
+                  color: AppColors.brandBlue,
+                ),
               ),
-              child: const Icon(Icons.add_rounded,
-                  size: 24, color: AppColors.brandBlue),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    Text('Add Activity',
-                        style: GoogleFonts.dmSans(
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Add Activity',
+                          style: GoogleFonts.dmSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                          color: AppColors.brandBlue,
-                          borderRadius: BorderRadius.circular(8)),
-                      child: Text('New',
-                          style: GoogleFonts.dmSans(
+                            color: isDark
+                                ? AppColors.textPrimaryDark
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.brandBlue,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'New',
+                            style: GoogleFonts.dmSans(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: Colors.white)),
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ]),
-                  const SizedBox(height: 2),
-                  Text('Add a place to your itinerary',
+                    const SizedBox(height: 2),
+                    Text(
+                      'Add a place to your itinerary',
                       style: GoogleFonts.dmSans(
-                          fontSize: 12, color: AppColors.textSecondary)),
-                ],
+                        fontSize: 12,
+                        color: isDark
+                            ? AppColors.textSecondaryDark
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const Icon(Icons.chevron_right_rounded,
-                color: AppColors.textSecondary, size: 22),
-          ]),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textSecondary,
+                size: 22,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1497,55 +2023,87 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     final total = _totalPlaces;
     const visited = 0;
     final pct = total > 0 ? visited / total : 0.0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: () {},
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppColors.cardDarkMode : Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFF0F0F0)),
+          border: Border.all(
+            color: isDark ? AppColors.borderDark : const Color(0xFFF0F0F0),
+          ),
         ),
-        child: Row(children: [
-          SizedBox(
-            width: 48,
-            height: 48,
-            child: Stack(alignment: Alignment.center, children: [
-              CircularProgressIndicator(
-                value: pct,
-                strokeWidth: 4,
-                backgroundColor: const Color(0xFFF3F4F6),
-                valueColor:
-                    const AlwaysStoppedAnimation(AppColors.brandBlue),
-              ),
-              Text('${(pct * 100).toInt()}%',
-                  style: GoogleFonts.dmSans(
+        child: Row(
+          children: [
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    value: pct,
+                    strokeWidth: 4,
+                    backgroundColor: isDark
+                        ? AppColors.borderDark
+                        : const Color(0xFFF3F4F6),
+                    valueColor: const AlwaysStoppedAnimation(
+                      AppColors.brandBlue,
+                    ),
+                  ),
+                  Text(
+                    '${(pct * 100).toInt()}%',
+                    style: GoogleFonts.dmSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
-            ]),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Progress',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
-                const SizedBox(height: 2),
-                Text('$visited/$total places',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 13, color: AppColors.textSecondary)),
-              ],
+                      color: isDark
+                          ? AppColors.textPrimaryDark
+                          : AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const Icon(Icons.chevron_right_rounded,
-              color: AppColors.textSecondary, size: 22),
-        ]),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Progress',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: isDark
+                          ? AppColors.textPrimaryDark
+                          : AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$visited/$total places',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: isDark
+                  ? AppColors.textSecondaryDark
+                  : AppColors.textSecondary,
+              size: 22,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1554,95 +2112,129 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   // 6. BUDGET TRACKER CARD
   // ═══════════════════════════════════════════
   Widget _budgetCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final budget = _trip?.budgetTotal ?? 0;
     const spent = 0.0;
     final pct = budget > 0 ? (spent / budget).clamp(0.0, 1.0) : 0.0;
     final barColor = pct < 0.5
         ? AppColors.success
         : pct < 0.8
-            ? AppColors.warning
-            : AppColors.error;
+        ? AppColors.warning
+        : AppColors.error;
 
     return GestureDetector(
       onTap: () => context.push('/budget', extra: _trip),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppColors.cardDarkMode : Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFF0F0F0)),
+          border: Border.all(
+            color: isDark ? AppColors.borderDark : AppColors.border,
+          ),
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.bolt, size: 22, color: AppColors.warning),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    Text('Budget Tracker',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
-                    const Spacer(),
-                    if (budget > 0)
-                      Text(
-                        'USD ${spent.toStringAsFixed(0)} / ${budget.toStringAsFixed(0)}',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary),
-                      ),
-                  ]),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Track spending by day and category, add expenses, and get alerts when you\'re over budget.',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 12, color: AppColors.textSecondary),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
                   ),
-                ],
-              ),
+                  child: const Icon(
+                    Icons.bolt,
+                    size: 22,
+                    color: AppColors.warning,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Budget Tracker',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? AppColors.textPrimaryDark
+                                  : AppColors.textPrimary,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (budget > 0)
+                            Text(
+                              'USD ${spent.toStringAsFixed(0)} / ${budget.toStringAsFixed(0)}',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? AppColors.textSecondaryDark
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Track spending by day and category, add expenses, and get alerts when you\'re over budget.',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: isDark
+                              ? AppColors.textSecondaryDark
+                              : AppColors.textSecondary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ]),
-          if (budget > 0) ...[
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: pct,
-                minHeight: 8,
-                backgroundColor: const Color(0xFFF3F4F6),
-                valueColor: AlwaysStoppedAnimation(barColor),
+            if (budget > 0) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: pct,
+                  minHeight: 8,
+                  backgroundColor: isDark
+                      ? AppColors.borderDark
+                      : const Color(0xFFF3F4F6),
+                  valueColor: AlwaysStoppedAnimation(barColor),
+                ),
               ),
-            ),
-          ] else ...[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.brandBlue,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text('Set Budget',
+            ] else ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.brandBlue,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Set Budget',
                   style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white)),
-            ),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
           ],
-        ]),
+        ),
       ),
     );
   }
@@ -1651,81 +2243,134 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
   // 7. RESERVATIONS SECTION HEADER
   // ═══════════════════════════════════════════
   Widget _reservationsHeader() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.cardDarkMode : Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF0F0F0)),
+        border: Border.all(
+          color: isDark ? AppColors.borderDark : AppColors.border,
+        ),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Text('Reservations',
-              style: GoogleFonts.dmSans(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Reservations',
+                style: GoogleFonts.dmSans(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary)),
-          const Spacer(),
-          GestureDetector(
-            onTap: () => setState(() => _activeSection = 'reservations'),
-            child: Text('Tickets',
-                style: GoogleFonts.dmSans(
+                  color: isDark
+                      ? AppColors.textPrimaryDark
+                      : AppColors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {}, // TODO: Implement section switching
+                child: Text(
+                  'Tickets',
+                  style: GoogleFonts.dmSans(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.brandBlue)),
-          ),
-        ]),
-        const SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(children: [
-            for (final tab in [
-              ('Flight', Icons.flight, true),
-              ('Lodging', Icons.hotel, true),
-              ('Tour', Icons.tour, true),
-              ('Tickets', Icons.confirmation_num, false),
-            ])
-              Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(12),
+                    color: AppColors.brandBlue,
+                  ),
                 ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(tab.$2, size: 14, color: AppColors.textSecondary),
-                  const SizedBox(width: 6),
-                  Text(tab.$1,
-                      style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary)),
-                  if (tab.$3) ...[
-                    const SizedBox(width: 4),
-                    Text('Soon',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 10,
-                            fontStyle: FontStyle.italic,
-                            color: AppColors.textSecondary.withValues(alpha: 0.6))),
-                  ],
-                ]),
               ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text('+2 more',
-                  style: GoogleFonts.dmSans(
+            ],
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final tab in [
+                  ('Flight', Icons.flight, true),
+                  ('Lodging', Icons.hotel, true),
+                  ('Tour', Icons.tour, true),
+                  ('Tickets', Icons.confirmation_num, false),
+                ])
+                  Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.surfaceDarkMode
+                          : const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          tab.$2,
+                          size: 14,
+                          color: isDark
+                              ? AppColors.textSecondaryDark
+                              : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          tab.$1,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isDark
+                                ? AppColors.textSecondaryDark
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                        if (tab.$3) ...[
+                          const SizedBox(width: 4),
+                          Text(
+                            'Soon',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 10,
+                              fontStyle: FontStyle.italic,
+                              color:
+                                  (isDark
+                                          ? AppColors.textSecondaryDark
+                                          : AppColors.textSecondary)
+                                      .withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.surfaceDarkMode
+                        : const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '+2 more',
+                    style: GoogleFonts.dmSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary)),
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ]),
-        ),
-      ]),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1749,24 +2394,35 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
       // "Show only these on map" link
       if (!isCollapsed) {
-        widgets.add(Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 10),
-          child: GestureDetector(
-            onTap: () {
-              _onDaySelected(dayIdx);
-            },
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.map_outlined,
-                  size: 14, color: AppColors.brandBlue),
-              const SizedBox(width: 4),
-              Text('Show only these on map',
-                  style: GoogleFonts.dmSans(
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 10),
+            child: GestureDetector(
+              onTap: () {
+                _onDaySelected(dayIdx);
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.map_outlined,
+                    size: 14,
+                    color: AppColors.brandBlue,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Show only these on map',
+                    style: GoogleFonts.dmSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.brandBlue)),
-            ]),
+                      color: AppColors.brandBlue,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ));
+        );
       }
 
       // Activities for this day
@@ -1777,58 +2433,81 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
           // Activity card
           final actName = (a['name'] ?? a['place'] ?? 'Activity').toString();
-          widgets.add(Dismissible(
-            key: Key('activity_${dayIdx}_$i'),
-            direction: DismissDirection.endToStart,
-            background: Container(
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.only(right: 20),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.delete_outline, color: Colors.red),
-            ),
-            confirmDismiss: (direction) async {
-              HapticFeedback.mediumImpact();
-              return await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Remove Activity'),
-                  content: Text('Remove "$actName" from itinerary?'),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove', style: TextStyle(color: Colors.red))),
-                  ],
+          widgets.add(
+            Dismissible(
+              key: Key('activity_${dayIdx}_$i'),
+              direction: DismissDirection.endToStart,
+              background: Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 20),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ) ?? false;
-            },
-            onDismissed: (_) {
-              setState(() {
-                final acts = _days[dayIdx]['activities'] ?? _days[dayIdx]['places'] ?? [];
-                if (acts is List && i < acts.length) {
-                  acts.removeAt(i);
-                }
-              });
-            },
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                // Animate map to this activity's location
-                final mapActs = _mapActivities;
-                final name = (a['name'] ?? a['title'] ?? '').toString();
-                for (final ma in mapActs) {
-                  if (ma.name == name) {
-                    _mapKey.currentState?.animateTo(ma);
-                    break;
-                  }
-                }
-                showActivityDetailSheet(context,
-                    activity: a, tripId: _trip?.id ?? '');
+                child: const Icon(Icons.delete_outline, color: Colors.red),
+              ),
+              confirmDismiss: (direction) async {
+                HapticFeedback.mediumImpact();
+                return await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Remove Activity'),
+                        content: Text('Remove "$actName" from itinerary?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text(
+                              'Remove',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ) ??
+                    false;
               },
-              child: _activityCard(a, actNum, dayIdx: dayIdx, canEdit: canEdit),
+              onDismissed: (_) {
+                setState(() {
+                  final acts =
+                      _days[dayIdx]['activities'] ??
+                      _days[dayIdx]['places'] ??
+                      [];
+                  if (acts is List && i < acts.length) {
+                    acts.removeAt(i);
+                  }
+                });
+              },
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  // Animate map to this activity's location
+                  final mapActs = _mapActivities;
+                  final name = (a['name'] ?? a['title'] ?? '').toString();
+                  for (final ma in mapActs) {
+                    if (ma.name == name) {
+                      _mapKey.currentState?.animateTo(ma);
+                      break;
+                    }
+                  }
+                  showActivityDetailSheet(
+                    context,
+                    activity: a,
+                    tripId: _trip?.id ?? '',
+                  );
+                },
+                child: _activityCard(
+                  a,
+                  actNum,
+                  dayIdx: dayIdx,
+                  canEdit: canEdit,
+                ),
+              ),
             ),
-          ));
+          );
 
           // Travel connector between activities
           if (i < activities.length - 1) {
@@ -1867,87 +2546,115 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.cardDarkMode
+              : Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFF0F0F0)),
-        ),
-        child: Row(children: [
-          // DAY circle
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('DAY',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: color,
-                        letterSpacing: 0.5,
-                        height: 1)),
-                Text('$dayNum',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: color,
-                        height: 1.1)),
-              ],
-            ),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.borderDark
+                : AppColors.border,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Expanded(
-                    child: Text(
-                      date.isNotEmpty ? _friendlyDate(date) : 'Day $dayNum',
-                      style: GoogleFonts.dmSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+        ),
+        child: Row(
+          children: [
+            // DAY circle
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'DAY',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                      letterSpacing: 0.5,
+                      height: 1,
                     ),
                   ),
-                ]),
-                const SizedBox(height: 2),
-                Text(
-                  '$placeCount ${placeCount == 1 ? 'place' : 'places'}',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 12, color: AppColors.textSecondary),
-                ),
-              ],
+                  Text(
+                    '$dayNum',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: color,
+                      height: 1.1,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Icon(
-            isCollapsed ? Icons.expand_more : Icons.expand_less,
-            color: AppColors.textSecondary,
-            size: 22,
-          ),
-        ]),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          date.isNotEmpty ? _friendlyDate(date) : 'Day $dayNum',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.textPrimaryDark
+                                : AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$placeCount ${placeCount == 1 ? 'place' : 'places'}',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              isCollapsed ? Icons.expand_more : Icons.expand_less,
+              color: AppColors.textSecondary,
+              size: 22,
+            ),
+          ],
+        ),
       ),
     );
   }
 
   // ─── Activity Card (website-matching) ───
-  Widget _activityCard(Map<String, dynamic> a, int number,
-      {required bool canEdit, int dayIdx = 0}) {
+  Widget _activityCard(
+    Map<String, dynamic> a,
+    int number, {
+    required bool canEdit,
+    int dayIdx = 0,
+  }) {
     final name = (a['name'] ?? a['title'] ?? 'Activity').toString();
-    final startTime =
-        (a['startTime'] ?? a['start_time'] ?? a['time'] ?? '').toString();
+    final startTime = (a['startTime'] ?? a['start_time'] ?? a['time'] ?? '')
+        .toString();
     final desc = (a['description'] ?? a['subtitle'] ?? '').toString();
-    final duration =
-        (a['duration'] ?? a['estimated_duration'] ?? '').toString();
+    final duration = (a['duration'] ?? a['estimated_duration'] ?? '')
+        .toString();
     final address = (a['address'] ?? '').toString();
     final rating = (a['rating'] as num?)?.toDouble();
-    final reviewCount = (a['reviewCount'] ?? a['review_count'] ?? a['user_ratings_total']) as num?;
+    final reviewCount =
+        (a['reviewCount'] ?? a['review_count'] ?? a['user_ratings_total'])
+            as num?;
     final cost = a['cost'] ?? a['estimated_cost'];
     final cat = _inferCat(a);
     final catColor = _catBadgeColors[cat] ?? AppColors.brandBlue;
@@ -1955,261 +2662,415 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     final imageUrl =
         (a['image'] ?? a['photo'] ?? a['image_url'] ?? a['imageUrl'] ?? '')
             .toString();
-    final effectiveImage = imageUrl.isNotEmpty
-        ? imageUrl
-        : (_placePhotos[name] ?? _activityFallbackImage(name, cat));
-    final photoCount = (a['photos'] as List?)?.length ?? (imageUrl.isNotEmpty ? 1 : 0);
+
+    final fallbackSingle = _activityFallbackImage(name, cat);
+    final effectiveImages = <String>[];
+    if (imageUrl.isNotEmpty) effectiveImages.add(imageUrl);
+
+    // Add photos from the AI's generated 'photos' array
+    final aiPhotos =
+        (a['photos'] as List?)
+            ?.map((p) => p.toString())
+            .where((s) => s.isNotEmpty)
+            .toList() ??
+        [];
+    for (final p in aiPhotos) {
+      if (!effectiveImages.contains(p)) effectiveImages.add(p);
+    }
+
+    // Add photos fetched from the gallery service
+    if (_placePhotosGallery.containsKey(name)) {
+      for (final p in _placePhotosGallery[name]!) {
+        if (!effectiveImages.contains(p)) effectiveImages.add(p);
+      }
+    }
+    if (effectiveImages.isEmpty) effectiveImages.add(fallbackSingle);
+
+    final photoCount = effectiveImages.length;
     final costStr = _formatCost(cost);
     final isFree = costStr.toLowerCase() == 'free';
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 2),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FA),
+        color: isDark ? AppColors.surfaceDarkMode : const Color(0xFFF5F7FA),
         borderRadius: BorderRadius.circular(28),
-        boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 6))],
+        boxShadow: isDark
+            ? null
+            : const [
+                BoxShadow(
+                  color: Color(0x0D000000),
+                  blurRadius: 20,
+                  offset: Offset(0, 6),
+                ),
+              ],
       ),
       child: Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 3))],
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // ── Photo section (200px) ──
-        Stack(children: [
-          Hero(
-            tag: 'activity_photo_${name}_$number',
-            child: ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(20)),
-              child: CachedNetworkImage(
-                imageUrl: effectiveImage,
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                fadeInDuration: const Duration(milliseconds: 300),
-                fadeOutDuration: const Duration(milliseconds: 150),
-                placeholder: (_, __) => Container(height: 200, color: const Color(0xFFF3F4F6)),
-                errorWidget: (_, __, ___) => Container(
-                  height: 200,
-                  color: catColor.withValues(alpha: 0.08),
-                  child: Icon(_icons[cat] ?? Icons.place,
-                      size: 48, color: catColor.withValues(alpha: 0.3)),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.cardDarkMode : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: isDark
+              ? null
+              : const [
+                  BoxShadow(
+                    color: Color(0x08000000),
+                    blurRadius: 12,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Photo section (200px) ──
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                  child: SizedBox(
+                    height: 200,
+                    width: double.infinity,
+                    child: PageView.builder(
+                      itemCount: effectiveImages.length,
+                      itemBuilder: (context, idx) {
+                        final img = effectiveImages[idx];
+                        Widget imageWidget = CachedNetworkImage(
+                          imageUrl: img,
+                          fit: BoxFit.cover,
+                          fadeInDuration: const Duration(milliseconds: 300),
+                          fadeOutDuration: const Duration(milliseconds: 150),
+                          placeholder: (_, _) =>
+                              Container(color: const Color(0xFFF3F4F6)),
+                          errorWidget: (_, _, _) => Container(
+                            color: catColor.withValues(alpha: 0.08),
+                            child: Icon(
+                              _icons[cat] ?? Icons.place,
+                              size: 48,
+                              color: catColor.withValues(alpha: 0.3),
+                            ),
+                          ),
+                        );
+                        if (idx == 0) {
+                          return Hero(
+                            tag: 'activity_photo_${name}_$number',
+                            child: imageWidget,
+                          );
+                        }
+                        return imageWidget;
+                      },
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
-          // Number badge (top-left)
-          Positioned(
-            top: 10,
-            left: 10,
-            child: Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: numColor,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Text('$number',
-                    style: GoogleFonts.dmSans(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700)),
-              ),
-            ),
-          ),
-          // Bookmark + Delete (top-right)
-          Positioned(
-            top: 10,
-            right: 10,
-            child: Column(children: [
-              if (canEdit) ...[
-                _photoOverlayBtn(Icons.delete_outline, () {},
-                    bgColor: AppColors.error.withValues(alpha: 0.7)),
-                const SizedBox(height: 6),
+                if (effectiveImages.length > 1)
+                  Positioned(
+                    bottom: 8,
+                    left: 0,
+                    right: 0,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        effectiveImages.length,
+                        (idx) => Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            shape: BoxShape.circle,
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black26, blurRadius: 2),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                // Number badge (top-left)
+                Positioned(
+                  top: 10,
+                  left: 10,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: numColor,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$number',
+                        style: GoogleFonts.dmSans(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Bookmark + Delete (top-right)
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Column(
+                    children: [
+                      if (canEdit) ...[
+                        _photoOverlayBtn(
+                          Icons.delete_outline,
+                          () {},
+                          bgColor: AppColors.error.withValues(alpha: 0.7),
+                        ),
+                        const SizedBox(height: 6),
+                      ],
+                      _photoOverlayBtn(Icons.bookmark_border, () {}),
+                    ],
+                  ),
+                ),
+                // Time badge (bottom-left)
+                if (startTime.isNotEmpty)
+                  Positioned(
+                    bottom: 10,
+                    left: 10,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.schedule,
+                                size: 13,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                startTime,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                // Photo count (bottom-right)
+                if (photoCount > 0)
+                  Positioned(
+                    bottom: 10,
+                    right: 10,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.camera_alt,
+                                size: 13,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$photoCount',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
-              _photoOverlayBtn(Icons.bookmark_border, () {}),
-            ]),
-          ),
-          // Time badge (bottom-left)
-          if (startTime.isNotEmpty)
-            Positioned(
-              bottom: 10,
-              left: 10,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.schedule,
-                          size: 13, color: Colors.white),
-                      const SizedBox(width: 4),
-                      Text(startTime,
-                          style: GoogleFonts.dmSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white)),
-                    ]),
-                  ),
-                ),
-              ),
             ),
-          // Photo count (bottom-right)
-          if (photoCount > 0)
-            Positioned(
-              bottom: 10,
-              right: 10,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.camera_alt,
-                          size: 13, color: Colors.white),
-                      const SizedBox(width: 4),
-                      Text('$photoCount',
-                          style: GoogleFonts.dmSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white)),
-                    ]),
-                  ),
-                ),
-              ),
-            ),
-        ]),
 
-        // ── Content below photo ──
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Place name (blue, like a link)
-              Text(name,
-                  style: GoogleFonts.dmSans(
+            // ── Content below photo ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Place name (blue, like a link)
+                  Text(
+                    name,
+                    style: GoogleFonts.dmSans(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.brandBlue),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis),
-
-              // Address
-              if (address.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Row(children: [
-                  const Icon(Icons.location_on,
-                      size: 13, color: AppColors.textSecondary),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(address,
-                        style: GoogleFonts.dmSans(
-                            fontSize: 13, color: AppColors.textSecondary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
+                      color: AppColors.brandBlue,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ]),
-              ],
 
-              // Description
-              if (desc.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(desc,
-                    style: GoogleFonts.dmSans(
+                  // Address
+                  if (address.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          size: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            address,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+
+                  // Description
+                  if (desc.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      desc,
+                      style: GoogleFonts.dmSans(
                         fontSize: 13,
                         color: AppColors.textSecondary,
-                        height: 1.4),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
-              ],
-
-              // Bottom stats row: star + clock + cost + comment
-              const SizedBox(height: 10),
-              Row(children: [
-                // Rating
-                if (rating != null) ...[
-                  const Icon(Icons.star, size: 14, color: AppColors.ratingGold),
-                  const SizedBox(width: 3),
-                  Text(
-                    '${rating.toStringAsFixed(1)}${reviewCount != null ? ' (${_fmt(reviewCount.toInt())})' : ''}',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 12, fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-                // Duration
-                if (duration.isNotEmpty) ...[
-                  const Icon(Icons.schedule,
-                      size: 13, color: AppColors.textSecondary),
-                  const SizedBox(width: 3),
-                  Text(duration,
-                      style: GoogleFonts.dmSans(
-                          fontSize: 12, color: AppColors.textSecondary)),
-                  const SizedBox(width: 12),
-                ],
-                // Cost
-                if (costStr.isNotEmpty) ...[
-                  Icon(Icons.payments_outlined,
-                      size: 13,
-                      color: isFree ? AppColors.success : AppColors.textSecondary),
-                  const SizedBox(width: 3),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: isFree
-                          ? AppColors.success.withValues(alpha: 0.1)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(6),
+                        height: 1.4,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    child: Text(costStr,
-                        style: GoogleFonts.dmSans(
+                  ],
+
+                  // Bottom stats row: star + clock + cost + comment
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      // Rating
+                      if (rating != null) ...[
+                        const Icon(
+                          Icons.star,
+                          size: 14,
+                          color: AppColors.ratingGold,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${rating.toStringAsFixed(1)}${reviewCount != null ? ' (${_fmt(reviewCount.toInt())})' : ''}',
+                          style: GoogleFonts.dmSans(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      // Duration
+                      if (duration.isNotEmpty) ...[
+                        const Icon(
+                          Icons.schedule,
+                          size: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          duration,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      // Cost
+                      if (costStr.isNotEmpty) ...[
+                        Icon(
+                          Icons.payments_outlined,
+                          size: 13,
+                          color: isFree
+                              ? AppColors.success
+                              : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 3),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
                             color: isFree
-                                ? AppColors.success
-                                : AppColors.textSecondary)),
+                                ? AppColors.success.withValues(alpha: 0.1)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            costStr,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isFree
+                                  ? AppColors.success
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      // Comment icon
+                      const Icon(
+                        Icons.chat_bubble_outline,
+                        size: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
                 ],
-                // Comment icon
-                const Icon(Icons.chat_bubble_outline,
-                    size: 13, color: AppColors.textSecondary),
-              ]),
-            ],
-          ),
+              ),
+            ),
+          ],
         ),
-      ]),
-    ),
+      ),
     );
   }
 
   // ─── Travel Connector ───
-  Widget _travelConnector(
-      Map<String, dynamic> from, Map<String, dynamic> to) {
+  Widget _travelConnector(Map<String, dynamic> from, Map<String, dynamic> to) {
     // Estimate travel time/mode from data or default
-    final travelTime =
-        (from['travelTime'] ?? from['travel_time'] ?? '10 min').toString();
-    final travelMode =
-        (from['travelMode'] ?? from['travel_mode'] ?? 'Walk').toString();
+    final travelTime = (from['travelTime'] ?? from['travel_time'] ?? '10 min')
+        .toString();
+    final travelMode = (from['travelMode'] ?? from['travel_mode'] ?? 'Walk')
+        .toString();
     final isWalk = travelMode.toLowerCase().contains('walk');
     final icon = isWalk ? Icons.directions_walk : Icons.directions_car;
 
@@ -2219,30 +3080,39 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
         children: [
           const SizedBox(width: 24),
           // Dotted line + icon
-          Column(children: [
-            _dottedLine(18),
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
+          Column(
+            children: [
+              _dottedLine(18),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 16, color: AppColors.success),
               ),
-              child: Icon(icon, size: 16, color: AppColors.success),
-            ),
-            _dottedLine(18),
-          ]),
+              _dottedLine(18),
+            ],
+          ),
           const SizedBox(width: 10),
           // Text
-          Text(travelTime,
-              style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary)),
+          Text(
+            travelTime,
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
           const SizedBox(width: 6),
-          Text(travelMode,
-              style: GoogleFonts.dmSans(
-                  fontSize: 13, color: AppColors.textSecondary)),
+          Text(
+            travelMode,
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -2253,13 +3123,14 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       width: 2,
       height: height,
       child: CustomPaint(
-        painter: _VerticalDottedLinePainter(color: AppColors.success.withValues(alpha: 0.4)),
+        painter: _VerticalDottedLinePainter(
+          color: AppColors.success.withValues(alpha: 0.4),
+        ),
       ),
     );
   }
 
-  Widget _photoOverlayBtn(IconData icon, VoidCallback onTap,
-      {Color? bgColor}) {
+  Widget _photoOverlayBtn(IconData icon, VoidCallback onTap, {Color? bgColor}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -2274,37 +3145,59 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
     );
   }
 
-  Widget _emptyDayState() => Container(
+  Widget _emptyDayState() => Builder(
+    builder: (context) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return Container(
         padding: const EdgeInsets.all(24),
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFB),
+          color: isDark ? AppColors.surfaceDarkMode : const Color(0xFFF9FAFB),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFF0F0F0)),
+          border: Border.all(
+            color: isDark ? AppColors.borderDark : AppColors.border,
+          ),
         ),
-        child: Column(children: [
-          Icon(Icons.explore_outlined,
-              size: 36, color: AppColors.brandBlue.withValues(alpha: 0.3)),
-          const SizedBox(height: 8),
-          Text('No activities yet',
+        child: Column(
+          children: [
+            Icon(
+              Icons.explore_outlined,
+              size: 36,
+              color: AppColors.brandBlue.withValues(alpha: 0.3),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'No activities yet',
               style: GoogleFonts.dmSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary)),
-          const SizedBox(height: 4),
-          Text('Tap + to add your first activity',
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Tap + to add your first activity',
               style: GoogleFonts.dmSans(
-                  fontSize: 12, color: AppColors.textSecondary)),
-        ]),
+                fontSize: 12,
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
       );
+    },
+  );
 
   // ─── Action Chips ───
   Widget _buildInlineActions(bool canEdit) {
     final actions = <(String, IconData, bool, VoidCallback)>[
       if (canEdit)
         ('Regenerate', Icons.refresh, _regenerating, _handleRegenerate),
-      if (canEdit)
-        ('Optimize', Icons.auto_awesome, false, _handleRegenerate),
+      if (canEdit) ('Optimize', Icons.auto_awesome, false, _handleRegenerate),
       if (canEdit)
         ('Smart Replan', Icons.route, _replanning, _handleSmartReplan),
     ];
@@ -2315,7 +3208,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: actions.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
           final a = actions[i];
           return GestureDetector(
@@ -2326,23 +3219,33 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
                 color: const Color(0xFFEFF6FF),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                    color: AppColors.brandBlue.withValues(alpha: 0.2)),
+                  color: AppColors.brandBlue.withValues(alpha: 0.2),
+                ),
               ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                a.$3
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: AppColors.brandBlue))
-                    : Icon(a.$2, size: 16, color: AppColors.brandBlue),
-                const SizedBox(width: 6),
-                Text(a.$1,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  a.$3
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.brandBlue,
+                          ),
+                        )
+                      : Icon(a.$2, size: 16, color: AppColors.brandBlue),
+                  const SizedBox(width: 6),
+                  Text(
+                    a.$1,
                     style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.brandBlue)),
-              ]),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.brandBlue,
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -2363,25 +3266,37 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
             color: AppColors.brandBlue.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-                color: AppColors.brandBlue.withValues(alpha: 0.15)),
-          ),
-          child: Row(children: [
-            const Icon(Icons.location_on,
-                size: 18, color: AppColors.brandBlue),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(seg['name'] ?? '',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.brandBlue)),
+              color: AppColors.brandBlue.withValues(alpha: 0.15),
             ),
-            Text('Days ${seg['startDay']}-${seg['endDay']}',
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.location_on,
+                size: 18,
+                color: AppColors.brandBlue,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  seg['name'] ?? '',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.brandBlue,
+                  ),
+                ),
+              ),
+              Text(
+                'Days ${seg['startDay']}-${seg['endDay']}',
                 style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary)),
-          ]),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     ];
@@ -2389,36 +3304,43 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 
   // ─── Shared widgets ───
   Widget _circleBtn(IconData icon, VoidCallback onTap) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.85),
-            shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8)],
-          ),
-          child: Icon(icon, color: AppColors.textPrimary, size: 18),
-        ),
-      );
+    onTap: onTap,
+    child: Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.85),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8),
+        ],
+      ),
+      child: Icon(icon, color: AppColors.textPrimary, size: 18),
+    ),
+  );
 
   Widget _viewerBanner() => Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.orange.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    decoration: BoxDecoration(
+      color: Colors.orange.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.visibility, size: 16, color: Colors.orange),
+        const SizedBox(width: 8),
+        Text(
+          'Viewing as a viewer',
+          style: GoogleFonts.dmSans(
+            fontSize: 13,
+            color: Colors.orange.shade800,
+          ),
         ),
-        child: Row(children: [
-          const Icon(Icons.visibility, size: 16, color: Colors.orange),
-          const SizedBox(width: 8),
-          Text('Viewing as a viewer',
-              style: GoogleFonts.dmSans(
-                  fontSize: 13, color: Colors.orange.shade800)),
-        ]),
-      );
-
+      ],
+    ),
+  );
 
   void _showShareSheet() {
     if (_trip == null) return;
@@ -2458,57 +3380,81 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
           ].reversed)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 6),
+              child: Builder(
+                builder: (context) {
+                  final isDark =
+                      Theme.of(context).brightness == Brightness.dark;
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.cardDarkMode : Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 6,
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          item.$1,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: FloatingActionButton(
+                          heroTag: item.$1,
+                          mini: true,
+                          backgroundColor: AppColors.brandBlue,
+                          elevation: 2,
+                          onPressed: () {
+                            setState(() => _fabExpanded = false);
+                            if (item.$1 == 'AI Chat') context.push('/ai-chat');
+                            if (item.$1 == 'Map') {
+                              HapticFeedback.mediumImpact();
+                              setState(() => _mapMode = true);
+                              // Default active pin to first activity
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (_mapActivities.isNotEmpty) {
+                                  _mapKey.currentState?.animateTo(
+                                    _mapActivities.first,
+                                  );
+                                }
+                              });
+                            }
+                            if (item.$1 == 'Travel Tips') {
+                              context.push(
+                                '/travel-tips',
+                                extra: _tripDestination,
+                              );
+                            }
+                            if (item.$1 == 'Summary') {
+                              context.push('/trip-summary', extra: _trip);
+                            }
+                            if (item.$1 == 'Packing List') {
+                              context.push('/packing-list', extra: _trip);
+                            }
+                            if (item.$1 == 'Share') _showShareSheet();
+                          },
+                          child: Icon(item.$2, color: Colors.white, size: 18),
+                        ),
+                      ),
                     ],
-                  ),
-                  child: Text(item.$1,
-                      style: GoogleFonts.dmSans(
-                          fontSize: 11, fontWeight: FontWeight.w600)),
-                ),
-                const SizedBox(width: 6),
-                SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: FloatingActionButton(
-                    heroTag: item.$1,
-                    mini: true,
-                    backgroundColor: AppColors.brandBlue,
-                    elevation: 2,
-                    onPressed: () {
-                      setState(() => _fabExpanded = false);
-                      if (item.$1 == 'AI Chat') context.push('/ai-chat');
-                      if (item.$1 == 'Map') {
-                        HapticFeedback.mediumImpact();
-                        setState(() => _mapMode = true);
-                        // Default active pin to first activity
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (_mapActivities.isNotEmpty) {
-                            _mapKey.currentState?.animateTo(_mapActivities.first);
-                          }
-                        });
-                      }
-                      if (item.$1 == 'Travel Tips')
-                        context.push('/travel-tips', extra: _tripDestination);
-                      if (item.$1 == 'Summary')
-                        context.push('/trip-summary', extra: _trip);
-                      if (item.$1 == 'Packing List')
-                        context.push('/packing-list', extra: _trip);
-                      if (item.$1 == 'Share') _showShareSheet();
-                    },
-                    child: Icon(item.$2, color: Colors.white, size: 18),
-                  ),
-                ),
-              ]),
+                  );
+                },
+              ),
             ),
         ],
         FloatingActionButton(
@@ -2538,6 +3484,7 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen>
 // ═══════════════════════════════════════════
 // Section Tab Persistent Header Delegate
 // ═══════════════════════════════════════════
+// ignore: unused_element
 class _SectionTabDelegate extends SliverPersistentHeaderDelegate {
   final String activeSection;
   final ValueChanged<String> onChanged;
@@ -2551,53 +3498,65 @@ class _SectionTabDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      color: Colors.white,
+      color: isDark ? AppColors.backgroundDark : Colors.white,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Container(
         height: 38,
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          color: const Color(0xFFF0F1F3),
+          color: isDark ? AppColors.surfaceDarkMode : const Color(0xFFF0F1F3),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Row(children: [
-          for (final e in [
-            ('itinerary', 'Itinerary'),
-            ('checklist', 'Checklist'),
-            ('reservations', 'Reservations'),
-            ('alerts', 'Alerts'),
-          ])
-            Expanded(
-              child: GestureDetector(
-                onTap: () => onChanged(e.$1),
-                child: Container(
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: activeSection == e.$1
-                        ? Colors.white
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: activeSection == e.$1
-                        ? [
-                            BoxShadow(
+        child: Row(
+          children: [
+            for (final e in [
+              ('itinerary', 'Itinerary'),
+              ('checklist', 'Checklist'),
+              ('reservations', 'Reservations'),
+              ('alerts', 'Alerts'),
+            ])
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => onChanged(e.$1),
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: activeSection == e.$1
+                          ? (isDark ? AppColors.cardDarkMode : Colors.white)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: activeSection == e.$1
+                          ? [
+                              BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.06),
-                                blurRadius: 4)
-                          ]
-                        : null,
-                  ),
-                  child: Text(e.$2,
+                                blurRadius: 4,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Text(
+                      e.$2,
                       style: GoogleFonts.dmSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: activeSection == e.$1
-                              ? AppColors.brandBlue
-                              : AppColors.textSecondary)),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: activeSection == e.$1
+                            ? AppColors.brandBlue
+                            : (isDark
+                                  ? AppColors.textSecondaryDark
+                                  : AppColors.textSecondary),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-        ]),
+          ],
+        ),
       ),
     );
   }
@@ -2629,13 +3588,15 @@ class _TripReviewsSectionState extends State<_TripReviewsSection> {
   }
 
   Future<void> _load() async {
-    final reviews =
-        await ReviewService.instance.getReviewsForTrip(widget.tripId);
-    if (mounted)
+    final reviews = await ReviewService.instance.getReviewsForTrip(
+      widget.tripId,
+    );
+    if (mounted) {
       setState(() {
         _reviews = reviews;
         _loading = false;
       });
+    }
   }
 
   @override
@@ -2650,17 +3611,18 @@ class _TripReviewsSectionState extends State<_TripReviewsSection> {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () => context.push('/reviews', extra: {
-              'tripId': widget.tripId,
-              'title': 'Trip Reviews',
-            }),
+            onPressed: () => context.push(
+              '/reviews',
+              extra: {'tripId': widget.tripId, 'title': 'Trip Reviews'},
+            ),
             icon: const Icon(Icons.rate_review_outlined, size: 18),
             label: const Text('View All Reviews'),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.brandBlue,
               side: const BorderSide(color: AppColors.brandBlue),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
           ),
@@ -2696,10 +3658,12 @@ class _DashedBorderPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final path = Path()
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(0, 0, size.width, size.height),
-        Radius.circular(borderRadius),
-      ));
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(0, 0, size.width, size.height),
+          Radius.circular(borderRadius),
+        ),
+      );
 
     final metrics = path.computeMetrics();
     for (final metric in metrics) {

@@ -40,19 +40,17 @@ class GenerateItineraryParams {
   });
 
   Map<String, dynamic> toJson() => {
-        'destination': destination,
-        'startDate': startDate,
-        'endDate': endDate,
-        if (budget != null) 'budget': budget,
-        if (tripStyle != null) 'tripStyle': tripStyle,
-        if (travelers != null) 'travelers': travelers,
-        if (specialRequirements != null)
-          'specialRequirements': specialRequirements,
-        if (conversationContext != null)
-          'conversationContext': conversationContext,
-        if (forceRegenerate) 'forceRegenerate': true,
-        if (tripSummary != null) 'tripSummary': tripSummary,
-      };
+    'destination': destination,
+    'startDate': startDate,
+    'endDate': endDate,
+    'budget': ?budget,
+    'tripStyle': ?tripStyle,
+    'travelers': ?travelers,
+    'specialRequirements': ?specialRequirements,
+    'conversationContext': ?conversationContext,
+    if (forceRegenerate) 'forceRegenerate': true,
+    'tripSummary': ?tripSummary,
+  };
 }
 
 /// SSE progress event from generate-itinerary stream.
@@ -127,8 +125,7 @@ class ItineraryService {
       throw Exception('Authentication required - please sign in');
     }
 
-    final url =
-        '${SupabaseConfig.supabaseUrl}/functions/v1/generate-itinerary';
+    final url = '${SupabaseConfig.supabaseUrl}/functions/v1/generate-itinerary';
 
     final response = await _dio.post<ResponseBody>(
       url,
@@ -146,8 +143,7 @@ class ItineraryService {
 
     if (response.statusCode == 401) {
       // Try refresh token
-      final refreshed =
-          await SupabaseConfig.client.auth.refreshSession();
+      final refreshed = await SupabaseConfig.client.auth.refreshSession();
       if (refreshed.session == null) {
         throw Exception('Session expired - please sign in again');
       }
@@ -156,8 +152,7 @@ class ItineraryService {
     }
 
     if (response.statusCode != 200) {
-      throw Exception(
-          'Itinerary generation failed (${response.statusCode})');
+      throw Exception('Itinerary generation failed (${response.statusCode})');
     }
 
     // Parse SSE stream matching website's reader.read() loop
@@ -187,18 +182,18 @@ class ItineraryService {
           final type = parsed['type'] as String?;
 
           if (type == 'progress') {
-            onProgress?.call(StreamProgress(
-              day: parsed['day'] as int? ?? 0,
-              totalPlaces: parsed['totalPlaces'] as int? ?? 0,
-              currentPlace: parsed['currentPlace'] as String? ?? '',
-              message: parsed['message'] as String? ?? '',
-            ));
+            onProgress?.call(
+              StreamProgress(
+                day: parsed['day'] as int? ?? 0,
+                totalPlaces: parsed['totalPlaces'] as int? ?? 0,
+                currentPlace: parsed['currentPlace'] as String? ?? '',
+                message: parsed['message'] as String? ?? '',
+              ),
+            );
           } else if (type == 'complete') {
-            itineraryResult =
-                parsed['itinerary'] as Map<String, dynamic>?;
+            itineraryResult = parsed;
           } else if (type == 'error') {
-            throw Exception(
-                parsed['error'] as String? ?? 'Generation failed');
+            throw Exception(parsed['error'] as String? ?? 'Generation failed');
           }
         } on FormatException {
           // Try to repair truncated JSON
@@ -206,24 +201,24 @@ class ItineraryService {
             final lastBrace = data.lastIndexOf('}');
             if (lastBrace > 0) {
               final trimmed = data.substring(0, lastBrace + 1);
-              final parsed =
-                  jsonDecode(trimmed) as Map<String, dynamic>;
+              final parsed = jsonDecode(trimmed) as Map<String, dynamic>;
               if (parsed['type'] == 'complete') {
-                itineraryResult =
-                    parsed['itinerary'] as Map<String, dynamic>?;
+                itineraryResult = parsed;
               } else if (parsed['type'] == 'progress') {
-                onProgress?.call(StreamProgress(
-                  day: parsed['day'] as int? ?? 0,
-                  totalPlaces: parsed['totalPlaces'] as int? ?? 0,
-                  currentPlace:
-                      parsed['currentPlace'] as String? ?? '',
-                  message: parsed['message'] as String? ?? '',
-                ));
+                onProgress?.call(
+                  StreamProgress(
+                    day: parsed['day'] as int? ?? 0,
+                    totalPlaces: parsed['totalPlaces'] as int? ?? 0,
+                    currentPlace: parsed['currentPlace'] as String? ?? '',
+                    message: parsed['message'] as String? ?? '',
+                  ),
+                );
               }
             }
           } catch (_) {
             debugPrint(
-                'Skipping unparseable SSE chunk, length: ${data.length}');
+              'Skipping unparseable SSE chunk, length: ${data.length}',
+            );
           }
         }
       }
@@ -238,8 +233,7 @@ class ItineraryService {
 
   /// Fetch place image from cache or via edge function.
   /// Matches website's fetchAndCacheImage.
-  Future<String?> fetchPlaceImage(
-      String placeName, String destination) async {
+  Future<String?> fetchPlaceImage(String placeName, String destination) async {
     final placeKey =
         '${placeName.toLowerCase().trim()}|${destination.toLowerCase().trim()}';
 
@@ -261,11 +255,10 @@ class ItineraryService {
 
     // Call place-details edge function
     try {
-      final res =
-          await SupabaseConfig.client.functions.invoke('place-details', body: {
-        'placeName': placeName,
-        'placeAddress': destination,
-      });
+      final res = await SupabaseConfig.client.functions.invoke(
+        'place-details',
+        body: {'placeName': placeName, 'placeAddress': destination},
+      );
 
       final data = res.data as Map<String, dynamic>?;
       if (data?['success'] == true && data?['data'] != null) {
@@ -295,12 +288,17 @@ class ItineraryService {
 
   /// Save itinerary data on existing trip.
   Future<void> saveItineraryData(
-      String tripId, Map<String, dynamic> data) async {
-    await SupabaseConfig.client.from('trips').update({
-      'itinerary_data': data,
-      'status': 'completed',
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', tripId);
+    String tripId,
+    Map<String, dynamic> data,
+  ) async {
+    await SupabaseConfig.client
+        .from('trips')
+        .update({
+          'itinerary_data': data,
+          'status': 'completed',
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', tripId);
   }
 }
 
@@ -308,8 +306,7 @@ class ItineraryService {
 // Riverpod providers
 // ──────────────────────────────────────────────
 
-final itineraryServiceProvider =
-    Provider((_) => ItineraryService.instance);
+final itineraryServiceProvider = Provider((_) => ItineraryService.instance);
 
 /// State for an in-progress itinerary generation.
 class ItineraryGenState {
@@ -333,23 +330,20 @@ class ItineraryGenState {
     String? error,
     Map<String, dynamic>? completedItinerary,
     List<AIRecommendedReservation>? recommendations,
-  }) =>
-      ItineraryGenState(
-        isGenerating: isGenerating ?? this.isGenerating,
-        progress: progress ?? this.progress,
-        error: error,
-        completedItinerary:
-            completedItinerary ?? this.completedItinerary,
-        recommendations: recommendations ?? this.recommendations,
-      );
+  }) => ItineraryGenState(
+    isGenerating: isGenerating ?? this.isGenerating,
+    progress: progress ?? this.progress,
+    error: error,
+    completedItinerary: completedItinerary ?? this.completedItinerary,
+    recommendations: recommendations ?? this.recommendations,
+  );
 }
 
 class ItineraryGenNotifier extends Notifier<ItineraryGenState> {
   @override
   ItineraryGenState build() => ItineraryGenState();
 
-  Future<Map<String, dynamic>?> generate(
-      GenerateItineraryParams params) async {
+  Future<Map<String, dynamic>?> generate(GenerateItineraryParams params) async {
     state = ItineraryGenState(isGenerating: true);
 
     try {
@@ -361,9 +355,13 @@ class ItineraryGenNotifier extends Notifier<ItineraryGenState> {
       );
 
       // Extract recommendations
-      final recs = (result['recommendedReservations'] as List?)
-              ?.map((r) => AIRecommendedReservation.fromJson(
-                  r as Map<String, dynamic>))
+      final recs =
+          (result['recommendedReservations'] as List?)
+              ?.map(
+                (r) => AIRecommendedReservation.fromJson(
+                  r as Map<String, dynamic>,
+                ),
+              )
               .toList() ??
           [];
 
@@ -383,4 +381,5 @@ class ItineraryGenNotifier extends Notifier<ItineraryGenState> {
 
 final itineraryGenProvider =
     NotifierProvider<ItineraryGenNotifier, ItineraryGenState>(
-        ItineraryGenNotifier.new);
+      ItineraryGenNotifier.new,
+    );

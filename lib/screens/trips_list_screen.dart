@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_colors.dart';
 import '../services/trip_service.dart';
-import '../services/auth_service.dart';
 import '../config/supabase_config.dart';
 import '../models/models.dart';
 
@@ -156,7 +155,7 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
                     SizedBox(
                       width: 100,
                       child: DropdownButtonFormField<String>(
-                        value: currency,
+                        initialValue: currency,
                         items: ['USD', 'EUR', 'GBP', 'THB', 'JPY'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                         onChanged: (v) => currency = v ?? 'USD',
                         decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
@@ -166,7 +165,7 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: style,
+                  initialValue: style,
                   items: ['budget', 'balanced', 'comfort', 'luxury'].map((s) => DropdownMenuItem(value: s, child: Text(s[0].toUpperCase() + s.substring(1)))).toList(),
                   onChanged: (v) => style = v ?? 'balanced',
                   decoration: InputDecoration(
@@ -418,7 +417,7 @@ class _TripsListScreenState extends ConsumerState<TripsListScreen> {
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                             decoration: BoxDecoration(
-                                              color: AppColors.brandBlue.withOpacity(0.1),
+                                              color: AppColors.brandBlue.withValues(alpha: 0.1),
                                               borderRadius: BorderRadius.circular(8),
                                             ),
                                             child: const Text('AI Generated', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.brandBlue)),
@@ -548,7 +547,7 @@ class _TripCard extends StatelessWidget {
                         height: 140,
                         width: double.infinity,
                         fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Container(height: 140, color: AppColors.border, child: const Center(child: Icon(Icons.image, color: AppColors.textSecondary))),
+                        errorWidget: (_, _, _) => Container(height: 140, color: AppColors.border, child: const Center(child: Icon(Icons.image, color: AppColors.textSecondary))),
                       ),
                     ),
                     Positioned.fill(
@@ -558,7 +557,7 @@ class _TripCard extends StatelessWidget {
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [Colors.transparent, Colors.black.withOpacity(0.3)],
+                            colors: [Colors.transparent, Colors.black.withValues(alpha: 0.3)],
                             stops: const [0.5, 1.0],
                           ),
                         ),
@@ -571,7 +570,7 @@ class _TripCard extends StatelessWidget {
                         onTap: () {},
                         child: Container(
                           width: 32, height: 32,
-                          decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
+                          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.4), shape: BoxShape.circle),
                           child: const Icon(Icons.info_outline, color: Colors.white, size: 16),
                         ),
                       ),

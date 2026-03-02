@@ -73,9 +73,9 @@ class PackingService {
         body: {
           'destination': destination,
           'totalDays': totalDays,
-          if (startDate != null) 'startDate': startDate,
-          if (tripCategory != null) 'category': tripCategory,
-          if (activities != null) 'activities': activities,
+          'startDate': ?startDate,
+          'category': ?tripCategory,
+          'activities': ?activities,
         },
       );
 

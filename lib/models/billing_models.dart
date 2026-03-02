@@ -1,4 +1,4 @@
-/// Plan with limits and features.
+// Plan with limits and features.
 import 'dart:convert';
 
 List<String> _parseFeatures(dynamic raw) {

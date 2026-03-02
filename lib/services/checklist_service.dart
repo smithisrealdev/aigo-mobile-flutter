@@ -48,8 +48,8 @@ class ChecklistItem {
         'is_checked': isChecked,
         'category': category,
         'urgency': urgency,
-        if (dueDate != null) 'due_date': dueDate,
-        if (notes != null) 'notes': notes,
+        'due_date': ?dueDate,
+        'notes': ?notes,
       };
 
   ChecklistItem copyWith({

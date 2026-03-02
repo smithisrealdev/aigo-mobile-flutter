@@ -26,7 +26,7 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, __) => ShaderMask(
+      builder: (_, _) => ShaderMask(
         shaderCallback: (bounds) {
           return LinearGradient(
             begin: Alignment.centerLeft,
@@ -134,8 +134,8 @@ class SkeletonCarousel extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: count,
-          separatorBuilder: (_, __) => const SizedBox(width: 12),
-          itemBuilder: (_, __) => SkeletonBox(
+          separatorBuilder: (_, _) => const SizedBox(width: 12),
+          itemBuilder: (_, _) => SkeletonBox(
             width: cardWidth,
             height: cardHeight,
             borderRadius: 16,

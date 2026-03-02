@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/app_colors.dart';
 import '../services/place_service.dart';
-import '../services/weather_service.dart';
 import '../widgets/social_mentions_widget.dart';
 import '../widgets/place_videos_widget.dart';
-import '../widgets/place_comments_widget.dart';
 
 class PlaceDetailScreen extends StatefulWidget {
   final String? placeId;
@@ -58,7 +55,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
       body: Stack(
         children: [
           CachedNetworkImage(imageUrl: imageUrl, height: 320, width: double.infinity, fit: BoxFit.cover,
-            errorWidget: (_, __, ___) => Container(height: 320, color: AppColors.border)),
+            errorWidget: (_, _, _) => Container(height: 320, color: AppColors.border)),
           Positioned(top: 0, left: 0, right: 0, child: SafeArea(child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(children: [

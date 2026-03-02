@@ -283,9 +283,9 @@ class _DestinationGuideScreenState
             height: 220,
             width: double.infinity,
             fit: BoxFit.cover,
-            placeholder: (_, __) =>
+            placeholder: (_, _) =>
                 Container(height: 220, color: Colors.grey.shade200),
-            errorWidget: (_, __, ___) =>
+            errorWidget: (_, _, _) =>
                 Container(height: 220, color: Colors.grey.shade200),
           )
         else
@@ -538,11 +538,11 @@ class _DestinationGuideScreenState
                         width: 56,
                         height: 56,
                         fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(
+                        placeholder: (_, _) => Container(
                             width: 56,
                             height: 56,
                             color: Colors.grey.shade200),
-                        errorWidget: (_, __, ___) => Container(
+                        errorWidget: (_, _, _) => Container(
                             width: 56,
                             height: 56,
                             color: Colors.grey.shade200,

@@ -43,20 +43,20 @@ class ChatMessage {
     this.isError = false,
     this.errorCode,
     this.responseData,
-  })  : id = id ?? _generateId(),
-        timestamp = timestamp ?? DateTime.now();
+  }) : id = id ?? _generateId(),
+       timestamp = timestamp ?? DateTime.now();
 
   bool get isUser => role == 'user';
 
   ChatMessage copyWith({String? content}) => ChatMessage(
-        id: id,
-        role: role,
-        content: content ?? this.content,
-        timestamp: timestamp,
-        isError: isError,
-        errorCode: errorCode,
-        responseData: responseData,
-      );
+    id: id,
+    role: role,
+    content: content ?? this.content,
+    timestamp: timestamp,
+    isError: isError,
+    errorCode: errorCode,
+    responseData: responseData,
+  );
 
   static String _generateId() =>
       Random().nextInt(1 << 30).toRadixString(36).padLeft(8, '0');
@@ -73,12 +73,12 @@ class ExtractedTripInfo {
   bool get hasMinimumInfo => destination != null;
 
   Map<String, dynamic> toJson() => {
-        if (destination != null) 'destination': destination,
-        if (duration != null) 'duration': duration,
-        if (budget != null) 'budget': budget,
-        if (tripStyle != null) 'tripStyle': tripStyle,
-        if (travelers != null) 'travelers': travelers,
-      };
+    'destination': ?destination,
+    'duration': ?duration,
+    'budget': ?budget,
+    'tripStyle': ?tripStyle,
+    'travelers': ?travelers,
+  };
 }
 
 /// Trip summary parsed from AI [TRIP_SUMMARY] blocks.
@@ -112,37 +112,34 @@ class TripSummary {
   });
 
   factory TripSummary.fromJson(Map<String, dynamic> json) => TripSummary(
-        destination: json['destination'] as String?,
-        destinations: (json['destinations'] as List?)?.cast<String>(),
-        duration: json['duration'] as int?,
-        budget: json['budget'] as Map<String, dynamic>?,
-        travelers: json['travelers'] as Map<String, dynamic>?,
-        tripStyle: (json['tripStyle'] as List?)?.cast<String>(),
-        preferences: (json['preferences'] as List?)?.cast<String>(),
-        restrictions: (json['restrictions'] as List?)?.cast<String>(),
-        dietaryRestrictions:
-            (json['dietaryRestrictions'] as List?)?.cast<String>(),
-        mustVisit: (json['mustVisit'] as List?)?.cast<String>(),
-        mustAvoid: (json['mustAvoid'] as List?)?.cast<String>(),
-        specialInterests:
-            (json['specialInterests'] as List?)?.cast<String>(),
-      );
+    destination: json['destination'] as String?,
+    destinations: (json['destinations'] as List?)?.cast<String>(),
+    duration: json['duration'] as int?,
+    budget: json['budget'] as Map<String, dynamic>?,
+    travelers: json['travelers'] as Map<String, dynamic>?,
+    tripStyle: (json['tripStyle'] as List?)?.cast<String>(),
+    preferences: (json['preferences'] as List?)?.cast<String>(),
+    restrictions: (json['restrictions'] as List?)?.cast<String>(),
+    dietaryRestrictions: (json['dietaryRestrictions'] as List?)?.cast<String>(),
+    mustVisit: (json['mustVisit'] as List?)?.cast<String>(),
+    mustAvoid: (json['mustAvoid'] as List?)?.cast<String>(),
+    specialInterests: (json['specialInterests'] as List?)?.cast<String>(),
+  );
 
   Map<String, dynamic> toJson() => {
-        if (destination != null) 'destination': destination,
-        if (destinations != null) 'destinations': destinations,
-        if (duration != null) 'duration': duration,
-        if (budget != null) 'budget': budget,
-        if (travelers != null) 'travelers': travelers,
-        if (tripStyle != null) 'tripStyle': tripStyle,
-        if (preferences != null) 'preferences': preferences,
-        if (restrictions != null) 'restrictions': restrictions,
-        if (dietaryRestrictions != null)
-          'dietaryRestrictions': dietaryRestrictions,
-        if (mustVisit != null) 'mustVisit': mustVisit,
-        if (mustAvoid != null) 'mustAvoid': mustAvoid,
-        if (specialInterests != null) 'specialInterests': specialInterests,
-      };
+    'destination': ?destination,
+    'destinations': ?destinations,
+    'duration': ?duration,
+    'budget': ?budget,
+    'travelers': ?travelers,
+    'tripStyle': ?tripStyle,
+    'preferences': ?preferences,
+    'restrictions': ?restrictions,
+    'dietaryRestrictions': ?dietaryRestrictions,
+    'mustVisit': ?mustVisit,
+    'mustAvoid': ?mustAvoid,
+    'specialInterests': ?specialInterests,
+  };
 }
 
 // Timeout configuration matching website
@@ -157,8 +154,7 @@ class ChatService {
 
   final Dio _dio = Dio();
 
-  String get _chatUrl =>
-      '${SupabaseConfig.supabaseUrl}/functions/v1/trip-chat';
+  String get _chatUrl => '${SupabaseConfig.supabaseUrl}/functions/v1/trip-chat';
 
   /// Stream chat with SSE, matching website's streamChat().
   ///
@@ -204,8 +200,7 @@ class ChatService {
         if (statusCode == 401) {
           // Try refresh and retry
           if (maxRetries > 0) {
-            final refreshed =
-                await SupabaseConfig.client.auth.refreshSession();
+            final refreshed = await SupabaseConfig.client.auth.refreshSession();
             if (refreshed.session != null) {
               return streamChat(
                 messages: messages,
@@ -231,10 +226,11 @@ class ChatService {
         final isRetryable = statusCode >= 500 || statusCode == 429;
         if (isRetryable && maxRetries > 0) {
           onRetryAttempt?.call(
-              _maxAutoRetries - maxRetries + 1, _maxAutoRetries);
+            _maxAutoRetries - maxRetries + 1,
+            _maxAutoRetries,
+          );
           onError(errorCode, isRetrying: true);
-          await Future.delayed(
-              const Duration(milliseconds: _retryDelayMs));
+          await Future.delayed(const Duration(milliseconds: _retryDelayMs));
           return streamChat(
             messages: messages,
             onDelta: onDelta,
@@ -291,7 +287,8 @@ class ChatService {
             final choices = parsed['choices'] as List?;
             if (choices != null && choices.isNotEmpty) {
               final delta =
-                  (choices[0] as Map<String, dynamic>)['delta'] as Map<String, dynamic>?;
+                  (choices[0] as Map<String, dynamic>)['delta']
+                      as Map<String, dynamic>?;
               final content = delta?['content'] as String?;
               if (content != null) onDelta(content);
             }
@@ -325,7 +322,8 @@ class ChatService {
             final choices = parsed['choices'] as List?;
             if (choices != null && choices.isNotEmpty) {
               final delta =
-                  (choices[0] as Map<String, dynamic>)['delta'] as Map<String, dynamic>?;
+                  (choices[0] as Map<String, dynamic>)['delta']
+                      as Map<String, dynamic>?;
               final content = delta?['content'] as String?;
               if (content != null) onDelta(content);
             }
@@ -337,16 +335,19 @@ class ChatService {
 
       onDone();
     } on DioException catch (e) {
-      debugPrint('Chat DioException: type=${e.type} status=${e.response?.statusCode} msg=${e.message} error=${e.error}');
+      debugPrint(
+        'Chat DioException: type=${e.type} status=${e.response?.statusCode} msg=${e.message} error=${e.error}',
+      );
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout) {
         if (maxRetries > 0) {
           onRetryAttempt?.call(
-              _maxAutoRetries - maxRetries + 1, _maxAutoRetries);
+            _maxAutoRetries - maxRetries + 1,
+            _maxAutoRetries,
+          );
           onError(ChatErrorCodes.timeout, isRetrying: true);
-          await Future.delayed(
-              const Duration(milliseconds: _retryDelayMs));
+          await Future.delayed(const Duration(milliseconds: _retryDelayMs));
           return streamChat(
             messages: messages,
             onDelta: onDelta,
@@ -363,7 +364,10 @@ class ChatService {
       } else if (e.type == DioExceptionType.connectionError) {
         onError('${ChatErrorCodes.network}: ${e.message}', isRetrying: false);
       } else {
-        onError('${ChatErrorCodes.serverError}: ${e.type} ${e.response?.statusCode} ${e.message}', isRetrying: false);
+        onError(
+          '${ChatErrorCodes.serverError}: ${e.type} ${e.response?.statusCode} ${e.message}',
+          isRetrying: false,
+        );
       }
       onDone();
     } catch (e, st) {
@@ -399,10 +403,7 @@ class ChatService {
       throw Exception(errorCode);
     }
 
-    return ChatMessage(
-      role: 'assistant',
-      content: buffer.toString(),
-    );
+    return ChatMessage(role: 'assistant', content: buffer.toString());
   }
 
   /// Submit feedback on an AI response.
@@ -413,8 +414,8 @@ class ChatService {
   }) async {
     final uid = SupabaseConfig.client.auth.currentUser?.id;
     await SupabaseConfig.client.from('chat_feedback').insert({
-      if (uid != null) 'user_id': uid,
-      if (sessionId != null) 'session_id': sessionId,
+      'user_id': ?uid,
+      'session_id': ?sessionId,
       'feedback_type': feedbackType,
       'message_content': messageContent,
     });
@@ -423,15 +424,14 @@ class ChatService {
   // ── Domain-specific chat edge functions ──
 
   /// Flight search chat via edge function.
-  Future<Map<String, dynamic>> flightChat(String message,
-      {Map<String, dynamic>? context}) async {
+  Future<Map<String, dynamic>> flightChat(
+    String message, {
+    Map<String, dynamic>? context,
+  }) async {
     try {
       final response = await SupabaseConfig.client.functions.invoke(
         'flight-chat',
-        body: {
-          'message': message,
-          if (context != null) 'context': context,
-        },
+        body: {'message': message, 'context': ?context},
       );
       return response.data as Map<String, dynamic>? ?? {};
     } catch (e) {
@@ -441,15 +441,14 @@ class ChatService {
   }
 
   /// Hotel search chat via edge function.
-  Future<Map<String, dynamic>> hotelChat(String message,
-      {Map<String, dynamic>? context}) async {
+  Future<Map<String, dynamic>> hotelChat(
+    String message, {
+    Map<String, dynamic>? context,
+  }) async {
     try {
       final response = await SupabaseConfig.client.functions.invoke(
         'hotel-chat',
-        body: {
-          'message': message,
-          if (context != null) 'context': context,
-        },
+        body: {'message': message, 'context': ?context},
       );
       return response.data as Map<String, dynamic>? ?? {};
     } catch (e) {
@@ -459,15 +458,18 @@ class ChatService {
   }
 
   /// Itinerary-specific chat context via edge function.
-  Future<Map<String, dynamic>> itineraryChat(String message,
-      {String? tripId, Map<String, dynamic>? itineraryContext}) async {
+  Future<Map<String, dynamic>> itineraryChat(
+    String message, {
+    String? tripId,
+    Map<String, dynamic>? itineraryContext,
+  }) async {
     try {
       final response = await SupabaseConfig.client.functions.invoke(
         'itinerary-chat',
         body: {
           'message': message,
-          if (tripId != null) 'tripId': tripId,
-          if (itineraryContext != null) 'context': itineraryContext,
+          'tripId': ?tripId,
+          'context': ?itineraryContext,
         },
       );
       return response.data as Map<String, dynamic>? ?? {};
@@ -485,14 +487,22 @@ class ChatService {
 /// Extract trip info from message text (destination, duration, budget, etc.)
 ExtractedTripInfo extractTripInfo(List<ChatMessage> messages) {
   final info = ExtractedTripInfo();
-  final allText =
-      messages.map((m) => m.content.toLowerCase()).join(' ');
+  final allText = messages.map((m) => m.content.toLowerCase()).join(' ');
 
   // Destination patterns
   final destPatterns = [
-    RegExp(r'(?:go|travel|visit|trip)\s+to\s+([A-Z][a-zA-Z\s]+)', caseSensitive: false),
-    RegExp(r'(?:heading|going)\s+to\s+([A-Z][a-zA-Z\s]+)', caseSensitive: false),
-    RegExp(r'(?:destination|place)\s*:?\s*([A-Z][a-zA-Z\s]+)', caseSensitive: false),
+    RegExp(
+      r'(?:go|travel|visit|trip)\s+to\s+([A-Z][a-zA-Z\s]+)',
+      caseSensitive: false,
+    ),
+    RegExp(
+      r'(?:heading|going)\s+to\s+([A-Z][a-zA-Z\s]+)',
+      caseSensitive: false,
+    ),
+    RegExp(
+      r'(?:destination|place)\s*:?\s*([A-Z][a-zA-Z\s]+)',
+      caseSensitive: false,
+    ),
   ];
   for (final p in destPatterns) {
     final m = p.firstMatch(allText);
@@ -503,17 +513,19 @@ ExtractedTripInfo extractTripInfo(List<ChatMessage> messages) {
   }
 
   // Duration
-  final durMatch = RegExp(r'(\d+)\s*(?:day|night)', caseSensitive: false)
-      .firstMatch(allText);
+  final durMatch = RegExp(
+    r'(\d+)\s*(?:day|night)',
+    caseSensitive: false,
+  ).firstMatch(allText);
   if (durMatch != null) {
     info.duration = int.tryParse(durMatch.group(1)!);
   }
 
   // Budget
   final budgetMatch = RegExp(
-          r'(?:budget|spend)\s*(?:is|of|around|about)?\s*[\$฿€£]?\s*([\d,]+)',
-          caseSensitive: false)
-      .firstMatch(allText);
+    r'(?:budget|spend)\s*(?:is|of|around|about)?\s*[\$฿€£]?\s*([\d,]+)',
+    caseSensitive: false,
+  ).firstMatch(allText);
   if (budgetMatch != null) {
     info.budget = budgetMatch.group(1)?.replaceAll(',', '');
   }
@@ -529,8 +541,7 @@ TripSummary? parseTripSummary(String text) {
   final endIdx = text.indexOf(endTag);
   if (startIdx == -1 || endIdx == -1 || endIdx <= startIdx) return null;
 
-  final jsonStr =
-      text.substring(startIdx + startTag.length, endIdx).trim();
+  final jsonStr = text.substring(startIdx + startTag.length, endIdx).trim();
   try {
     final json = jsonDecode(jsonStr) as Map<String, dynamic>;
     return TripSummary.fromJson(json);
@@ -539,15 +550,36 @@ TripSummary? parseTripSummary(String text) {
   }
 }
 
+/// Parse AIGO_SUGGESTIONS from AI response.
+List<String>? parseAigoSuggestions(String text) {
+  final startTag = '[AIGO_SUGGESTIONS]';
+  final endTag = '[/AIGO_SUGGESTIONS]';
+  final startIdx = text.indexOf(startTag);
+  final endIdx = text.indexOf(endTag);
+  if (startIdx == -1 || endIdx == -1 || endIdx <= startIdx) return null;
+
+  final block = text.substring(startIdx + startTag.length, endIdx).trim();
+  final chips = block
+      .split('|')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
+  return chips.isEmpty ? null : chips;
+}
+
 /// Check if AI response contains READY_TO_GENERATE signal.
 bool isReadyToGenerate(String text) {
   return text.contains('[READY_TO_GENERATE]');
 }
 
-/// Strip TRIP_SUMMARY and READY_TO_GENERATE tags from display text.
+/// Strip special tags from display text.
 String cleanDisplayText(String text) {
   return text
       .replaceAll(RegExp(r'\[TRIP_SUMMARY\][\s\S]*?\[/TRIP_SUMMARY\]'), '')
+      .replaceAll(
+        RegExp(r'\[AIGO_SUGGESTIONS\][\s\S]*?\[/AIGO_SUGGESTIONS\]'),
+        '',
+      )
       .replaceAll('[READY_TO_GENERATE]', '')
       .trim();
 }
@@ -591,17 +623,16 @@ class ChatState {
     ExtractedTripInfo? tripInfo,
     TripSummary? tripSummary,
     bool? readyToGenerate,
-  }) =>
-      ChatState(
-        messages: messages ?? this.messages,
-        isLoading: isLoading ?? this.isLoading,
-        isStreaming: isStreaming ?? this.isStreaming,
-        error: error,
-        errorCode: errorCode,
-        tripInfo: tripInfo ?? this.tripInfo,
-        tripSummary: tripSummary ?? this.tripSummary,
-        readyToGenerate: readyToGenerate ?? this.readyToGenerate,
-      );
+  }) => ChatState(
+    messages: messages ?? this.messages,
+    isLoading: isLoading ?? this.isLoading,
+    isStreaming: isStreaming ?? this.isStreaming,
+    error: error,
+    errorCode: errorCode,
+    tripInfo: tripInfo ?? this.tripInfo,
+    tripSummary: tripSummary ?? this.tripSummary,
+    readyToGenerate: readyToGenerate ?? this.readyToGenerate,
+  );
 }
 
 class ChatNotifier extends Notifier<ChatState> {
@@ -624,9 +655,7 @@ class ChatNotifier extends Notifier<ChatState> {
 
     // Prepare assistant placeholder
     final assistantMsg = ChatMessage(role: 'assistant', content: '');
-    state = state.copyWith(
-      messages: [...state.messages, assistantMsg],
-    );
+    state = state.copyWith(messages: [...state.messages, assistantMsg]);
 
     final buffer = StringBuffer();
     _cancelToken = CancelToken();
@@ -677,16 +706,20 @@ class ChatNotifier extends Notifier<ChatState> {
         if (!isRetrying) {
           // Remove the empty assistant message on error
           final msgs = List<ChatMessage>.from(state.messages);
-          if (msgs.isNotEmpty && msgs.last.role == 'assistant' && msgs.last.content.isEmpty) {
+          if (msgs.isNotEmpty &&
+              msgs.last.role == 'assistant' &&
+              msgs.last.content.isEmpty) {
             msgs.removeLast();
           }
           // Add error message
-          msgs.add(ChatMessage(
-            role: 'assistant',
-            content: _errorMessage(errorCode),
-            isError: true,
-            errorCode: errorCode,
-          ));
+          msgs.add(
+            ChatMessage(
+              role: 'assistant',
+              content: _errorMessage(errorCode),
+              isError: true,
+              errorCode: errorCode,
+            ),
+          );
 
           state = state.copyWith(
             messages: msgs,
@@ -733,5 +766,6 @@ class ChatNotifier extends Notifier<ChatState> {
   }
 }
 
-final chatProvider =
-    NotifierProvider<ChatNotifier, ChatState>(ChatNotifier.new);
+final chatProvider = NotifierProvider<ChatNotifier, ChatState>(
+  ChatNotifier.new,
+);

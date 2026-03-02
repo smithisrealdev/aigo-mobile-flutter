@@ -73,15 +73,15 @@ class Trip {
         'user_id': userId,
         'title': title,
         'destination': destination,
-        if (category != null) 'category': category,
-        if (status != null) 'status': status,
-        if (startDate != null) 'start_date': startDate,
-        if (endDate != null) 'end_date': endDate,
-        if (budgetTotal != null) 'budget_total': budgetTotal,
-        if (budgetSpent != null) 'budget_spent': budgetSpent,
-        if (budgetCurrency != null) 'budget_currency': budgetCurrency,
-        if (coverImage != null) 'cover_image': coverImage,
-        if (itineraryData != null) 'itinerary_data': itineraryData,
+        'category': ?category,
+        'status': ?status,
+        'start_date': ?startDate,
+        'end_date': ?endDate,
+        'budget_total': ?budgetTotal,
+        'budget_spent': ?budgetSpent,
+        'budget_currency': ?budgetCurrency,
+        'cover_image': ?coverImage,
+        'itinerary_data': ?itineraryData,
         'is_public': isPublic,
       };
 }
@@ -140,9 +140,9 @@ class ManualExpense {
         'amount': amount,
         'category': category,
         'currency': currency,
-        if (dayIndex != null) 'day_index': dayIndex,
-        if (expenseDate != null) 'expense_date': expenseDate,
-        if (notes != null) 'notes': notes,
+        'day_index': ?dayIndex,
+        'expense_date': ?expenseDate,
+        'notes': ?notes,
       };
 }
 
@@ -343,16 +343,16 @@ class Reservation {
         'title': title,
         'type': type,
         'status': status,
-        if (confirmationNumber != null) 'confirmation_number': confirmationNumber,
-        if (ticketCode != null) 'ticket_code': ticketCode,
-        if (reservationDate != null) 'reservation_date': reservationDate,
-        if (reservationTime != null) 'reservation_time': reservationTime,
-        if (location != null) 'location': location,
-        if (price != null) 'price': price,
-        if (currency != null) 'currency': currency,
-        if (link != null) 'link': link,
-        if (notes != null) 'notes': notes,
-        if (priority != null) 'priority': priority,
+        'confirmation_number': ?confirmationNumber,
+        'ticket_code': ?ticketCode,
+        'reservation_date': ?reservationDate,
+        'reservation_time': ?reservationTime,
+        'location': ?location,
+        'price': ?price,
+        'currency': ?currency,
+        'link': ?link,
+        'notes': ?notes,
+        'priority': ?priority,
       };
 }
 
@@ -411,12 +411,12 @@ class TripChecklist {
         'user_id': userId,
         'item_name': itemName,
         'item_type': itemType,
-        if (itemDescription != null) 'item_description': itemDescription,
+        'item_description': ?itemDescription,
         'urgency': urgency,
         'is_completed': isCompleted,
         'ai_generated': aiGenerated,
-        if (dueDate != null) 'due_date': dueDate,
-        if (tip != null) 'tip': tip,
+        'due_date': ?dueDate,
+        'tip': ?tip,
       };
 }
 
@@ -528,8 +528,8 @@ class ChatFeedback {
       );
 
   Map<String, dynamic> toInsertJson() => {
-        if (userId != null) 'user_id': userId,
-        if (sessionId != null) 'session_id': sessionId,
+        'user_id': ?userId,
+        'session_id': ?sessionId,
         'feedback_type': feedbackType,
         'message_content': messageContent,
       };

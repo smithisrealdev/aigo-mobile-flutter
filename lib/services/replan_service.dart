@@ -295,8 +295,8 @@ class ReplanService {
           'placeName': placeName,
           'category': category,
           'destination': destination,
-          if (lat != null) 'lat': lat,
-          if (lng != null) 'lng': lng,
+          'lat': ?lat,
+          'lng': ?lng,
         },
       );
 

@@ -91,7 +91,7 @@ class RecommendationService {
       return _getRecommendation(
         type: 'personalized',
         data: {
-          if (travelStyle != null) 'travelStyle': travelStyle,
+          'travelStyle': ?travelStyle,
         },
       );
     } catch (e) {
@@ -135,8 +135,8 @@ class RecommendationService {
         'recommend-tickets',
         body: {
           'destination': destination,
-          if (date != null) 'date': date,
-          if (category != null) 'category': category,
+          'date': ?date,
+          'category': ?category,
         },
       );
       final result = response.data as Map<String, dynamic>?;
@@ -165,7 +165,7 @@ class RecommendationService {
         body: {
           'destination': destination,
           'date': date,
-          if (activities != null) 'activities': activities,
+          'activities': ?activities,
         },
       );
       final result = response.data as Map<String, dynamic>?;
@@ -214,7 +214,7 @@ class RecommendationService {
       type: 'deals',
       data: {
         'destination': destination,
-        if (category != null) 'category': category,
+        'category': ?category,
       },
     );
   }

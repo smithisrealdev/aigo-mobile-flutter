@@ -77,7 +77,7 @@ class ReferralScreen extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: isDark ? AppColors.cardDarkMode : Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
               ),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Your Referral Code', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700,
@@ -86,9 +86,9 @@ class ReferralScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: AppColors.brandBlue.withOpacity(0.06),
+                    color: AppColors.brandBlue.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.brandBlue.withOpacity(0.2)),
+                    border: Border.all(color: AppColors.brandBlue.withValues(alpha: 0.2)),
                   ),
                   child: Row(children: [
                     Expanded(child: Text(code,
@@ -160,7 +160,7 @@ class ReferralScreen extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: isDark ? AppColors.cardDarkMode : Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
               ),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('How It Works', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700,
@@ -183,12 +183,12 @@ class ReferralScreen extends ConsumerWidget {
         decoration: BoxDecoration(
           color: isDark ? AppColors.cardDarkMode : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
             width: 40, height: 40,
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
             child: Icon(icon, size: 20, color: color),
           ),
           const SizedBox(height: 10),
@@ -203,7 +203,7 @@ class ReferralScreen extends ConsumerWidget {
         child: Row(children: [
           Container(
             width: 36, height: 36,
-            decoration: BoxDecoration(color: AppColors.brandBlue.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: AppColors.brandBlue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
             child: Center(child: Text('$step', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.brandBlue))),
           ),
           const SizedBox(width: 12),
@@ -212,7 +212,7 @@ class ReferralScreen extends ConsumerWidget {
                 color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary)),
             Text(desc, style: TextStyle(fontSize: 12, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary)),
           ])),
-          Icon(icon, size: 20, color: AppColors.brandBlue.withOpacity(0.5)),
+          Icon(icon, size: 20, color: AppColors.brandBlue.withValues(alpha: 0.5)),
         ]),
       );
 }

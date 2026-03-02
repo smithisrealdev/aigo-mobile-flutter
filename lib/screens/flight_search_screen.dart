@@ -63,7 +63,13 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (picked != null && mounted) {
-      setState(() { if (isDeparture) _departureDate = picked; else _returnDate = picked; });
+      setState(() {
+        if (isDeparture) {
+          _departureDate = picked;
+        } else {
+          _returnDate = picked;
+        }
+      });
     }
   }
 
@@ -82,7 +88,9 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   }
 
   Future<void> _createPriceAlert() async {
-    if (_departureDate == null) return;
+    if (_departureDate == null) {
+      return;
+    }
     final alert = await PriceAlertService.instance.createFlightAlert(
       originCode: _originCtrl.text.trim().toUpperCase(),
       destinationCode: _destCtrl.text.trim().toUpperCase(),

@@ -29,7 +29,7 @@ class BookingOptionsWidget extends ConsumerWidget {
             child: CircularProgressIndicator(
                 strokeWidth: 2, color: AppColors.brandBlue)),
       ),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (bookings) {
         if (bookings.isEmpty) return const SizedBox.shrink();
         return Column(

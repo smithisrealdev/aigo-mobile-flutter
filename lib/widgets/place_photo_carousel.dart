@@ -51,10 +51,10 @@ class _PlacePhotoCarouselState extends State<PlacePhotoCarousel> {
                     child: CachedNetworkImage(
                       imageUrl: url,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => _ShimmerBox(
+                      placeholder: (_, _) => _ShimmerBox(
                         height: widget.height,
                       ),
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         color: _dotInactive,
                         child: const Icon(Icons.image_not_supported,
                             color: Colors.grey),

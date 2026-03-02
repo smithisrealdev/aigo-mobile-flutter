@@ -131,7 +131,7 @@ class _ReviewCardState extends State<ReviewCard> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: r.photos.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (_, i) => GestureDetector(
                   onTap: widget.onPhotoTap,
                   child: ClipRRect(

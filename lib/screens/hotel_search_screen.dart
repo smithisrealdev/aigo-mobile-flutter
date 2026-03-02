@@ -58,12 +58,20 @@ class _HotelSearchScreenState extends State<HotelSearchScreen> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (picked != null && mounted) {
-      setState(() { if (isCheckIn) _checkIn = picked; else _checkOut = picked; });
+      setState(() {
+        if (isCheckIn) {
+          _checkIn = picked;
+        } else {
+          _checkOut = picked;
+        }
+      });
     }
   }
 
   Future<void> _createPriceAlert(Hotel hotel) async {
-    if (_checkIn == null || _checkOut == null) return;
+    if (_checkIn == null || _checkOut == null) {
+      return;
+    }
     final alert = await PriceAlertService.instance.createHotelAlert(
       hotelName: hotel.name,
       hotelAddress: hotel.address,

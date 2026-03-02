@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/supabase_config.dart';
@@ -63,9 +62,9 @@ class ExpenseService {
           'amount': input.amount,
           'currency': input.currency,
           'category': input.category,
-          if (input.expenseDate != null) 'expense_date': input.expenseDate,
-          if (input.dayIndex != null) 'day_index': input.dayIndex,
-          if (input.notes != null) 'notes': input.notes,
+          'expense_date': ?input.expenseDate,
+          'day_index': ?input.dayIndex,
+          'notes': ?input.notes,
         })
         .select()
         .single();

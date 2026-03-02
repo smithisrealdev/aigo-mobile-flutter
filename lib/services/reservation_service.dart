@@ -59,18 +59,17 @@ class Reservation {
 
   Map<String, dynamic> toInsertJson() => {
         'trip_id': tripId,
-        if (dayIndex != null) 'day_index': dayIndex,
+        'day_index': ?dayIndex,
         'type': type,
         'title': title,
-        if (confirmationNumber != null)
-          'confirmation_number': confirmationNumber,
-        if (bookingUrl != null) 'booking_url': bookingUrl,
-        if (checkIn != null) 'check_in': checkIn,
-        if (checkOut != null) 'check_out': checkOut,
-        if (notes != null) 'notes': notes,
-        if (cost != null) 'cost': cost,
-        if (currency != null) 'currency': currency,
-        if (status != null) 'status': status,
+        'confirmation_number': ?confirmationNumber,
+        'booking_url': ?bookingUrl,
+        'check_in': ?checkIn,
+        'check_out': ?checkOut,
+        'notes': ?notes,
+        'cost': ?cost,
+        'currency': ?currency,
+        'status': ?status,
       };
 }
 

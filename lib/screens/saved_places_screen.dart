@@ -211,7 +211,7 @@ class _SavedTripCard extends ConsumerWidget {
                 height: 140,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorWidget: (_, __, ___) =>
+                errorWidget: (_, _, _) =>
                     Container(height: 140, color: AppColors.background),
               ),
             Padding(

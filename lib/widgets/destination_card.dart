@@ -45,8 +45,8 @@ class DestinationCard extends StatelessWidget {
                     height: 140,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(height: 140, color: AppColors.border),
-                    errorWidget: (_, __, ___) => Container(height: 140, color: AppColors.border, child: const Icon(Icons.image)),
+                    placeholder: (_, _) => Container(height: 140, color: AppColors.border),
+                    errorWidget: (_, _, _) => Container(height: 140, color: AppColors.border, child: const Icon(Icons.image)),
                   ),
                 ),
                 Positioned(

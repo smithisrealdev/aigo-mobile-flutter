@@ -43,7 +43,7 @@ class TripAlert {
         'trip_id': tripId,
         'type': type,
         'title': title,
-        if (message != null) 'message': message,
+        'message': ?message,
         'severity': severity,
         'is_read': isRead,
       };

@@ -49,6 +49,8 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>AiGo needs microphone access for voice input to plan your trips hands-free.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>AiGo uses speech recognition to show real-time text while you speak for faster trip planning.</string>
 	<key>GOOGLE_MAPS_API_KEY</key>
 	<string>$(GOOGLE_MAPS_API_KEY)</string>
 	<key>CFBundleURLTypes</key>

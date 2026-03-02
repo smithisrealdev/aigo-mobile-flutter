@@ -220,7 +220,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       Text('Home Currency', style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textSecondary)),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<String>(
-                        value: _currencies.contains(_currencyController.text) ? _currencyController.text : 'USD',
+                        initialValue: _currencies.contains(_currencyController.text) ? _currencyController.text : 'USD',
                         items: _currencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                         onChanged: (v) => _currencyController.text = v ?? 'USD',
                         decoration: InputDecoration(
@@ -232,7 +232,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       Text('Travel Style', style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textSecondary)),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<String>(
-                        value: _travelStyles.contains(_travelStyle) ? _travelStyle : 'balanced',
+                        initialValue: _travelStyles.contains(_travelStyle) ? _travelStyle : 'balanced',
                         items: _travelStyles.map((s) => DropdownMenuItem(
                           value: s,
                           child: Text(s[0].toUpperCase() + s.substring(1)),

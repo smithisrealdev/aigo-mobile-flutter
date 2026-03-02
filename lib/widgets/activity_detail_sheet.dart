@@ -173,10 +173,12 @@ class _ActivityDetailSheetState extends State<ActivityDetailSheet>
       initialChildSize: 0.85,
       minChildSize: 0.5,
       maxChildSize: 0.95,
-      builder: (context, scrollController) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      builder: (context, scrollController) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.backgroundDark : AppColors.background,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(children: [
           // Drag handle
@@ -200,7 +202,7 @@ class _ActivityDetailSheetState extends State<ActivityDetailSheet>
                   height: 160,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                  errorWidget: (_, _, _) => const SizedBox.shrink(),
                 ),
               ),
             ),
@@ -302,7 +304,7 @@ class _ActivityDetailSheetState extends State<ActivityDetailSheet>
           ),
           // Tab bar
           Container(
-            color: Colors.white,
+            color: isDark ? AppColors.backgroundDark : Colors.white,
             child: TabBar(
               controller: _tabController,
               labelColor: AppColors.brandBlue,
@@ -333,7 +335,8 @@ class _ActivityDetailSheetState extends State<ActivityDetailSheet>
             ),
           ),
         ]),
-      ),
+      );
+      },
     );
   }
 
@@ -862,11 +865,11 @@ class _ActivityDetailSheetState extends State<ActivityDetailSheet>
           fit: BoxFit.cover,
           width: double.infinity,
           height: double.infinity,
-          placeholder: (_, __) => Container(
+          placeholder: (_, _) => Container(
               color: Colors.grey.shade200,
               child: const Center(
                   child: CircularProgressIndicator(strokeWidth: 2))),
-          errorWidget: (_, __, ___) => Container(
+          errorWidget: (_, _, _) => Container(
               color: Colors.grey.shade200,
               child: const Icon(Icons.broken_image,
                   color: AppColors.textSecondary)),
@@ -1013,9 +1016,9 @@ class _ActivityDetailSheetState extends State<ActivityDetailSheet>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+        color: Theme.of(context).brightness == Brightness.dark ? AppColors.cardDarkMode : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: Theme.of(context).brightness == Brightness.dark ? null : [
           BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
@@ -1125,13 +1128,15 @@ class _ActivityDetailSheetState extends State<ActivityDetailSheet>
 
   // ─── Helpers ───
 
-  Widget _card(List<Widget> children) => Container(
+  Widget _card(List<Widget> children) => Builder(builder: (context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
+          color: isDark ? AppColors.cardDarkMode : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: isDark ? null : [
             BoxShadow(
                 color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 8,
@@ -1142,6 +1147,7 @@ class _ActivityDetailSheetState extends State<ActivityDetailSheet>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: children),
       );
+  });
 
   Widget _sectionTitle(String title) => Text(
         title,

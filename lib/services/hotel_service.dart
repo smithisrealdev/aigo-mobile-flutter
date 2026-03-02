@@ -121,8 +121,8 @@ class SearchHotelsParams {
         'checkOutDate': checkOutDate,
         'adults': adults,
         'roomQuantity': roomQuantity,
-        if (ratings != null) 'ratings': ratings,
-        if (priceRange != null) 'priceRange': priceRange,
+        'ratings': ?ratings,
+        'priceRange': ?priceRange,
       };
 }
 

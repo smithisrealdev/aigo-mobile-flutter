@@ -181,7 +181,7 @@ class _ExpenseSplitterScreenState extends ConsumerState<ExpenseSplitterScreen> {
                 ActionChip(
                   label: const Text('Add', style: TextStyle(fontSize: 13, color: AppColors.brandBlue)),
                   avatar: const Icon(Icons.person_add, size: 16, color: AppColors.brandBlue),
-                  backgroundColor: AppColors.brandBlue.withOpacity(0.08),
+                  backgroundColor: AppColors.brandBlue.withValues(alpha: 0.08),
                   side: BorderSide.none,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   onPressed: () => _showAddPersonDialog(context, ref),
@@ -204,13 +204,13 @@ class _ExpenseSplitterScreenState extends ConsumerState<ExpenseSplitterScreen> {
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.cardDarkMode : Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
                   ),
                   child: Row(children: [
                     Container(
                       width: 40, height: 40,
                       decoration: BoxDecoration(
-                        color: AppColors.brandBlue.withOpacity(0.1),
+                        color: AppColors.brandBlue.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(Icons.receipt, size: 20, color: AppColors.brandBlue),
@@ -242,7 +242,7 @@ class _ExpenseSplitterScreenState extends ConsumerState<ExpenseSplitterScreen> {
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.cardDarkMode : Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.success.withOpacity(0.3)),
+                      border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
                     ),
                     child: Row(children: [
                       const Icon(Icons.swap_horiz, color: AppColors.success, size: 24),
@@ -279,7 +279,7 @@ class _ExpenseSplitterScreenState extends ConsumerState<ExpenseSplitterScreen> {
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(children: [
-          Icon(icon, size: 40, color: AppColors.brandBlue.withOpacity(0.3)),
+          Icon(icon, size: 40, color: AppColors.brandBlue.withValues(alpha: 0.3)),
           const SizedBox(height: 8),
           Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary)),
           Text(subtitle, style: TextStyle(fontSize: 12, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary)),
@@ -350,14 +350,14 @@ class _ExpenseSplitterScreenState extends ConsumerState<ExpenseSplitterScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: payerId,
+              initialValue: payerId,
               decoration: InputDecoration(labelText: 'Paid by', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               items: people.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))).toList(),
               onChanged: (v) => setSheetState(() => payerId = v!),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<SplitMethod>(
-              value: method,
+              initialValue: method,
               decoration: InputDecoration(labelText: 'Split method', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               items: SplitMethod.values.map((m) => DropdownMenuItem(value: m, child: Text(m.name[0].toUpperCase() + m.name.substring(1)))).toList(),
               onChanged: (v) => setSheetState(() => method = v!),

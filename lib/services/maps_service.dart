@@ -76,7 +76,7 @@ class MapsService {
     final res = await _invokeWithRetry('check-traffic', body: {
       'latitude': latitude,
       'longitude': longitude,
-      if (radius != null) 'radius': radius,
+      'radius': ?radius,
     });
     return _parseResponse(res);
   }
@@ -86,7 +86,7 @@ class MapsService {
       String placeName, {String? placeAddress}) async {
     final res = await _invokeWithRetry('place-details', body: {
       'placeName': placeName,
-      if (placeAddress != null) 'placeAddress': placeAddress,
+      'placeAddress': ?placeAddress,
     });
     return _parseResponse(res);
   }

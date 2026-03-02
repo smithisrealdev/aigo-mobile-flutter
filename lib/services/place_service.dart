@@ -155,7 +155,7 @@ class PlaceService {
     try {
       final res = await _invokeWithRetry('place-details', body: {
         'placeName': placeName,
-        if (placeAddress != null) 'placeAddress': placeAddress,
+        'placeAddress': ?placeAddress,
       });
 
       final data = res.data as Map<String, dynamic>?;
